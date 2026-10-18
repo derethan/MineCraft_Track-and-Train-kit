@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "minecraft:iron_pickaxe",
+    "B": "minecraft:iron_block",
+    "F": "minecraft:furnace_minecart",
+    "C": "minecraft:chest_minecart",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    "PBP",
+    "IFI",
+    "ICI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:tunnel_bore"
+  }
+}

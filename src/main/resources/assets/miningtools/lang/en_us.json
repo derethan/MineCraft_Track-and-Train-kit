@@ -1,0 +1,14 @@
+{
+  "itemGroup.miningtools": "Mining Tools",
+  "block.miningtools.junction_rail": "Junction Rail",
+  "item.miningtools.junction_rail": "Junction Rail",
+  "item.miningtools.tunnel_bore": "Tunnel Bore",
+  "entity.miningtools.tunnel_bore": "Tunnel Bore",
+  "container.miningtools.tunnel_bore": "Tunnel Bore",
+  "item.miningtools.basic_locomotive": "Basic Locomotive",
+  "entity.miningtools.basic_locomotive": "Basic Locomotive",
+  "container.miningtools.basic_locomotive": "Basic Locomotive",
+  "miningtools.configuration.title": "Mining Tools Configs",
+  "miningtools.configuration.section.miningtools.common.toml": "Mining Tools Configs",
+  "miningtools.configuration.section.miningtools.common.toml.title": "Mining Tools Configs"
+}
