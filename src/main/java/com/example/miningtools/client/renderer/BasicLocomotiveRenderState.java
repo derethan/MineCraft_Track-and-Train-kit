@@ -20,4 +20,5 @@ public class BasicLocomotiveRenderState extends EntityRenderState {
     public @Nullable Vec3 frontPos = null;
     public @Nullable Vec3 backPos = null;
     public float pitch = 0.0F;
+    public float trackYaw = 0.0F;
 }

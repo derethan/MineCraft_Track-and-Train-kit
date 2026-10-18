@@ -48,8 +48,8 @@ public class BasicLocomotiveRenderer extends EntityRenderer<BasicLocomotiveEntit
         Vec3 pos = entity.getRailPos(state.x, state.y, state.z);
         if (pos != null) {
             state.posOnRail = pos;
-            Vec3 p0 = entity.getRailPosOffs(state.x, state.y, state.z, 0.3F);
-            Vec3 p1 = entity.getRailPosOffs(state.x, state.y, state.z, -0.3F);
+            Vec3 p0 = entity.getRailPosOffs(state.x, state.y, state.z, 0.35F);
+            Vec3 p1 = entity.getRailPosOffs(state.x, state.y, state.z, -0.35F);
             if (p0 == null) {
                 p0 = pos;
             }
@@ -64,14 +64,17 @@ public class BasicLocomotiveRenderer extends EntityRenderer<BasicLocomotiveEntit
                 double dot = diff.x * state.facing.getStepX() + diff.z * state.facing.getStepZ();
                 Vec3 forwardDir = (dot >= 0.0 ? diff : diff.reverse()).normalize();
                 state.pitch = (float) (Math.atan(forwardDir.y) * 73.0);
+                state.trackYaw = (float) (Mth.atan2(forwardDir.z, forwardDir.x) * 180.0 / Math.PI) - 90.0F;
             } else {
                 state.pitch = 0.0F;
+                state.trackYaw = state.facing.toYRot();
             }
         } else {
             state.posOnRail = null;
             state.frontPos = null;
             state.backPos = null;
             state.pitch = 0.0F;
+            state.trackYaw = state.facing.toYRot();
         }
     }
 
@@ -89,7 +92,7 @@ public class BasicLocomotiveRenderer extends EntityRenderer<BasicLocomotiveEntit
         }
 
         poseStack.translate(0.0F, 0.375F, 0.0F);
-        poseStack.rotateDegrees(Axis.YP, 180.0F - state.facing.toYRot() + 90.0F);
+        poseStack.rotateDegrees(Axis.YP, 180.0F - state.trackYaw + 90.0F);
         poseStack.rotateDegrees(Axis.ZP, state.pitch);
 
         if (state.hurtTime > 0.0F) {

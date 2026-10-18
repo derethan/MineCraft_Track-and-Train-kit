@@ -282,22 +282,33 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         Direction facing = this.getFacing();
         float targetYRot = facing.toYRot();
+        Vec3 pos = this.getRailPos(this.getX(), this.getY(), this.getZ());
+        if (pos != null) {
+            Vec3 p0 = this.getRailPosOffs(this.getX(), this.getY(), this.getZ(), 0.35F);
+            Vec3 p1 = this.getRailPosOffs(this.getX(), this.getY(), this.getZ(), -0.35F);
+            if (p0 != null && p1 != null) {
+                Vec3 diff = p0.subtract(p1);
+                if (diff.lengthSqr() > 1.0E-6D) {
+                    targetYRot = (float) (Mth.atan2(diff.z, diff.x) * 180.0 / Math.PI) - 90.0F;
+                }
+            }
+        }
         this.setYRot(targetYRot);
-        this.yRotO = targetYRot;
 
         if (this.level().isClientSide()) {
             // Client side particle effects
             if (this.isActive()) {
                 // Chimney / smokestack position
                 double chimneyForward = 0.55;
-                double chimneyX = this.getX() + facing.getStepX() * chimneyForward;
-                double chimneyZ = this.getZ() + facing.getStepZ() * chimneyForward;
+                double rad = Math.toRadians(targetYRot + 90.0);
+                double chimneyX = this.getX() + Math.cos(rad) * chimneyForward;
+                double chimneyZ = this.getZ() + Math.sin(rad) * chimneyForward;
                 double chimneyY = this.getY() + 1.25;
 
                 // Black coal smoke
                 if (this.random.nextInt(2) == 0) {
                     this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, chimneyX, chimneyY, chimneyZ,
-                            facing.getStepX() * 0.02, 0.08, facing.getStepZ() * 0.02);
+                            Math.cos(rad) * 0.02, 0.08, Math.sin(rad) * 0.02);
                 }
                 // White steam puffs
                 if (this.random.nextInt(3) == 0) {
@@ -524,9 +535,17 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             Vec3i exit1 = exits.getSecond();
             double xD = exit1.getX() - exit0.getX();
             double zD = exit1.getZ() - exit0.getZ();
+            Direction facing = this.getFacing();
+            double dirDot = xD * facing.getStepX() + zD * facing.getStepZ();
+            if (dirDot < 0.0) {
+                xD = -xD;
+                zD = -zD;
+            }
             double dd = Math.sqrt(xD * xD + zD * zD);
-            xD /= dd;
-            zD /= dd;
+            if (dd > 0.0) {
+                xD /= dd;
+                zD /= dd;
+            }
             x += xD * offset;
             z += zD * offset;
             if (exit0.getY() != 0 && Mth.floor(x) - xt == exit0.getX() && Mth.floor(z) - zt == exit0.getZ()) {
