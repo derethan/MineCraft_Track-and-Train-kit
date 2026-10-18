@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "R": [
+      "minecraft:redstone_lamp",
+      "minecraft:redstone"
+    ],
+    "I": "minecraft:iron_ingot",
+    "F": "minecraft:furnace",
+    "M": "minecraft:minecart"
+  },
+  "pattern": [
+    "IRI",
+    "IFI",
+    "IMI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:basic_locomotive"
+  }
+}

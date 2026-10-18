@@ -19,12 +19,12 @@ public class Config {
                 .defineInRange("coalBurnTicks", 1600, 20, 72000);
 
         LOCOMOTIVE_MAX_SPEED = BUILDER
-                .comment("Maximum travel speed of the Basic Locomotive on tracks (blocks per tick). Vanilla max is 0.4.")
-                .defineInRange("maxSpeed", 0.175D, 0.05D, 1.0D);
+                .comment("Maximum travel speed of the Basic Locomotive at Speed Level 5 (blocks per tick). Vanilla max is 0.4.")
+                .defineInRange("maxSpeed", 0.35D, 0.05D, 1.0D);
 
         LOCOMOTIVE_ACCELERATION = BUILDER
                 .comment("Acceleration rate of the Basic Locomotive when starting up.")
-                .defineInRange("acceleration", 0.02D, 0.005D, 0.2D);
+                .defineInRange("acceleration", 0.04D, 0.005D, 0.2D);
 
         BUILDER.pop();
     }

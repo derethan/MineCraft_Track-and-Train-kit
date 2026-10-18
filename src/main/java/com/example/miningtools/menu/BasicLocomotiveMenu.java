@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class BasicLocomotiveMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = 3;
-    public static final int DATA_COUNT = 4;
+    public static final int DATA_COUNT = 5;
 
     private final Container container;
     private final ContainerData data;
@@ -48,7 +48,7 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
         // Standard Player Inventory Slots (3 rows of 9 + 1 hotbar row)
         this.addStandardInventorySlots(playerInventory, 8, 84);
 
-        // Data slots for fuel, fuelTotal, running, facing
+        // Data slots for fuel, fuelTotal, running, facing, speedLevel
         this.addDataSlots(data);
     }
 
@@ -72,6 +72,11 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
         return this.data.get(3);
     }
 
+    public int getSpeedLevel() {
+        int level = this.data.get(4);
+        return level <= 0 ? 3 : level;
+    }
+
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id == 0) {
@@ -83,6 +88,20 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
             // Reverse direction
             int currentFacing = this.data.get(3);
             this.data.set(3, (currentFacing + 2) % 4);
+            return true;
+        } else if (id == 2) {
+            // Speed down
+            int current = this.getSpeedLevel();
+            if (current > 1) {
+                this.data.set(4, current - 1);
+            }
+            return true;
+        } else if (id == 3) {
+            // Speed up
+            int current = this.getSpeedLevel();
+            if (current < 5) {
+                this.data.set(4, current + 1);
+            }
             return true;
         }
         return false;

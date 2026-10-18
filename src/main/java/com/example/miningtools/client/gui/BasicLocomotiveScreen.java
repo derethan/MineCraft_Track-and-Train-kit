@@ -24,6 +24,8 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
 
     private @Nullable Button toggleButton;
     private @Nullable Button reverseButton;
+    private @Nullable Button speedDownButton;
+    private @Nullable Button speedUpButton;
 
     public BasicLocomotiveScreen(BasicLocomotiveMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 176, 166);
@@ -50,6 +52,24 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
                     }
                 }).bounds(this.leftPos + 120, this.topPos + 44, 48, 20).build()
         );
+
+        // Speed decrease button [-]
+        this.speedDownButton = this.addRenderableWidget(
+                Button.builder(Component.literal("-"), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 2);
+                    }
+                }).bounds(this.leftPos + 8, this.topPos + 49, 18, 18).build()
+        );
+
+        // Speed increase button [+]
+        this.speedUpButton = this.addRenderableWidget(
+                Button.builder(Component.literal("+"), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 3);
+                    }
+                }).bounds(this.leftPos + 30, this.topPos + 49, 18, 18).build()
+        );
     }
 
     @Override
@@ -57,6 +77,13 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
         super.containerTick();
         if (this.toggleButton != null) {
             this.toggleButton.setMessage(this.getToggleButtonLabel());
+        }
+        int speed = this.menu.getSpeedLevel();
+        if (this.speedDownButton != null) {
+            this.speedDownButton.active = speed > 1;
+        }
+        if (this.speedUpButton != null) {
+            this.speedUpButton.active = speed < 5;
         }
     }
 
@@ -69,14 +96,34 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         super.extractLabels(graphics, xm, ym);
-        Component statusText = this.menu.isRunning()
-                ? Component.literal("Running").withStyle(ChatFormatting.DARK_GREEN)
-                : Component.literal("Stopped").withStyle(ChatFormatting.DARK_RED);
-        graphics.text(this.font, statusText, 8, 22, this.menu.isRunning() ? 0xFF1E7A1E : 0xFF9E2020, false);
 
+        // Direction & engine status
         Direction facing = Direction.from2DDataValue(this.menu.getFacingIndex());
         Component facingText = Component.literal("Facing: " + facing.getName().toUpperCase());
-        graphics.text(this.font, facingText, 8, 34, 0x404040, false);
+        graphics.text(this.font, facingText, 8, 17, 0x404040, false);
+
+        Component statusText = this.menu.isRunning()
+                ? Component.literal("[Running]").withStyle(ChatFormatting.DARK_GREEN)
+                : Component.literal("[Stopped]").withStyle(ChatFormatting.DARK_RED);
+        int statusColor = this.menu.isRunning() ? 0xFF1E7A1E : 0xFF9E2020;
+        graphics.text(this.font, statusText, 72, 17, statusColor, false);
+
+        // Selected Speed header and current value above speed selector buttons
+        graphics.text(this.font, Component.literal("Selected Speed:"), 8, 27, 0x505050, false);
+
+        int speedLevel = this.menu.getSpeedLevel();
+        String speedName = switch (speedLevel) {
+            case 1 -> "Crawl";
+            case 2 -> "Slow";
+            case 3 -> "Normal";
+            case 4 -> "Fast";
+            case 5 -> "Max";
+            default -> "Normal";
+        };
+        Component speedText = Component.literal(speedName).withStyle(ChatFormatting.DARK_BLUE);
+        int textWidth = this.font.width(speedText);
+        int textX = 8 + (40 - textWidth) / 2;
+        graphics.text(this.font, speedText, textX, 38, 0xFF154360, false);
     }
 
     @Override
