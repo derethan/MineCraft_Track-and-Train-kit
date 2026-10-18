@@ -1,7 +1,10 @@
 package com.example.miningtools.client.renderer;
 
+import org.jspecify.annotations.Nullable;
+
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
@@ -13,4 +16,8 @@ public class BasicLocomotiveRenderState extends EntityRenderState {
     public float hurtTime = 0.0F;
     public int hurtDir = 1;
     public float damageTime = 0.0F;
+    public @Nullable Vec3 posOnRail = null;
+    public @Nullable Vec3 frontPos = null;
+    public @Nullable Vec3 backPos = null;
+    public float pitch = 0.0F;
 }
