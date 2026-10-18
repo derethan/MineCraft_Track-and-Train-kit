@@ -232,6 +232,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     @Override
+    public float maxUpStep() {
+        return 1.0F;
+    }
+
+    @Override
     public boolean isPushable() {
         return !this.running;
     }
@@ -419,10 +424,15 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 progress = (xx * xD + zz * zD) * 2.0;
             }
 
+            Direction moveDir = (Math.abs(newVx) > 1.0E-4D || Math.abs(newVz) > 1.0E-4D)
+                    ? Direction.getApproximateNearest(newVx, 0.0, newVz)
+                    : facing;
+            boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(moveDir).above()));
+
             x = x0 + xD * progress;
             z = z0 + zD * progress;
             y = railPos.getY();
-            if (shape.isSlope()) {
+            if (shape.isSlope() || uphillAhead) {
                 y = railPos.getY() + 1.0;
             }
             this.setPos(x, y, z);
@@ -468,7 +478,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
             // Check if locomotive collided with a solid block/obstacle in its path
             double forwardProgress = actualDx * facing.getStepX() + actualDz * facing.getStepZ();
-            if (this.horizontalCollision && forwardProgress < 0.005D) {
+            boolean hitObstacle = (this.horizontalCollision && forwardProgress < 0.005D)
+                    && isPathBlockedByObstacle(this.level(), railPos, moveDir, this);
+            if (hitObstacle) {
                 // Stopped by hitting an obstacle (block/buffer) - stop engine and halt without reversing
                 this.setRunning(false);
                 this.setActive(false);
@@ -508,6 +520,71 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 this.handleChainedCartsMovement(this.getFacing());
             }
         }
+    }
+
+    public static boolean isPathBlockedByObstacle(Level level, BlockPos currentRailPos, Direction moveDir, Entity entity) {
+        BlockState currentState = level.getBlockState(currentRailPos);
+        if (BaseRailBlock.isRail(currentState)) {
+            RailShape currentShape = ((BaseRailBlock) currentState.getBlock()).getRailDirection(currentState, level, currentRailPos, null);
+            boolean isCurve = !currentShape.isSlope() && currentShape != RailShape.NORTH_SOUTH && currentShape != RailShape.EAST_WEST;
+            if (isCurve) {
+                // If on a curve, the track bends into the curve exits
+                Pair<Vec3i, Vec3i> curveExits = AbstractMinecart.exits(currentShape);
+                Vec3i ce0 = curveExits.getFirst();
+                Vec3i ce1 = curveExits.getSecond();
+                BlockPos p0 = currentRailPos.offset(ce0);
+                BlockPos p1 = currentRailPos.offset(ce1);
+                boolean hasCurveExitRail = BaseRailBlock.isRail(level.getBlockState(p0)) || BaseRailBlock.isRail(level.getBlockState(p0.above())) || BaseRailBlock.isRail(level.getBlockState(p0.below()))
+                        || BaseRailBlock.isRail(level.getBlockState(p1)) || BaseRailBlock.isRail(level.getBlockState(p1.above())) || BaseRailBlock.isRail(level.getBlockState(p1.below()));
+                if (hasCurveExitRail) {
+                    BlockPos nextP = (moveDir.getStepX() * ce0.getX() + moveDir.getStepZ() * ce0.getZ() > 0) ? p0 : p1;
+                    BlockPos clearance = nextP.above();
+                    BlockState clearanceState = level.getBlockState(clearance);
+                    if (!clearanceState.isAir() && !BaseRailBlock.isRail(clearanceState) && !clearanceState.getCollisionShape(level, clearance).isEmpty()) {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        }
+
+        BlockPos nextFlat = currentRailPos.relative(moveDir);
+        BlockPos nextUp = nextFlat.above();
+        BlockPos nextDown = nextFlat.below();
+
+        BlockState flatState = level.getBlockState(nextFlat);
+        BlockState upState = level.getBlockState(nextUp);
+        BlockState downState = level.getBlockState(nextDown);
+
+        boolean hasFlatRail = BaseRailBlock.isRail(flatState);
+        boolean hasUpRail = BaseRailBlock.isRail(upState);
+        boolean hasDownRail = BaseRailBlock.isRail(downState);
+
+        // If none of the 3 positions has a rail, the track has ended (buffer stop, stone wall at end of line, dead end)
+        if (!hasFlatRail && !hasUpRail && !hasDownRail) {
+            return true;
+        }
+
+        // Check if an obstruction block was placed in the clearance path
+        BlockPos nextRailPos = hasFlatRail ? nextFlat : (hasUpRail ? nextUp : nextDown);
+        BlockPos clearancePos = nextRailPos.above();
+        BlockState clearanceState = level.getBlockState(clearancePos);
+        if (!clearanceState.isAir() && !BaseRailBlock.isRail(clearanceState)) {
+            if (!clearanceState.getCollisionShape(level, clearancePos).isEmpty()) {
+                return true; // Solid block obstructing cart clearance
+            }
+        }
+
+        // For locomotive (which is 1.25m tall), also check clearancePos.above()
+        if (entity instanceof BasicLocomotiveEntity) {
+            BlockPos clearancePos2 = clearancePos.above();
+            BlockState clearanceState2 = level.getBlockState(clearancePos2);
+            if (!clearanceState2.isAir() && !clearanceState2.getCollisionShape(level, clearancePos2).isEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public @Nullable Vec3 getRailPosOffs(double x, double y, double z, double offset) {
@@ -820,8 +897,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
         double targetDist = 1.38D;
-        double minAllowed = moving ? 1.375D : 1.34D;
-        double maxAllowed = moving ? 1.385D : 1.46D;
+        double minAllowed = moving ? 1.30D : 1.25D;
+        double maxAllowed = moving ? 1.46D : 1.50D;
         double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.25D) : 0.08D;
 
         boolean blocked = false;
@@ -835,8 +912,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
             Vec3 cartPos = new Vec3(cart.getX(), cart.getY(), cart.getZ());
             Vec3 diff = cartPos.subtract(anchorPos);
-            double dist3D = diff.length();
             double horizDist = diff.horizontalDistance();
+            double trackDist = horizDist + 0.41421356D * Math.abs(diff.y);
 
             double dirX;
             double dirZ;
@@ -848,18 +925,18 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 dirZ = facing.getStepZ();
             }
 
-            if (dist3D > maxAllowed) {
+            if (trackDist > maxAllowed) {
                 // Cart is lagging behind anchor -> pull cart along its rails toward anchor
-                double needed3D = Math.min(dist3D - targetDist, maxStep);
-                boolean success = this.moveCartAlongRails(cart, -dirX, -dirZ, needed3D);
+                double needed = Math.min(trackDist - targetDist, maxStep);
+                boolean success = this.moveCartAlongRails(cart, -dirX, -dirZ, needed);
                 if (!success && moving && this.running) {
                     blocked = true;
                     break;
                 }
-            } else if (dist3D < minAllowed) {
+            } else if (trackDist < minAllowed) {
                 // Cart is ahead of or too close to anchor -> push cart along its rails away from anchor
-                double needed3D = Math.min(targetDist - dist3D, maxStep);
-                boolean success = this.moveCartAlongRails(cart, dirX, dirZ, needed3D);
+                double needed = Math.min(targetDist - trackDist, maxStep);
+                boolean success = this.moveCartAlongRails(cart, dirX, dirZ, needed);
                 if (!success && moving && this.running) {
                     blocked = true;
                     break;
@@ -945,6 +1022,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         double initialX = x;
         double initialZ = z;
 
+        Direction cartDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
+                ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
+                : cart.getMotionDirection();
+        boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(cartDir).above()));
+
         // Center X/Z on rail and pre-lift Y on slopes so move() clears the upper step block
         double x0 = railPos.getX() + 0.5 + exit0.getX() * 0.5;
         double z0 = railPos.getZ() + 0.5 + exit0.getZ() * 0.5;
@@ -966,7 +1048,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         x = x0 + xD * progress;
         z = z0 + zD * progress;
         y = railPos.getY();
-        if (shape.isSlope()) {
+        if (shape.isSlope() || uphillAhead) {
             y = railPos.getY() + 1.0;
         }
         cart.setPos(x, y, z);
@@ -1015,7 +1097,14 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         cart.setDeltaMovement(Vec3.ZERO);
 
         boolean offRails = (newRailPos == null);
-        boolean blocked = offRails || (cart.horizontalCollision && actualHoriz < horizStep * 0.7D) || (horizStep > 0.02D && actualHoriz < 0.005D);
+        boolean blocked = false;
+        if (offRails) {
+            blocked = true;
+        } else if ((cart.horizontalCollision && actualHoriz < horizStep * 0.3D) || (horizStep > 0.02D && actualHoriz < 0.005D)) {
+            if (isPathBlockedByObstacle(this.level(), railPos, cartDir, cart)) {
+                blocked = true;
+            }
+        }
         return !blocked;
     }
 
