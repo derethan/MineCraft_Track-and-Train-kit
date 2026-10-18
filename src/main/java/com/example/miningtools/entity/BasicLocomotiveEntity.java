@@ -15,10 +15,12 @@ import org.jspecify.annotations.Nullable;
 import com.example.miningtools.Config;
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
+import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -43,8 +45,10 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -345,9 +349,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         boolean hasFuel = this.fuel > 0;
         this.setLit(hasFuel);
 
-        BlockPos railPos = this.blockPosition();
+        BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
-        boolean onRails = railState.is(BlockTags.RAILS);
+        boolean onRails = BaseRailBlock.isRail(railState);
 
         if (this.running && hasFuel && onRails) {
             this.setActive(true);
@@ -355,22 +359,82 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             double maxSpeed = this.getLocomotiveSpeed();
             double accel = Config.LOCOMOTIVE_ACCELERATION.get();
 
-            Vec3 currentDelta = this.getDeltaMovement();
+            Vec3 currentDelta = super.getDeltaMovement();
             double targetVx = facing.getStepX() * maxSpeed;
             double targetVz = facing.getStepZ() * maxSpeed;
 
             // Accelerate towards target velocity
             double newVx = currentDelta.x + (targetVx - currentDelta.x) * accel;
             double newVz = currentDelta.z + (targetVz - currentDelta.z) * accel;
-            Vec3 newMovement = new Vec3(newVx, currentDelta.y, newVz);
 
-            this.setDeltaMovement(newMovement);
-            this.move(MoverType.SELF, newMovement);
-            this.handleChainedCartsMovement(newMovement, facing);
+            RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, this.level(), railPos, this);
+
+            // Slope handling: temporary pre-lift Y to avoid wall collision with upper step
+            double x = this.getX();
+            double y = this.getY();
+            double z = this.getZ();
+            double initialX = x;
+            double initialY = y;
+            double initialZ = z;
+
+            if (shape.isSlope()) {
+                y = railPos.getY() + 1.0;
+                this.setPos(x, y, z);
+            }
+
+            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+            Vec3i exit0 = exits.getFirst();
+            Vec3i exit1 = exits.getSecond();
+
+            // Align velocity with the track direction (handles curves and slopes)
+            double xD = exit1.getX() - exit0.getX();
+            double zD = exit1.getZ() - exit0.getZ();
+            double length = Math.sqrt(xD * xD + zD * zD);
+            if (length > 0.0) {
+                double flip = newVx * xD + newVz * zD;
+                if (flip < 0.0) {
+                    xD = -xD;
+                    zD = -zD;
+                }
+                double pow = Math.sqrt(newVx * newVx + newVz * newVz);
+                newVx = pow * xD / length;
+                newVz = pow * zD / length;
+            }
+
+            // Move horizontally along track
+            this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
+
+            // If exited down the slope via lower exit, step down Y by 1
+            if (exit0.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit0.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit0.getZ()) {
+                this.setPos(this.getX(), this.getY() + exit0.getY(), this.getZ());
+            } else if (exit1.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit1.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit1.getZ()) {
+                this.setPos(this.getX(), this.getY() + exit1.getY(), this.getZ());
+            }
+
+            // Snap Y precisely to the rail surface
+            Vec3 newRailPos = this.getRailPos(this.getX(), this.getY(), this.getZ());
+            if (newRailPos != null) {
+                this.setPos(this.getX(), newRailPos.y, this.getZ());
+            }
+
+            // Calculate actual 3D displacement
+            double actualDx = this.getX() - initialX;
+            double actualDy = this.getY() - initialY;
+            double actualDz = this.getZ() - initialZ;
+            Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
+            this.setDeltaMovement(actualMovement);
+
+            // Update facing if track turned around a curve
+            Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
+            if (currentMoveDir.getAxis().isHorizontal() && actualMovement.horizontalDistanceSqr() > 1.0E-4D && currentMoveDir != this.getFacing()) {
+                this.setFacing(currentMoveDir);
+            }
+
+            this.handleChainedCartsMovement(actualMovement, this.getFacing());
         } else {
             this.setActive(false);
             // Apply braking
-            Vec3 currentDelta = this.getDeltaMovement();
+            Vec3 currentDelta = super.getDeltaMovement();
             if (currentDelta.horizontalDistanceSqr() > 1.0E-4D) {
                 Vec3 braked = currentDelta.multiply(0.65D, 1.0D, 0.65D);
                 this.setDeltaMovement(braked);
@@ -379,6 +443,56 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             } else {
                 this.setDeltaMovement(Vec3.ZERO);
             }
+        }
+    }
+
+    public @Nullable Vec3 getRailPos(double x, double y, double z) {
+        int xt = Mth.floor(x);
+        int yt = Mth.floor(y);
+        int zt = Mth.floor(z);
+        if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
+            yt--;
+        }
+
+        BlockPos railPos = new BlockPos(xt, yt, zt);
+        BlockState state = this.level().getBlockState(railPos);
+        if (BaseRailBlock.isRail(state)) {
+            RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, this.level(), railPos, this);
+            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+            Vec3i exit0 = exits.getFirst();
+            Vec3i exit1 = exits.getSecond();
+            double x0 = xt + 0.5 + exit0.getX() * 0.5;
+            double y0 = yt + 0.0625 + exit0.getY() * 0.5;
+            double z0 = zt + 0.5 + exit0.getZ() * 0.5;
+            double x1 = xt + 0.5 + exit1.getX() * 0.5;
+            double y1 = yt + 0.0625 + exit1.getY() * 0.5;
+            double z1 = zt + 0.5 + exit1.getZ() * 0.5;
+            double xD = x1 - x0;
+            double yD = (y1 - y0) * 2.0;
+            double zD = z1 - z0;
+            double progress;
+            if (xD == 0.0) {
+                progress = z - zt;
+            } else if (zD == 0.0) {
+                progress = x - xt;
+            } else {
+                double xx = x - x0;
+                double zz = z - z0;
+                progress = (xx * xD + zz * zD) * 2.0;
+            }
+
+            x = x0 + xD * progress;
+            y = y0 + yD * progress;
+            z = z0 + zD * progress;
+            if (yD < 0.0) {
+                y++;
+            } else if (yD > 0.0) {
+                y += 0.5;
+            }
+
+            return new Vec3(x, y, z);
+        } else {
+            return null;
         }
     }
 
@@ -553,16 +667,6 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         return super.distanceToSqr(x, y, z);
     }
 
-    @Override
-    public Vec3 getDeltaMovement() {
-        if (this.isActive()) {
-            Direction facing = this.getFacing();
-            double speed = this.getLocomotiveSpeed();
-            return new Vec3(facing.getStepX() * speed, 0.0, facing.getStepZ() * speed);
-        }
-        return super.getDeltaMovement();
-    }
-
     private void handleChainedCartsMovement(Vec3 movement, Direction facing) {
         List<AbstractMinecart> carts = this.getConnectedTrainCarts();
         if (carts.isEmpty()) {
@@ -593,8 +697,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         Entity prev = this;
         for (AbstractMinecart cart : pushedCarts) {
-            // Propel the pushed cart forward at locomotive travel speed
-            cart.setDeltaMovement(new Vec3(movement.x, cart.getDeltaMovement().y, movement.z));
+            // Propel the pushed cart forward at locomotive travel speed including slope component
+            cart.setDeltaMovement(new Vec3(movement.x, movement.y, movement.z));
 
             // Enforce minimum buffer separation so carts don't clip into each other
             double dx = cart.getX() - prev.getX();
@@ -603,7 +707,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             double minBuffer = 1.15D;
             if (distAlongFacing < minBuffer) {
                 double pushNeeded = minBuffer - distAlongFacing;
-                cart.move(MoverType.SELF, new Vec3(facing.getStepX() * pushNeeded, 0.0, facing.getStepZ() * pushNeeded));
+                double pushY = movement.y != 0.0 ? (movement.y > 0 ? pushNeeded : -pushNeeded) : 0.0;
+                cart.move(MoverType.SELF, new Vec3(facing.getStepX() * pushNeeded, pushY, facing.getStepZ() * pushNeeded));
             }
 
             prev = cart;

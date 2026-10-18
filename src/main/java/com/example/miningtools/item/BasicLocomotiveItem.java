@@ -1,29 +1,23 @@
 package com.example.miningtools.item;
 
-import org.jspecify.annotations.Nullable;
-
-import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.stats.Stats;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 public class BasicLocomotiveItem extends Item {
@@ -33,83 +27,63 @@ public class BasicLocomotiveItem extends Item {
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        if (context.getPlayer() != null) {
-            return InteractionResult.PASS;
-        }
-        return this.placeLocomotive(
-                context.getLevel(),
-                context.getClickedPos(),
-                context.getClickedFace(),
-                context.getHorizontalDirection(),
-                null,
-                context.getItemInHand()
-        );
-    }
-
-    @Override
-    public InteractionResult use(Level level, Player player, InteractionHand hand) {
-        ItemStack itemStack = player.getItemInHand(hand);
-        BlockHitResult hitResult = getPlayerPOVHitResult(level, player, ClipContext.Fluid.NONE);
-        if (hitResult.getType() != HitResult.Type.BLOCK) {
-            return InteractionResult.PASS;
-        }
-
-        InteractionResult result = this.placeLocomotive(
-                level,
-                hitResult.getBlockPos(),
-                hitResult.getDirection(),
-                player.getDirection(),
-                player,
-                itemStack
-        );
-        if (result.consumesAction()) {
-            player.awardStat(Stats.ITEM_USED.get(this));
-        }
-        return result;
-    }
-
-    private InteractionResult placeLocomotive(
-            Level level,
-            BlockPos clickedPos,
-            Direction clickedFace,
-            Direction facing,
-            @Nullable Player player,
-            ItemStack itemStack
-    ) {
-        BlockPos targetPos = null;
+        Level level = context.getLevel();
+        BlockPos clickedPos = context.getClickedPos();
         BlockState clickedState = level.getBlockState(clickedPos);
+
+        BlockPos targetPos = null;
+        BlockState railState = null;
 
         if (clickedState.is(BlockTags.RAILS)) {
             targetPos = clickedPos;
-        } else {
-            BlockPos adjacentPos = clickedPos.relative(clickedFace);
-            BlockState adjacentState = level.getBlockState(adjacentPos);
-            if (adjacentState.is(BlockTags.RAILS)) {
-                targetPos = adjacentPos;
-            } else if (clickedFace == Direction.UP
-                    && clickedState.isFaceSturdy(level, clickedPos, Direction.UP)
-                    && (adjacentState.isAir() || adjacentState.canBeReplaced())) {
-                targetPos = adjacentPos;
+            railState = clickedState;
+        } else if (context.getClickedFace() == Direction.UP) {
+            BlockPos abovePos = clickedPos.above();
+            BlockState aboveState = level.getBlockState(abovePos);
+            if (aboveState.is(BlockTags.RAILS)) {
+                targetPos = abovePos;
+                railState = aboveState;
             }
         }
 
-        if (targetPos == null) {
+        if (targetPos == null || railState == null) {
             return InteractionResult.FAIL;
         }
 
+        RailShape shape = railState.getBlock() instanceof BaseRailBlock baseRail
+                ? baseRail.getRailDirection(railState, level, targetPos, null)
+                : RailShape.NORTH_SOUTH;
+
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
+
+        Direction d0 = Direction.getNearest(exit0.getX(), 0, exit0.getZ(), Direction.NORTH);
+        Direction d1 = Direction.getNearest(exit1.getX(), 0, exit1.getZ(), Direction.SOUTH);
+
+        Player player = context.getPlayer();
+        Direction chosenFacing;
+        if (player != null) {
+            Vec3 look = player.getLookAngle();
+            double dot0 = (d0 != null) ? (look.x * d0.getStepX() + look.z * d0.getStepZ()) : -1.0;
+            double dot1 = (d1 != null) ? (look.x * d1.getStepX() + look.z * d1.getStepZ()) : -1.0;
+            chosenFacing = (dot0 >= dot1) ? (d0 != null ? d0 : Direction.NORTH) : (d1 != null ? d1 : Direction.SOUTH);
+        } else {
+            Direction hDir = context.getHorizontalDirection();
+            double dot0 = (d0 != null) ? (hDir.getStepX() * d0.getStepX() + hDir.getStepZ() * d0.getStepZ()) : -1.0;
+            double dot1 = (d1 != null) ? (hDir.getStepX() * d1.getStepX() + hDir.getStepZ() * d1.getStepZ()) : -1.0;
+            chosenFacing = (dot0 >= dot1) ? (d0 != null ? d0 : Direction.NORTH) : (d1 != null ? d1 : Direction.SOUTH);
+        }
+
         if (level instanceof ServerLevel serverLevel) {
-            BlockState targetState = level.getBlockState(targetPos);
-            RailShape shape = targetState.getBlock() instanceof BaseRailBlock baseRail
-                    ? baseRail.getRailDirection(targetState, level, targetPos, null)
-                    : RailShape.NORTH_SOUTH;
             double offset = shape.isSlope() ? 0.5 : 0.0;
             Vec3 spawnPos = new Vec3(targetPos.getX() + 0.5, targetPos.getY() + 0.0625 + offset, targetPos.getZ() + 0.5);
 
             BasicLocomotiveEntity loco = new BasicLocomotiveEntity(level, spawnPos.x, spawnPos.y, spawnPos.z);
-            loco.setFacing(facing);
+            loco.setFacing(chosenFacing);
             serverLevel.addFreshEntity(loco);
             serverLevel.gameEvent(GameEvent.ENTITY_PLACE, targetPos, GameEvent.Context.of(player, serverLevel.getBlockState(targetPos.below())));
-            itemStack.consume(1, player);
+            context.getItemInHand().consume(1, player);
         }
 
         return InteractionResult.SUCCESS;
