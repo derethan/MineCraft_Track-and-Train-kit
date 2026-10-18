@@ -5,8 +5,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -244,7 +246,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canBeCollidedWith(@Nullable Entity other) {
-        if (other != null && (this.isChainedTo(other) || other instanceof LivingEntity)) {
+        if (other != null && this.isChainedTo(other)) {
             return false;
         }
         return !this.isRemoved();
@@ -377,6 +379,13 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             double initialY = y;
             double initialZ = z;
 
+            List<Pair<Entity, AbstractMinecart>> trainLinks = this.getOrderedTrainLinks();
+            Map<UUID, Vec3> initialCartPositions = new HashMap<>();
+            for (Pair<Entity, AbstractMinecart> link : trainLinks) {
+                AbstractMinecart c = link.getSecond();
+                initialCartPositions.put(c.getUUID(), new Vec3(c.getX(), c.getY(), c.getZ()));
+            }
+
             Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
             Vec3i exit0 = exits.getFirst();
             Vec3i exit1 = exits.getSecond();
@@ -464,7 +473,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 }
             }
 
-            this.handleChainedCartsMovement(this.getFacing());
+            if (this.running) {
+                this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
+            } else {
+                this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
+            }
         } else {
             this.setActive(false);
             // Apply braking
@@ -769,9 +782,21 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     private void handleChainedCartsMovement(Direction facing) {
-        List<Pair<Entity, AbstractMinecart>> links = this.getOrderedTrainLinks();
+        List<Pair<Entity, AbstractMinecart>> trainLinks = this.getOrderedTrainLinks();
+        Map<UUID, Vec3> initialCartPositions = new HashMap<>();
+        for (Pair<Entity, AbstractMinecart> link : trainLinks) {
+            AbstractMinecart c = link.getSecond();
+            initialCartPositions.put(c.getUUID(), new Vec3(c.getX(), c.getY(), c.getZ()));
+        }
+        this.handleChainedCartsMovement(facing, trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
+    }
+
+    private boolean handleChainedCartsMovement(Direction facing,
+                                               List<Pair<Entity, AbstractMinecart>> links,
+                                               Map<UUID, Vec3> initialCartPositions,
+                                               double initialLocoX, double initialLocoY, double initialLocoZ) {
         if (links.isEmpty()) {
-            return;
+            return false;
         }
 
         boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
@@ -780,6 +805,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         double maxAllowed = moving ? 1.385D : 1.46D;
         double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.25D) : 0.08D;
 
+        boolean blocked = false;
         for (Pair<Entity, AbstractMinecart> link : links) {
             Entity prev = link.getFirst();
             AbstractMinecart cart = link.getSecond();
@@ -806,11 +832,19 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             if (dist3D > maxAllowed) {
                 // Cart is lagging behind anchor -> pull cart along its rails toward anchor
                 double needed3D = Math.min(dist3D - targetDist, maxStep);
-                this.moveCartAlongRails(cart, -dirX, -dirZ, needed3D);
+                boolean success = this.moveCartAlongRails(cart, -dirX, -dirZ, needed3D);
+                if (!success && moving && this.running) {
+                    blocked = true;
+                    break;
+                }
             } else if (dist3D < minAllowed) {
                 // Cart is ahead of or too close to anchor -> push cart along its rails away from anchor
                 double needed3D = Math.min(targetDist - dist3D, maxStep);
-                this.moveCartAlongRails(cart, dirX, dirZ, needed3D);
+                boolean success = this.moveCartAlongRails(cart, dirX, dirZ, needed3D);
+                if (!success && moving && this.running) {
+                    blocked = true;
+                    break;
+                }
             } else {
                 Vec3 snapped = this.getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
                 if (snapped != null) {
@@ -819,18 +853,66 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 cart.setDeltaMovement(Vec3.ZERO);
             }
         }
+
+        if (blocked) {
+            // Revert locomotive position to before this tick's move so it does NOT drive through the cart
+            this.setPos(initialLocoX, initialLocoY, initialLocoZ);
+            Vec3 railPos = this.getRailPos(initialLocoX, initialLocoY, initialLocoZ);
+            if (railPos != null) {
+                this.setPos(railPos.x, railPos.y, railPos.z);
+            }
+            this.setDeltaMovement(Vec3.ZERO);
+            this.setRunning(false);
+            this.setActive(false);
+            this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.6F, 1.4F);
+
+            // Revert any carts that moved forward this tick
+            for (Pair<Entity, AbstractMinecart> link : links) {
+                AbstractMinecart c = link.getSecond();
+                Vec3 initPos = initialCartPositions.get(c.getUUID());
+                if (initPos != null) {
+                    c.setPos(initPos.x, initPos.y, initPos.z);
+                    Vec3 cRail = this.getRailPosForEntity(c, initPos.x, initPos.y, initPos.z);
+                    if (cRail != null) {
+                        c.setPos(cRail.x, cRail.y, cRail.z);
+                    }
+                    c.setDeltaMovement(Vec3.ZERO);
+                }
+            }
+            return true;
+        }
+
+        return false;
     }
 
-    private void moveCartAlongRails(AbstractMinecart cart, double dirX, double dirZ, double distance3D) {
+    private boolean moveCartAlongRails(AbstractMinecart cart, double dirX, double dirZ, double distance3D) {
         if (distance3D < 1.0E-5D) {
-            return;
+            return true;
+        }
+
+        // Shove any living entities in the path of the cart out of the way so they do not stop the train
+        AABB pushBox = cart.getBoundingBox().inflate(0.2D).expandTowards(dirX * 0.5D, 0.0D, dirZ * 0.5D);
+        List<Entity> pushables = this.level().getEntities(
+                cart,
+                pushBox,
+                e -> !e.noPhysics && !this.isChainedTo(e) && !cart.hasPassenger(e)
+        );
+        for (Entity pushable : pushables) {
+            if (pushable instanceof LivingEntity living) {
+                double lateralSign = (living.getX() - cart.getX()) * (-dirZ) + (living.getZ() - cart.getZ()) * dirX >= 0 ? 1.0 : -1.0;
+                double pushStrength = Math.max(this.getLocomotiveSpeed() * 2.2D, 0.5D);
+                double pushX = dirX * pushStrength + (-dirZ) * 0.4D * lateralSign;
+                double pushZ = dirZ * pushStrength + dirX * 0.4D * lateralSign;
+                living.setDeltaMovement(pushX, 0.25D, pushZ);
+                living.needsSync = true;
+            }
         }
 
         BlockPos railPos = cart.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
         if (!BaseRailBlock.isRail(railState)) {
             cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
-            return;
+            return !cart.horizontalCollision;
         }
 
         RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, this.level(), railPos, cart);
@@ -901,6 +983,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         double actualDx = cart.getX() - initialX;
         double actualDz = cart.getZ() - initialZ;
+        double actualHoriz = Math.sqrt(actualDx * actualDx + actualDz * actualDz);
+
         if (actualDx * actualDx + actualDz * actualDz > 1.0E-5D) {
             float yaw = (float) (Mth.atan2(-actualDz, -actualDx) * 180.0 / Math.PI);
             if (cart.isFlipped()) {
@@ -910,6 +994,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         }
 
         cart.setDeltaMovement(Vec3.ZERO);
+
+        boolean offRails = (newRailPos == null);
+        boolean blocked = offRails || (cart.horizontalCollision && actualHoriz < horizStep * 0.7D) || (horizStep > 0.02D && actualHoriz < 0.005D);
+        return !blocked;
     }
 
     @Override
