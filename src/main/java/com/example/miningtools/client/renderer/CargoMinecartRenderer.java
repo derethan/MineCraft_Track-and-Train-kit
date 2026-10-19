@@ -23,6 +23,8 @@ import net.neoforged.api.distmarker.OnlyIn;
 public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecartEntity, CargoMinecartRenderState> {
     private static final Identifier TEXTURE_LOGGING_CART =
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/logging_cart.png");
+    private static final Identifier TEXTURE_WOOD_CART =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/wood_cart.png");
 
     private final LoggingCartModel loggingCartModel;
 
@@ -40,19 +42,12 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
     public void extractRenderState(CargoMinecartEntity entity, CargoMinecartRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
         state.filterItem = entity.getFilterItem();
-        state.isLogFilter = entity.isLogFilterActive();
-        state.storedLogCount = entity.getStoredLogCount();
+        state.filterType = entity.getFilterType();
+        state.storedCount = entity.getStoredCount();
     }
 
     @Override
     public void submit(CargoMinecartRenderState state, PoseStack poseStack, SubmitNodeCollector submitNodeCollector, CameraRenderState camera) {
-        if (!state.isLogFilter) {
-            // Unfiltered: render vanilla chest minecart
-            super.submit(state, poseStack, submitNodeCollector, camera);
-            return;
-        }
-
-        // Filter set to Logs: render custom Logging Cart
         this.submitNameDisplay(state, poseStack, submitNodeCollector, camera);
         poseStack.pushPose();
 
@@ -94,11 +89,16 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
         }
 
         poseStack.scale(-1.0F, -1.0F, 1.0F);
+
+        Identifier texture = (state.filterType == CargoMinecartEntity.FilterType.LOG)
+                ? TEXTURE_LOGGING_CART
+                : TEXTURE_WOOD_CART;
+
         submitNodeCollector.submitModel(
                 this.loggingCartModel,
                 state,
                 poseStack,
-                TEXTURE_LOGGING_CART,
+                texture,
                 state.lightCoords,
                 OverlayTexture.NO_OVERLAY,
                 state.outlineColor

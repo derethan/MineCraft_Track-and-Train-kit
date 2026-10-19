@@ -50,11 +50,22 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
         this.addSlot(new Slot(container, FILTER_SLOT, 152, 14) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                if (!CargoMinecartEntity.isLogItem(stack)) {
+                if (!CargoMinecartEntity.isValidFilterCandidate(stack)) {
                     return false;
                 }
                 if (container instanceof CargoMinecartEntity cart) {
+                    if (cart.hasStoredItems() && !cart.getFilterItem().isEmpty()) {
+                        return false;
+                    }
                     return !cart.hasConflictingItems(stack);
+                }
+                return true;
+            }
+
+            @Override
+            public boolean mayPickup(Player player) {
+                if (container instanceof CargoMinecartEntity cart) {
+                    return !cart.hasStoredItems();
                 }
                 return true;
             }
@@ -71,23 +82,42 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int button, ContainerInput containerInput, Player player) {
-        // Provide user feedback if clicking the filter slot with a log while conflicting items exist
         if (slotId == FILTER_SLOT && this.container instanceof CargoMinecartEntity cart) {
+            if (cart.hasStoredItems()) {
+                if (!cart.getFilterItem().isEmpty()) {
+                    player.sendSystemMessage(
+                            Component.translatable("message.miningtools.cargo_minecart.filter_locked").withStyle(ChatFormatting.RED)
+                    );
+                    return;
+                }
+            }
             ItemStack carried = this.getCarried();
-            if (CargoMinecartEntity.isLogItem(carried) && cart.hasConflictingItems(carried)) {
+            if (CargoMinecartEntity.isValidFilterCandidate(carried) && cart.hasConflictingItems(carried)) {
                 player.sendSystemMessage(
                         Component.translatable("message.miningtools.cargo_minecart.conflict").withStyle(ChatFormatting.RED)
                 );
+                return;
             }
         }
         super.clicked(slotId, button, containerInput, player);
     }
 
-    public boolean isLogFilterActive() {
+    public CargoMinecartEntity.FilterType getFilterType() {
         if (this.container instanceof CargoMinecartEntity cart) {
-            return cart.isLogFilterActive();
+            return cart.getFilterType();
         }
-        return CargoMinecartEntity.isLogItem(this.container.getItem(FILTER_SLOT));
+        ItemStack filter = this.container.getItem(FILTER_SLOT);
+        if (CargoMinecartEntity.isLogItem(filter)) return CargoMinecartEntity.FilterType.LOG;
+        if (CargoMinecartEntity.isWoodItem(filter)) return CargoMinecartEntity.FilterType.WOOD;
+        return CargoMinecartEntity.FilterType.NONE;
+    }
+
+    public boolean isLogFilterActive() {
+        return getFilterType() == CargoMinecartEntity.FilterType.LOG;
+    }
+
+    public boolean isWoodFilterActive() {
+        return getFilterType() == CargoMinecartEntity.FilterType.WOOD;
     }
 
     public ItemStack getFilterItem() {
@@ -108,15 +138,32 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
             ItemStack stackInSlot = slot.getItem();
             itemstack = stackInSlot.copy();
 
-            if (slotIndex < TOTAL_SIZE) {
-                // Moving from cart to player inventory
+            if (slotIndex == FILTER_SLOT) {
+                // Moving filter item from filter slot to player inventory
+                if (this.container instanceof CargoMinecartEntity cart && cart.hasStoredItems()) {
+                    player.sendSystemMessage(
+                            Component.translatable("message.miningtools.cargo_minecart.filter_locked").withStyle(ChatFormatting.RED)
+                    );
+                    return ItemStack.EMPTY;
+                }
+                if (!this.moveItemStackTo(stackInSlot, TOTAL_SIZE, this.slots.size(), true)) {
+                    return ItemStack.EMPTY;
+                }
+            } else if (slotIndex < TOTAL_SIZE) {
+                // Moving from cart storage slots (0..26) to player inventory
                 if (!this.moveItemStackTo(stackInSlot, TOTAL_SIZE, this.slots.size(), true)) {
                     return ItemStack.EMPTY;
                 }
             } else {
                 // Moving from player inventory to cart storage slots 0..26
-                if (isLogFilterActive() && !CargoMinecartEntity.isLogItem(stackInSlot)) {
-                    return ItemStack.EMPTY;
+                if (this.container instanceof CargoMinecartEntity cart) {
+                    CargoMinecartEntity.FilterType filterType = cart.getFilterType();
+                    if (filterType == CargoMinecartEntity.FilterType.LOG && !CargoMinecartEntity.isLogItem(stackInSlot)) {
+                        return ItemStack.EMPTY;
+                    }
+                    if (filterType == CargoMinecartEntity.FilterType.WOOD && !CargoMinecartEntity.isWoodItem(stackInSlot)) {
+                        return ItemStack.EMPTY;
+                    }
                 }
                 if (!this.moveItemStackTo(stackInSlot, 0, STORAGE_SIZE, false)) {
                     return ItemStack.EMPTY;

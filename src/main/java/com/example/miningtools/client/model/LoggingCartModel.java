@@ -20,6 +20,12 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
     private final ModelPart log4;
     private final ModelPart log5;
 
+    private final ModelPart lumber1;
+    private final ModelPart lumber2;
+    private final ModelPart lumber3;
+    private final ModelPart lumber4;
+    private final ModelPart lumber5;
+
     public LoggingCartModel(ModelPart root) {
         super(root);
         this.log1 = root.getChild("log1");
@@ -27,6 +33,12 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         this.log3 = root.getChild("log3");
         this.log4 = root.getChild("log4");
         this.log5 = root.getChild("log5");
+
+        this.lumber1 = root.getChild("lumber1");
+        this.lumber2 = root.getChild("lumber2");
+        this.lumber3 = root.getChild("lumber3");
+        this.lumber4 = root.getChild("lumber4");
+        this.lumber5 = root.getChild("lumber5");
     }
 
     public static LayerDefinition createBodyLayer() {
@@ -53,7 +65,7 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
                 PartPose.ZERO
         );
 
-        // 2. Upright Wooden Side Stakes (4 vertical posts: 2 x 12 x 2)
+        // 2. Upright Side Stakes (4 vertical posts: 2 x 12 x 2)
         root.addOrReplaceChild(
                 "stakes",
                 CubeListBuilder.create()
@@ -68,7 +80,7 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
                 PartPose.ZERO
         );
 
-        // 3. The 5 Oak Logs (24 x 5 x 5 each)
+        // 3. The 5 Round Logs (24 x 5 x 5 each)
         // Bottom Row - Log 1 (Left)
         root.addOrReplaceChild(
                 "log1",
@@ -104,23 +116,87 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
                 PartPose.ZERO
         );
 
+        // 4. The 5 Milled Lumber Stacks (2x6 boards)
+        // Bottom Row - Lumber 1 (Left bundle: 24 x 2.5 x 6)
+        root.addOrReplaceChild(
+                "lumber1",
+                CubeListBuilder.create().texOffs(0, 80).addBox(-12.0F, -0.5F, -6.0F, 24.0F, 2.5F, 6.0F),
+                PartPose.ZERO
+        );
+
+        // Bottom Row - Lumber 2 (Right bundle: 24 x 2.5 x 6)
+        root.addOrReplaceChild(
+                "lumber2",
+                CubeListBuilder.create().texOffs(64, 80).addBox(-12.0F, -0.5F, 0.0F, 24.0F, 2.5F, 6.0F),
+                PartPose.ZERO
+        );
+
+        // Middle Row - Lumber 3 (Center wide bundle: 24 x 3 x 11)
+        root.addOrReplaceChild(
+                "lumber3",
+                CubeListBuilder.create().texOffs(0, 92).addBox(-12.0F, -3.5F, -5.5F, 24.0F, 3.0F, 11.0F),
+                PartPose.ZERO
+        );
+
+        // Top Row - Lumber 4 (Left bundle: 24 x 3 x 5)
+        root.addOrReplaceChild(
+                "lumber4",
+                CubeListBuilder.create().texOffs(0, 108).addBox(-12.0F, -6.5F, -5.0F, 24.0F, 3.0F, 5.0F),
+                PartPose.ZERO
+        );
+
+        // Top Row - Lumber 5 (Right bundle: 24 x 3 x 5)
+        root.addOrReplaceChild(
+                "lumber5",
+                CubeListBuilder.create().texOffs(64, 108).addBox(-12.0F, -6.5F, 0.0F, 24.0F, 3.0F, 5.0F),
+                PartPose.ZERO
+        );
+
         return LayerDefinition.create(mesh, 128, 128);
     }
 
     @Override
     public void setupAnim(CargoMinecartRenderState state) {
         super.setupAnim(state);
-        int count = state.storedLogCount;
-        // 0 logs: empty flatbed
-        // 1+ logs (at least 1 stack or item): log1 visible
-        // 128+ logs (2+ stacks): log2 visible
-        // 256+ logs (4+ stacks): log3 visible (bottom row full)
-        // 512+ logs (8+ stacks): log4 visible
-        // 1024+ logs (16+ stacks): all 5 logs visible (full pyramid)
-        this.log1.visible = count >= 1;
-        this.log2.visible = count >= 128;
-        this.log3.visible = count >= 256;
-        this.log4.visible = count >= 512;
-        this.log5.visible = count >= 1024;
+        int count = state.storedCount;
+
+        if (state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.LOG) {
+            this.log1.visible = count >= 1;
+            this.log2.visible = count >= 128;
+            this.log3.visible = count >= 256;
+            this.log4.visible = count >= 512;
+            this.log5.visible = count >= 1024;
+
+            this.lumber1.visible = false;
+            this.lumber2.visible = false;
+            this.lumber3.visible = false;
+            this.lumber4.visible = false;
+            this.lumber5.visible = false;
+        } else if (state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.WOOD) {
+            this.log1.visible = false;
+            this.log2.visible = false;
+            this.log3.visible = false;
+            this.log4.visible = false;
+            this.log5.visible = false;
+
+            this.lumber1.visible = count >= 1;
+            this.lumber2.visible = count >= 128;
+            this.lumber3.visible = count >= 256;
+            this.lumber4.visible = count >= 512;
+            this.lumber5.visible = count >= 1024;
+        } else {
+            // Unfiltered / Empty / None: Always render as an empty flatbed
+            this.log1.visible = false;
+            this.log2.visible = false;
+            this.log3.visible = false;
+            this.log4.visible = false;
+            this.log5.visible = false;
+
+            this.lumber1.visible = false;
+            this.lumber2.visible = false;
+            this.lumber3.visible = false;
+            this.lumber4.visible = false;
+            this.lumber5.visible = false;
+        }
     }
 }

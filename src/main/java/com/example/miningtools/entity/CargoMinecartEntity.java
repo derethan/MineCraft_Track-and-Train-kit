@@ -8,10 +8,10 @@ import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.CargoMinecartMenu;
 
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -27,13 +27,18 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 public class CargoMinecartEntity extends AbstractMinecartContainer implements WorldlyContainer {
+    public enum FilterType {
+        NONE,
+        LOG,
+        WOOD
+    }
+
     public static final int STORAGE_SLOTS = 27;
     public static final int FILTER_SLOT = 27;
     public static final int TOTAL_SLOTS = 28;
@@ -42,7 +47,7 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
 
     private static final EntityDataAccessor<ItemStack> DATA_FILTER_ITEM =
             SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.ITEM_STACK);
-    private static final EntityDataAccessor<Integer> DATA_STORED_LOG_COUNT =
+    private static final EntityDataAccessor<Integer> DATA_STORED_COUNT =
             SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.INT);
 
     public CargoMinecartEntity(EntityType<? extends CargoMinecartEntity> type, Level level) {
@@ -61,7 +66,7 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_FILTER_ITEM, ItemStack.EMPTY);
-        builder.define(DATA_STORED_LOG_COUNT, 0);
+        builder.define(DATA_STORED_COUNT, 0);
     }
 
     @Override
@@ -81,12 +86,12 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
 
     @Override
     public BlockState getDefaultDisplayBlockState() {
-        return Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, Direction.NORTH);
+        return Blocks.AIR.defaultBlockState();
     }
 
     @Override
     public int getDefaultDisplayOffset() {
-        return 8;
+        return 0;
     }
 
     public ItemStack getFilterItem() {
@@ -97,17 +102,68 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         this.entityData.set(DATA_FILTER_ITEM, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
     }
 
-    public int getStoredLogCount() {
-        return this.entityData.get(DATA_STORED_LOG_COUNT);
+    public FilterType getFilterType() {
+        ItemStack filter = getFilterItem();
+        if (filter.isEmpty()) {
+            return FilterType.NONE;
+        }
+        if (isLogItem(filter)) {
+            return FilterType.LOG;
+        }
+        if (isWoodItem(filter)) {
+            return FilterType.WOOD;
+        }
+        return FilterType.NONE;
+    }
+
+    public int getStoredCount() {
+        return this.entityData.get(DATA_STORED_COUNT);
     }
 
     public boolean isLogFilterActive() {
-        ItemStack filter = getFilterItem();
-        return !filter.isEmpty() && filter.is(ItemTags.LOGS);
+        return getFilterType() == FilterType.LOG;
     }
 
+    public boolean isWoodFilterActive() {
+        return getFilterType() == FilterType.WOOD;
+    }
+
+    /**
+     * Checks if an item is a true Log (has tree rings / log ends, not 6-sided bark wood or hyphae).
+     */
     public static boolean isLogItem(ItemStack stack) {
-        return !stack.isEmpty() && stack.is(ItemTags.LOGS);
+        if (stack.isEmpty() || !stack.is(ItemTags.LOGS)) {
+            return false;
+        }
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+        return !path.endsWith("_wood") && !path.endsWith("_hyphae");
+    }
+
+    /**
+     * Checks if an item is Wood (6-sided bark wood block or hyphae).
+     */
+    public static boolean isWoodItem(ItemStack stack) {
+        if (stack.isEmpty() || !stack.is(ItemTags.LOGS)) {
+            return false;
+        }
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+        return path.endsWith("_wood") || path.endsWith("_hyphae");
+    }
+
+    public static boolean isValidFilterCandidate(ItemStack stack) {
+        return isLogItem(stack) || isWoodItem(stack);
+    }
+
+    /**
+     * Checks if the 27 storage slots contain any items.
+     */
+    public boolean hasStoredItems() {
+        for (int i = 0; i < STORAGE_SLOTS; i++) {
+            if (!this.getItem(i).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -124,52 +180,81 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
                     return true;
                 }
             }
+        } else if (isWoodItem(filterCandidate)) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stored = this.getItem(i);
+                if (!stored.isEmpty() && !isWoodItem(stored)) {
+                    return true;
+                }
+            }
         }
         return false;
     }
 
-    public void updateStoredLogCount() {
+    public void updateStoredCount() {
+        FilterType filterType = getFilterType();
         int count = 0;
-        for (int i = 0; i < STORAGE_SLOTS; i++) {
-            ItemStack stack = this.getItem(i);
-            if (isLogItem(stack)) {
-                count += stack.getCount();
+        if (filterType == FilterType.LOG) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stack = this.getItem(i);
+                if (isLogItem(stack)) {
+                    count += stack.getCount();
+                }
+            }
+        } else if (filterType == FilterType.WOOD) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stack = this.getItem(i);
+                if (isWoodItem(stack)) {
+                    count += stack.getCount();
+                }
             }
         }
-        this.entityData.set(DATA_STORED_LOG_COUNT, count);
+        this.entityData.set(DATA_STORED_COUNT, count);
     }
 
     @Override
     public void setItem(int slot, ItemStack stack) {
+        // Block removing/overwriting the filter when storage has items
+        if (slot == FILTER_SLOT && hasStoredItems() && !getFilterItem().isEmpty() && stack.isEmpty()) {
+            return;
+        }
         super.setItem(slot, stack);
         if (slot == FILTER_SLOT) {
             setFilterItem(stack);
         }
         if (!this.level().isClientSide()) {
-            updateStoredLogCount();
+            updateStoredCount();
         }
     }
 
     @Override
     public ItemStack removeItem(int slot, int count) {
+        // Filter cannot be removed while items are in storage
+        if (slot == FILTER_SLOT && hasStoredItems()) {
+            return ItemStack.EMPTY;
+        }
         ItemStack result = super.removeItem(slot, count);
         if (slot == FILTER_SLOT) {
             setFilterItem(this.getItem(FILTER_SLOT));
         }
         if (!this.level().isClientSide()) {
-            updateStoredLogCount();
+            updateStoredCount();
         }
         return result;
     }
 
     @Override
     public ItemStack removeItemNoUpdate(int slot) {
+        // Filter cannot be removed while items are in storage
+        if (slot == FILTER_SLOT && hasStoredItems()) {
+            return ItemStack.EMPTY;
+        }
         ItemStack result = super.removeItemNoUpdate(slot);
         if (slot == FILTER_SLOT) {
             setFilterItem(this.getItem(FILTER_SLOT));
         }
         if (!this.level().isClientSide()) {
-            updateStoredLogCount();
+            updateStoredCount();
         }
         return result;
     }
@@ -177,11 +262,20 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
     @Override
     public boolean canPlaceItem(int slot, ItemStack stack) {
         if (slot == FILTER_SLOT) {
-            return isLogItem(stack) && !hasConflictingItems(stack);
+            if (!isValidFilterCandidate(stack)) {
+                return false;
+            }
+            if (hasStoredItems() && !getFilterItem().isEmpty()) {
+                return false;
+            }
+            return !hasConflictingItems(stack);
         }
         if (slot >= 0 && slot < STORAGE_SLOTS) {
-            if (isLogFilterActive()) {
+            FilterType filterType = getFilterType();
+            if (filterType == FilterType.LOG) {
                 return isLogItem(stack);
+            } else if (filterType == FilterType.WOOD) {
+                return isWoodItem(stack);
             }
             return true;
         }
@@ -223,6 +317,6 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
         setFilterItem(this.getItem(FILTER_SLOT));
-        updateStoredLogCount();
+        updateStoredCount();
     }
 }
