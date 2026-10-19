@@ -2,6 +2,7 @@ package com.example.miningtools.client.gui;
 
 import org.jspecify.annotations.Nullable;
 
+import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 
 import net.minecraft.ChatFormatting;
@@ -112,14 +113,7 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
         graphics.text(this.font, Component.literal("Selected Speed:"), 8, 27, 0x505050, false);
 
         int speedLevel = this.menu.getSpeedLevel();
-        String speedName = switch (speedLevel) {
-            case 1 -> "Crawl";
-            case 2 -> "Slow";
-            case 3 -> "Normal";
-            case 4 -> "Fast";
-            case 5 -> "Max";
-            default -> "Normal";
-        };
+        String speedName = BasicLocomotiveEntity.getSpeedName(speedLevel);
         Component speedText = Component.literal(speedName).withStyle(ChatFormatting.DARK_BLUE);
         int textWidth = this.font.width(speedText);
         int textX = 8 + (40 - textWidth) / 2;

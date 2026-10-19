@@ -4,10 +4,13 @@ import org.slf4j.Logger;
 
 import com.example.miningtools.block.JunctionRailBlock;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.CargoMinecartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.item.BasicLocomotiveItem;
+import com.example.miningtools.item.CargoMinecartItem;
 import com.example.miningtools.item.TunnelBoreItem;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
+import com.example.miningtools.menu.CargoMinecartMenu;
 import com.example.miningtools.menu.TunnelBoreMenu;
 import com.mojang.logging.LogUtils;
 
@@ -35,6 +38,10 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+
+import com.example.miningtools.network.LocomotiveControlPayload;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 @Mod(MiningTools.MODID)
 public class MiningTools {
@@ -99,6 +106,26 @@ public class MiningTools {
             () -> new MenuType<>(BasicLocomotiveMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
 
+    // Cargo Minecart Entity, Item & Menu
+    public static final DeferredHolder<EntityType<?>, EntityType<CargoMinecartEntity>> CARGO_MINECART_ENTITY = ENTITY_TYPES.register(
+            "cargo_minecart",
+            key -> EntityType.Builder.<CargoMinecartEntity>of(CargoMinecartEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 0.7F)
+                    .passengerAttachments(0.1875F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<CargoMinecartItem> CARGO_MINECART_ITEM = ITEMS.registerItem(
+            "cargo_minecart",
+            CargoMinecartItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredHolder<MenuType<?>, MenuType<CargoMinecartMenu>> CARGO_MINECART_MENU = MENUS.register(
+            "cargo_minecart",
+            () -> new MenuType<>(CargoMinecartMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Creative Mode Tab
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MINING_TOOLS_TAB = CREATIVE_MODE_TABS.register(
             "miningtools_tab",
@@ -110,6 +137,7 @@ public class MiningTools {
                         output.accept(JUNCTION_RAIL_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
+                        output.accept(CARGO_MINECART_ITEM.get());
                     })
                     .build()
     );
@@ -124,9 +152,19 @@ public class MiningTools {
         CREATIVE_MODE_TABS.register(modEventBus);
 
         modEventBus.addListener(this::addCreative);
+        modEventBus.addListener(this::registerPayloadHandlers);
 
         NeoForge.EVENT_BUS.register(this);
         modContainer.registerConfig(ModConfig.Type.LOCAL, Config.SPEC);
+    }
+
+    private void registerPayloadHandlers(RegisterPayloadHandlersEvent event) {
+        PayloadRegistrar registrar = event.registrar("1");
+        registrar.playToServer(
+                LocomotiveControlPayload.TYPE,
+                LocomotiveControlPayload.STREAM_CODEC,
+                LocomotiveControlPayload::handle
+        );
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

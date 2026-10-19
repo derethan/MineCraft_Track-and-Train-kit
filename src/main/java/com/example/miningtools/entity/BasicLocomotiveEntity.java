@@ -17,6 +17,7 @@ import org.jspecify.annotations.Nullable;
 import com.example.miningtools.Config;
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
+import com.example.miningtools.network.LocomotiveControlPayload;
 import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -24,6 +25,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -228,7 +230,19 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canAddPassenger(Entity passenger) {
-        return false;
+        return this.getPassengers().isEmpty() && passenger instanceof Player;
+    }
+
+    @Override
+    protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
+        if (this.hasPassenger(passenger)) {
+            Direction facing = this.getFacing();
+            // Driver cabin is situated at the rear of the locomotive body
+            double offsetX = -facing.getStepX() * 0.35;
+            double offsetZ = -facing.getStepZ() * 0.35;
+            double offsetY = 0.35;
+            moveFunction.accept(passenger, this.getX() + offsetX, this.getY() + offsetY, this.getZ() + offsetZ);
+        }
     }
 
     @Override
@@ -264,15 +278,26 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
-        if (player.isShiftKeyDown() && player.getItemInHand(hand).isEmpty()) {
-            // Sneak + empty hand right click: reverse locomotive direction
+        if (player.isShiftKeyDown()) {
             if (!this.level().isClientSide()) {
-                this.setFacing(this.getFacing().getOpposite());
-                this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, 1.2F);
+                player.openMenu(this);
             }
             return InteractionResult.SUCCESS;
         }
-        return super.interact(player, hand, location);
+
+        if (player.getItemInHand(hand).isEmpty()) {
+            if (this.getPassengers().isEmpty()) {
+                if (!this.level().isClientSide()) {
+                    player.startRiding(this);
+                }
+                return InteractionResult.SUCCESS;
+            }
+        }
+
+        if (!this.level().isClientSide()) {
+            player.openMenu(this);
+        }
+        return InteractionResult.SUCCESS;
     }
 
     @Override
@@ -340,6 +365,21 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         }
     }
 
+    public boolean tryRefuel() {
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            ItemStack stack = this.getItem(i);
+            if (!stack.isEmpty() && stack.is(ItemTags.COALS)) {
+                stack.shrink(1);
+                int burnTicks = Config.LOCOMOTIVE_COAL_BURN_TICKS.get();
+                this.fuelTotal = burnTicks;
+                this.fuel = burnTicks;
+                this.level().playSound(null, this.blockPosition(), SoundEvents.FURNACE_FIRE_CRACKLE, SoundSource.BLOCKS, 0.6F, 1.0F);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void tickFuelAndMovement() {
         if (this.running) {
             // Consume fuel
@@ -347,19 +387,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 this.fuel--;
             } else {
                 // Try consuming from the 3 fuel slots
-                boolean refueled = false;
-                for (int i = 0; i < INVENTORY_SIZE; i++) {
-                    ItemStack stack = this.getItem(i);
-                    if (!stack.isEmpty() && stack.is(ItemTags.COALS)) {
-                        stack.shrink(1);
-                        int burnTicks = Config.LOCOMOTIVE_COAL_BURN_TICKS.get();
-                        this.fuelTotal = burnTicks;
-                        this.fuel = burnTicks;
-                        refueled = true;
-                        this.level().playSound(null, this.blockPosition(), SoundEvents.FURNACE_FIRE_CRACKLE, SoundSource.BLOCKS, 0.6F, 1.0F);
-                        break;
-                    }
-                }
+                boolean refueled = this.tryRefuel();
                 if (!refueled) {
                     // Out of fuel -> stop engine
                     this.setRunning(false);
@@ -825,6 +853,112 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             }
         }
         return nearest;
+    }
+
+    public static String getSpeedName(int speedLevel) {
+        return switch (speedLevel) {
+            case 1 -> "Crawl";
+            case 2 -> "Slow";
+            case 3 -> "Normal";
+            case 4 -> "Fast";
+            case 5 -> "Max";
+            default -> "Normal";
+        };
+    }
+
+    public static @Nullable BasicLocomotiveEntity getConnectedLocomotive(Entity entity) {
+        if (entity instanceof BasicLocomotiveEntity loco && !loco.isRemoved()) {
+            return loco;
+        }
+        if (!(entity instanceof AbstractMinecart cart) || cart.isRemoved()) {
+            return null;
+        }
+
+        Set<UUID> visited = new HashSet<>();
+        visited.add(cart.getUUID());
+        Deque<UUID> toCheck = new ArrayDeque<>();
+        UUID p = getCartParentUUID(cart);
+        if (p != null) toCheck.add(p);
+        UUID c = getCartChildUUID(cart);
+        if (c != null) toCheck.add(c);
+
+        while (!toCheck.isEmpty()) {
+            UUID nextId = toCheck.poll();
+            if (nextId != null && visited.add(nextId)) {
+                Entity ent = cart.level().getEntity(nextId);
+                if (ent instanceof BasicLocomotiveEntity loco && !loco.isRemoved()) {
+                    return loco;
+                }
+                if (ent instanceof AbstractMinecart otherCart && !otherCart.isRemoved()) {
+                    UUID cp = getCartParentUUID(otherCart);
+                    if (cp != null && !visited.contains(cp)) toCheck.add(cp);
+                    UUID cc = getCartChildUUID(otherCart);
+                    if (cc != null && !visited.contains(cc)) toCheck.add(cc);
+                }
+            }
+        }
+        return null;
+    }
+
+    private void sendNotification(Player player, Component message) {
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            serverPlayer.sendSystemMessage(message, true);
+        } else {
+            player.sendSystemMessage(message);
+        }
+    }
+
+    public void handleHotkeyAction(Player player, int action) {
+        switch (action) {
+            case LocomotiveControlPayload.ACTION_START -> {
+                if (!this.running) {
+                    if (this.fuel <= 0) {
+                        this.tryRefuel();
+                    }
+                    if (this.fuel > 0) {
+                        this.setRunning(true);
+                        this.setActive(true);
+                        this.level().playSound(null, this.blockPosition(), SoundEvents.FLINTANDSTEEL_USE, SoundSource.PLAYERS, 1.0F, 1.0F);
+                        sendNotification(player, Component.translatable("message.miningtools.locomotive.started"));
+                    } else {
+                        this.level().playSound(null, this.blockPosition(), SoundEvents.DISPENSER_FAIL, SoundSource.PLAYERS, 0.8F, 1.2F);
+                        sendNotification(player, Component.translatable("message.miningtools.locomotive.no_fuel"));
+                    }
+                }
+            }
+            case LocomotiveControlPayload.ACTION_STOP -> {
+                if (this.running) {
+                    this.setRunning(false);
+                    this.setActive(false);
+                    this.level().playSound(null, this.blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.6F, 1.2F);
+                    sendNotification(player, Component.translatable("message.miningtools.locomotive.stopped"));
+                }
+            }
+            case LocomotiveControlPayload.ACTION_SPEED_DOWN -> {
+                if (this.speedLevel > MIN_SPEED_LEVEL) {
+                    this.speedLevel--;
+                    this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 0.9F);
+                    sendNotification(player, Component.translatable("message.miningtools.locomotive.speed", getSpeedName(this.speedLevel)));
+                } else {
+                    sendNotification(player, Component.translatable("message.miningtools.locomotive.speed_min"));
+                }
+            }
+            case LocomotiveControlPayload.ACTION_SPEED_UP -> {
+                if (this.speedLevel < MAX_SPEED_LEVEL) {
+                    this.speedLevel++;
+                    this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 1.1F);
+                    sendNotification(player, Component.translatable("message.miningtools.locomotive.speed", getSpeedName(this.speedLevel)));
+                } else {
+                    sendNotification(player, Component.translatable("message.miningtools.locomotive.speed_max"));
+                }
+            }
+            case LocomotiveControlPayload.ACTION_REVERSE -> {
+                Direction newFacing = this.getFacing().getOpposite();
+                this.setFacing(newFacing);
+                this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, 1.2F);
+                sendNotification(player, Component.translatable("message.miningtools.locomotive.direction", newFacing.getName().toUpperCase()));
+            }
+        }
     }
 
     @Override

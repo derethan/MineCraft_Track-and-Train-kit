@@ -10,5 +10,21 @@
   "container.miningtools.basic_locomotive": "Basic Locomotive",
   "miningtools.configuration.title": "Mining Tools Configs",
   "miningtools.configuration.section.miningtools.common.toml": "Mining Tools Configs",
-  "miningtools.configuration.section.miningtools.common.toml.title": "Mining Tools Configs"
+  "miningtools.configuration.section.miningtools.common.toml.title": "Mining Tools Configs",
+  "key.categories.miningtools": "Mining Tools",
+  "key.miningtools.reverse": "Reverse Locomotive Direction",
+  "message.miningtools.locomotive.started": "Locomotive: Started",
+  "message.miningtools.locomotive.stopped": "Locomotive: Stopped",
+  "message.miningtools.locomotive.no_fuel": "Locomotive: Out of Fuel!",
+  "message.miningtools.locomotive.speed": "Speed: %s",
+  "message.miningtools.locomotive.speed_min": "Speed: Minimum",
+  "message.miningtools.locomotive.speed_max": "Speed: Maximum",
+  "message.miningtools.locomotive.direction": "Direction: %s",
+  "item.miningtools.cargo_minecart": "Cargo Minecart",
+  "entity.miningtools.cargo_minecart": "Cargo Minecart",
+  "container.miningtools.cargo_minecart": "Cargo Minecart",
+  "container.miningtools.cargo_minecart.filter": "Filter",
+  "container.miningtools.cargo_minecart.filter_empty": "Filter: Place a Log to filter",
+  "container.miningtools.cargo_minecart.filter_active": "Filter: %s (Click to clear)",
+  "message.miningtools.cargo_minecart.conflict": "Cannot set filter: remove conflicting non-log items first!"
 }

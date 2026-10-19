@@ -1,0 +1,228 @@
+package com.example.miningtools.entity;
+
+import java.util.stream.IntStream;
+
+import org.jspecify.annotations.Nullable;
+
+import com.example.miningtools.MiningTools;
+import com.example.miningtools.menu.CargoMinecartMenu;
+
+import net.minecraft.core.Direction;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.EntityDataSerializers;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.Containers;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.Vec3;
+
+public class CargoMinecartEntity extends AbstractMinecartContainer implements WorldlyContainer {
+    public static final int STORAGE_SLOTS = 27;
+    public static final int FILTER_SLOT = 27;
+    public static final int TOTAL_SLOTS = 28;
+
+    private static final int[] STORAGE_SLOT_INDICES = IntStream.range(0, STORAGE_SLOTS).toArray();
+
+    private static final EntityDataAccessor<ItemStack> DATA_FILTER_ITEM =
+            SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.ITEM_STACK);
+    private static final EntityDataAccessor<Integer> DATA_STORED_LOG_COUNT =
+            SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.INT);
+
+    public CargoMinecartEntity(EntityType<? extends CargoMinecartEntity> type, Level level) {
+        super(type, level);
+    }
+
+    public CargoMinecartEntity(Level level, double x, double y, double z) {
+        super(MiningTools.CARGO_MINECART_ENTITY.get(), level);
+        this.setPos(x, y, z);
+        this.xo = x;
+        this.yo = y;
+        this.zo = z;
+    }
+
+    @Override
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DATA_FILTER_ITEM, ItemStack.EMPTY);
+        builder.define(DATA_STORED_LOG_COUNT, 0);
+    }
+
+    @Override
+    protected Item getDropItem() {
+        return MiningTools.CARGO_MINECART_ITEM.get();
+    }
+
+    @Override
+    public ItemStack getPickResult() {
+        return new ItemStack(MiningTools.CARGO_MINECART_ITEM.get());
+    }
+
+    @Override
+    public int getContainerSize() {
+        return TOTAL_SLOTS;
+    }
+
+    @Override
+    public BlockState getDefaultDisplayBlockState() {
+        return Blocks.CHEST.defaultBlockState().setValue(ChestBlock.FACING, Direction.NORTH);
+    }
+
+    @Override
+    public int getDefaultDisplayOffset() {
+        return 8;
+    }
+
+    public ItemStack getFilterItem() {
+        return this.entityData.get(DATA_FILTER_ITEM);
+    }
+
+    public void setFilterItem(ItemStack stack) {
+        this.entityData.set(DATA_FILTER_ITEM, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+    }
+
+    public int getStoredLogCount() {
+        return this.entityData.get(DATA_STORED_LOG_COUNT);
+    }
+
+    public boolean isLogFilterActive() {
+        ItemStack filter = getFilterItem();
+        return !filter.isEmpty() && filter.is(ItemTags.LOGS);
+    }
+
+    public static boolean isLogItem(ItemStack stack) {
+        return !stack.isEmpty() && stack.is(ItemTags.LOGS);
+    }
+
+    /**
+     * Checks if the 27 storage slots contain any items that conflict with the given filter.
+     */
+    public boolean hasConflictingItems(ItemStack filterCandidate) {
+        if (filterCandidate.isEmpty()) {
+            return false;
+        }
+        if (isLogItem(filterCandidate)) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stored = this.getItem(i);
+                if (!stored.isEmpty() && !isLogItem(stored)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public void updateStoredLogCount() {
+        int count = 0;
+        for (int i = 0; i < STORAGE_SLOTS; i++) {
+            ItemStack stack = this.getItem(i);
+            if (isLogItem(stack)) {
+                count += stack.getCount();
+            }
+        }
+        this.entityData.set(DATA_STORED_LOG_COUNT, count);
+    }
+
+    @Override
+    public void setItem(int slot, ItemStack stack) {
+        super.setItem(slot, stack);
+        if (slot == FILTER_SLOT) {
+            setFilterItem(stack);
+        }
+        if (!this.level().isClientSide()) {
+            updateStoredLogCount();
+        }
+    }
+
+    @Override
+    public ItemStack removeItem(int slot, int count) {
+        ItemStack result = super.removeItem(slot, count);
+        if (slot == FILTER_SLOT) {
+            setFilterItem(this.getItem(FILTER_SLOT));
+        }
+        if (!this.level().isClientSide()) {
+            updateStoredLogCount();
+        }
+        return result;
+    }
+
+    @Override
+    public ItemStack removeItemNoUpdate(int slot) {
+        ItemStack result = super.removeItemNoUpdate(slot);
+        if (slot == FILTER_SLOT) {
+            setFilterItem(this.getItem(FILTER_SLOT));
+        }
+        if (!this.level().isClientSide()) {
+            updateStoredLogCount();
+        }
+        return result;
+    }
+
+    @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        if (slot == FILTER_SLOT) {
+            return isLogItem(stack) && !hasConflictingItems(stack);
+        }
+        if (slot >= 0 && slot < STORAGE_SLOTS) {
+            if (isLogFilterActive()) {
+                return isLogItem(stack);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public int[] getSlotsForFace(Direction side) {
+        // Automation / hoppers can only access storage slots 0..26, never the filter slot
+        return STORAGE_SLOT_INDICES;
+    }
+
+    @Override
+    public boolean canPlaceItemThroughFace(int slot, ItemStack stack, @Nullable Direction side) {
+        return slot < STORAGE_SLOTS && canPlaceItem(slot, stack);
+    }
+
+    @Override
+    public boolean canTakeItemThroughFace(int slot, ItemStack stack, Direction side) {
+        return slot < STORAGE_SLOTS;
+    }
+
+    @Override
+    public AbstractContainerMenu createMenu(int containerId, Inventory inventory) {
+        return new CargoMinecartMenu(containerId, inventory, this);
+    }
+
+    @Override
+    public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+        return this.interactWithContainerVehicle(player);
+    }
+
+    @Override
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+    }
+
+    @Override
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        setFilterItem(this.getItem(FILTER_SLOT));
+        updateStoredLogCount();
+    }
+}
