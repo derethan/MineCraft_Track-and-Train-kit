@@ -38,6 +38,8 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
     private final ModelPart ingot4;
     private final ModelPart ingot5;
 
+    private final ModelPart shippingContainer;
+
     public LoggingCartModel(ModelPart root) {
         super(root);
         this.log1 = root.getChild("log1");
@@ -63,6 +65,8 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         this.ingot3 = root.getChild("ingot3");
         this.ingot4 = root.getChild("ingot4");
         this.ingot5 = root.getChild("ingot5");
+
+        this.shippingContainer = root.getChild("shippingContainer");
     }
 
     public static LayerDefinition createBodyLayer() {
@@ -208,35 +212,56 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
                 PartPose.ZERO
         );
 
-        // 6. The 5 Refined Bullion Bar Stacks (Refined metal ingots)
-        // Bottom Left tier (20 x 2 x 5)
+        // 6. The 5 Refined Bullion Bar Stacks (Individual beveled metal ingots in pyramid formation)
+        // Stage 1: Bottom Left ingots (front and rear)
         root.addOrReplaceChild(
                 "ingot1",
-                CubeListBuilder.create().texOffs(0, 40).addBox(-10.0F, 0.0F, -5.5F, 20.0F, 2.0F, 5.0F),
+                CubeListBuilder.create()
+                        .texOffs(0, 40).addBox(-10.5F, 0.0F, -5.2F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(1.0F, 0.0F, -5.2F, 9.5F, 2.0F, 3.2F),
                 PartPose.ZERO
         );
-        // Bottom Right tier (20 x 2 x 5)
+        // Stage 2: Bottom Center and Right ingots (completes bottom tier of 6 bars)
         root.addOrReplaceChild(
                 "ingot2",
-                CubeListBuilder.create().texOffs(60, 40).addBox(-10.0F, 0.0F, 0.5F, 20.0F, 2.0F, 5.0F),
+                CubeListBuilder.create()
+                        .texOffs(0, 40).addBox(-10.5F, 0.0F, -1.6F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(1.0F, 0.0F, -1.6F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(-10.5F, 0.0F, 2.0F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(1.0F, 0.0F, 2.0F, 9.5F, 2.0F, 3.2F),
                 PartPose.ZERO
         );
-        // Middle interlocked tier (18 x 3 x 10)
+        // Stage 3: Middle tier Left ingots (nested in lower grooves)
         root.addOrReplaceChild(
                 "ingot3",
-                CubeListBuilder.create().texOffs(0, 52).addBox(-9.0F, -2.5F, -5.0F, 18.0F, 2.5F, 10.0F),
+                CubeListBuilder.create()
+                        .texOffs(0, 40).addBox(-10.5F, -2.0F, -3.4F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(1.0F, -2.0F, -3.4F, 9.5F, 2.0F, 3.2F),
                 PartPose.ZERO
         );
-        // Upper Left tier (16 x 3 x 4)
+        // Stage 4: Middle tier Right ingots (completes middle tier of 4 bars)
         root.addOrReplaceChild(
                 "ingot4",
-                CubeListBuilder.create().texOffs(64, 52).addBox(-8.0F, -5.0F, -4.5F, 16.0F, 2.5F, 4.0F),
+                CubeListBuilder.create()
+                        .texOffs(0, 40).addBox(-10.5F, -2.0F, 0.2F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(1.0F, -2.0F, 0.2F, 9.5F, 2.0F, 3.2F),
                 PartPose.ZERO
         );
-        // Upper Right tier (16 x 3 x 4)
+        // Stage 5: Top Crown ingots (peak of pyramids + center locking ingot)
         root.addOrReplaceChild(
                 "ingot5",
-                CubeListBuilder.create().texOffs(0, 70).addBox(-8.0F, -5.0F, 0.5F, 16.0F, 2.5F, 4.0F),
+                CubeListBuilder.create()
+                        .texOffs(0, 40).addBox(-10.5F, -4.0F, -1.6F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(0, 40).addBox(1.0F, -4.0F, -1.6F, 9.5F, 2.0F, 3.2F)
+                        .texOffs(30, 40).addBox(-4.0F, -4.0F, -1.6F, 8.0F, 2.0F, 3.2F),
+                PartPose.ZERO
+        );
+
+        // 7. Intermodal Railway Shipping Container (for unfiltered cart with items)
+        root.addOrReplaceChild(
+                "shippingContainer",
+                CubeListBuilder.create()
+                        .texOffs(0, 40).addBox(-11.5F, -9.5F, -5.5F, 23.0F, 11.5F, 11.0F),
                 PartPose.ZERO
         );
 
@@ -252,6 +277,9 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         boolean isWood = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.WOOD;
         boolean isOre = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.ORE;
         boolean isIngot = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.INGOT;
+        boolean isUnfilteredWithItems = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.NONE && count > 0;
+
+        this.shippingContainer.visible = isUnfilteredWithItems;
 
         this.log1.visible = isLog && count >= 1;
         this.log2.visible = isLog && count >= 128;

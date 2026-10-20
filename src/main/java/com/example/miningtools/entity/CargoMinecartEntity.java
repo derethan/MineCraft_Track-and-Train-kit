@@ -288,6 +288,14 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
                     count += stack.getCount();
                 }
             }
+        } else {
+            // FilterType.NONE: count all items in storage
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stack = this.getItem(i);
+                if (!stack.isEmpty()) {
+                    count += stack.getCount();
+                }
+            }
         }
         this.entityData.set(DATA_STORED_COUNT, count);
     }

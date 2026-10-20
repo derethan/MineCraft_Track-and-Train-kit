@@ -29,6 +29,8 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/ore_cart.png");
     private static final Identifier TEXTURE_INGOT_CART =
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/ingot_cart.png");
+    private static final Identifier TEXTURE_CONTAINER_CART =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/container_cart.png");
 
     private final LoggingCartModel loggingCartModel;
 
@@ -103,6 +105,8 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
             texture = TEXTURE_ORE_CART;
         } else if (state.filterType == CargoMinecartEntity.FilterType.INGOT) {
             texture = TEXTURE_INGOT_CART;
+        } else if (state.storedCount > 0) {
+            texture = TEXTURE_CONTAINER_CART;
         } else {
             texture = TEXTURE_WOOD_CART;
         }
