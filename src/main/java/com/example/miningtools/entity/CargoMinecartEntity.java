@@ -9,10 +9,13 @@ import com.example.miningtools.menu.CargoMinecartMenu;
 
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -36,8 +39,15 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
     public enum FilterType {
         NONE,
         LOG,
-        WOOD
+        WOOD,
+        ORE,
+        INGOT
     }
+
+    public static final TagKey<Item> C_ORES = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "ores"));
+    public static final TagKey<Item> C_RAW_MATERIALS = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "raw_materials"));
+    public static final TagKey<Item> C_INGOTS = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "ingots"));
+    public static final TagKey<Item> C_NUGGETS = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "nuggets"));
 
     public static final int STORAGE_SLOTS = 27;
     public static final int FILTER_SLOT = 27;
@@ -113,6 +123,12 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         if (isWoodItem(filter)) {
             return FilterType.WOOD;
         }
+        if (isOreItem(filter)) {
+            return FilterType.ORE;
+        }
+        if (isIngotOrNuggetItem(filter)) {
+            return FilterType.INGOT;
+        }
         return FilterType.NONE;
     }
 
@@ -126,6 +142,14 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
 
     public boolean isWoodFilterActive() {
         return getFilterType() == FilterType.WOOD;
+    }
+
+    public boolean isOreFilterActive() {
+        return getFilterType() == FilterType.ORE;
+    }
+
+    public boolean isIngotFilterActive() {
+        return getFilterType() == FilterType.INGOT;
     }
 
     /**
@@ -150,8 +174,36 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         return path.endsWith("_wood") || path.endsWith("_hyphae");
     }
 
+    /**
+     * Checks if an item is an Ore block or Raw metal chunk.
+     */
+    public static boolean isOreItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (stack.is(C_ORES) || stack.is(C_RAW_MATERIALS)) {
+            return true;
+        }
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+        return path.endsWith("_ore") || path.startsWith("raw_") || path.contains("_raw_");
+    }
+
+    /**
+     * Checks if an item is a refined Ingot or Nugget.
+     */
+    public static boolean isIngotOrNuggetItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (stack.is(C_INGOTS) || stack.is(C_NUGGETS)) {
+            return true;
+        }
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+        return path.endsWith("_ingot") || path.endsWith("_nugget");
+    }
+
     public static boolean isValidFilterCandidate(ItemStack stack) {
-        return isLogItem(stack) || isWoodItem(stack);
+        return isLogItem(stack) || isWoodItem(stack) || isOreItem(stack) || isIngotOrNuggetItem(stack);
     }
 
     /**
@@ -187,6 +239,20 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
                     return true;
                 }
             }
+        } else if (isOreItem(filterCandidate)) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stored = this.getItem(i);
+                if (!stored.isEmpty() && !isOreItem(stored)) {
+                    return true;
+                }
+            }
+        } else if (isIngotOrNuggetItem(filterCandidate)) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stored = this.getItem(i);
+                if (!stored.isEmpty() && !isIngotOrNuggetItem(stored)) {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -205,6 +271,20 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
             for (int i = 0; i < STORAGE_SLOTS; i++) {
                 ItemStack stack = this.getItem(i);
                 if (isWoodItem(stack)) {
+                    count += stack.getCount();
+                }
+            }
+        } else if (filterType == FilterType.ORE) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stack = this.getItem(i);
+                if (isOreItem(stack)) {
+                    count += stack.getCount();
+                }
+            }
+        } else if (filterType == FilterType.INGOT) {
+            for (int i = 0; i < STORAGE_SLOTS; i++) {
+                ItemStack stack = this.getItem(i);
+                if (isIngotOrNuggetItem(stack)) {
                     count += stack.getCount();
                 }
             }
@@ -276,6 +356,10 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
                 return isLogItem(stack);
             } else if (filterType == FilterType.WOOD) {
                 return isWoodItem(stack);
+            } else if (filterType == FilterType.ORE) {
+                return isOreItem(stack);
+            } else if (filterType == FilterType.INGOT) {
+                return isIngotOrNuggetItem(stack);
             }
             return true;
         }

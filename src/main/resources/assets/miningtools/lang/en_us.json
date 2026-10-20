@@ -24,7 +24,7 @@
   "entity.miningtools.cargo_minecart": "Cargo Minecart",
   "container.miningtools.cargo_minecart": "Cargo Minecart",
   "container.miningtools.cargo_minecart.filter": "Filter",
-  "container.miningtools.cargo_minecart.filter_empty": "Filter: Place a Log or Wood to filter",
+  "container.miningtools.cargo_minecart.filter_empty": "Filter: Place a Log, Wood, Ore, or Ingot/Nugget",
   "container.miningtools.cargo_minecart.filter_active": "Filter: %s",
   "message.miningtools.cargo_minecart.conflict": "Cannot set filter: remove conflicting items from cart first!",
   "message.miningtools.cargo_minecart.filter_locked": "Cannot remove or change filter while cart contains items!"

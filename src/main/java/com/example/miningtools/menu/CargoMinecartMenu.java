@@ -109,6 +109,8 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
         ItemStack filter = this.container.getItem(FILTER_SLOT);
         if (CargoMinecartEntity.isLogItem(filter)) return CargoMinecartEntity.FilterType.LOG;
         if (CargoMinecartEntity.isWoodItem(filter)) return CargoMinecartEntity.FilterType.WOOD;
+        if (CargoMinecartEntity.isOreItem(filter)) return CargoMinecartEntity.FilterType.ORE;
+        if (CargoMinecartEntity.isIngotOrNuggetItem(filter)) return CargoMinecartEntity.FilterType.INGOT;
         return CargoMinecartEntity.FilterType.NONE;
     }
 
@@ -118,6 +120,14 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
 
     public boolean isWoodFilterActive() {
         return getFilterType() == CargoMinecartEntity.FilterType.WOOD;
+    }
+
+    public boolean isOreFilterActive() {
+        return getFilterType() == CargoMinecartEntity.FilterType.ORE;
+    }
+
+    public boolean isIngotFilterActive() {
+        return getFilterType() == CargoMinecartEntity.FilterType.INGOT;
     }
 
     public ItemStack getFilterItem() {
@@ -162,6 +172,12 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
                         return ItemStack.EMPTY;
                     }
                     if (filterType == CargoMinecartEntity.FilterType.WOOD && !CargoMinecartEntity.isWoodItem(stackInSlot)) {
+                        return ItemStack.EMPTY;
+                    }
+                    if (filterType == CargoMinecartEntity.FilterType.ORE && !CargoMinecartEntity.isOreItem(stackInSlot)) {
+                        return ItemStack.EMPTY;
+                    }
+                    if (filterType == CargoMinecartEntity.FilterType.INGOT && !CargoMinecartEntity.isIngotOrNuggetItem(stackInSlot)) {
                         return ItemStack.EMPTY;
                     }
                 }

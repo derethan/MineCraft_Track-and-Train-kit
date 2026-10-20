@@ -25,6 +25,10 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/logging_cart.png");
     private static final Identifier TEXTURE_WOOD_CART =
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/wood_cart.png");
+    private static final Identifier TEXTURE_ORE_CART =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/ore_cart.png");
+    private static final Identifier TEXTURE_INGOT_CART =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/ingot_cart.png");
 
     private final LoggingCartModel loggingCartModel;
 
@@ -90,9 +94,18 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
 
         poseStack.scale(-1.0F, -1.0F, 1.0F);
 
-        Identifier texture = (state.filterType == CargoMinecartEntity.FilterType.LOG)
-                ? TEXTURE_LOGGING_CART
-                : TEXTURE_WOOD_CART;
+        Identifier texture;
+        if (state.filterType == CargoMinecartEntity.FilterType.LOG) {
+            texture = TEXTURE_LOGGING_CART;
+        } else if (state.filterType == CargoMinecartEntity.FilterType.WOOD) {
+            texture = TEXTURE_WOOD_CART;
+        } else if (state.filterType == CargoMinecartEntity.FilterType.ORE) {
+            texture = TEXTURE_ORE_CART;
+        } else if (state.filterType == CargoMinecartEntity.FilterType.INGOT) {
+            texture = TEXTURE_INGOT_CART;
+        } else {
+            texture = TEXTURE_WOOD_CART;
+        }
 
         submitNodeCollector.submitModel(
                 this.loggingCartModel,

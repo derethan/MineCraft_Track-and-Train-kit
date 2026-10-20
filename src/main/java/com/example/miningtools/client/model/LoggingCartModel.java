@@ -26,6 +26,18 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
     private final ModelPart lumber4;
     private final ModelPart lumber5;
 
+    private final ModelPart ore1;
+    private final ModelPart ore2;
+    private final ModelPart ore3;
+    private final ModelPart ore4;
+    private final ModelPart ore5;
+
+    private final ModelPart ingot1;
+    private final ModelPart ingot2;
+    private final ModelPart ingot3;
+    private final ModelPart ingot4;
+    private final ModelPart ingot5;
+
     public LoggingCartModel(ModelPart root) {
         super(root);
         this.log1 = root.getChild("log1");
@@ -39,6 +51,18 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         this.lumber3 = root.getChild("lumber3");
         this.lumber4 = root.getChild("lumber4");
         this.lumber5 = root.getChild("lumber5");
+
+        this.ore1 = root.getChild("ore1");
+        this.ore2 = root.getChild("ore2");
+        this.ore3 = root.getChild("ore3");
+        this.ore4 = root.getChild("ore4");
+        this.ore5 = root.getChild("ore5");
+
+        this.ingot1 = root.getChild("ingot1");
+        this.ingot2 = root.getChild("ingot2");
+        this.ingot3 = root.getChild("ingot3");
+        this.ingot4 = root.getChild("ingot4");
+        this.ingot5 = root.getChild("ingot5");
     }
 
     public static LayerDefinition createBodyLayer() {
@@ -152,6 +176,70 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
                 PartPose.ZERO
         );
 
+        // 5. The 5 Ore Pile Layers (Rough, faceted natural ore mounds)
+        // Base rocky layer (22 x 2 x 11)
+        root.addOrReplaceChild(
+                "ore1",
+                CubeListBuilder.create().texOffs(0, 40).addBox(-11.0F, 0.0F, -5.5F, 22.0F, 2.0F, 11.0F),
+                PartPose.ZERO
+        );
+        // Low-mid clustered heap (14 x 2 x 10)
+        root.addOrReplaceChild(
+                "ore2",
+                CubeListBuilder.create().texOffs(68, 40).addBox(-10.0F, -2.0F, -5.0F, 14.0F, 2.0F, 10.0F),
+                PartPose.ZERO
+        );
+        // Mid-tier wide mound (18 x 2 x 9)
+        root.addOrReplaceChild(
+                "ore3",
+                CubeListBuilder.create().texOffs(0, 56).addBox(-9.0F, -4.0F, -4.5F, 18.0F, 2.0F, 9.0F),
+                PartPose.ZERO
+        );
+        // Upper heaped pyramid (14 x 3 x 8)
+        root.addOrReplaceChild(
+                "ore4",
+                CubeListBuilder.create().texOffs(60, 56).addBox(-7.0F, -6.5F, -4.0F, 14.0F, 2.5F, 8.0F),
+                PartPose.ZERO
+        );
+        // Peak craggy summit (10 x 3 x 6)
+        root.addOrReplaceChild(
+                "ore5",
+                CubeListBuilder.create().texOffs(0, 72).addBox(-5.0F, -9.0F, -3.0F, 10.0F, 2.5F, 6.0F),
+                PartPose.ZERO
+        );
+
+        // 6. The 5 Refined Bullion Bar Stacks (Refined metal ingots)
+        // Bottom Left tier (20 x 2 x 5)
+        root.addOrReplaceChild(
+                "ingot1",
+                CubeListBuilder.create().texOffs(0, 40).addBox(-10.0F, 0.0F, -5.5F, 20.0F, 2.0F, 5.0F),
+                PartPose.ZERO
+        );
+        // Bottom Right tier (20 x 2 x 5)
+        root.addOrReplaceChild(
+                "ingot2",
+                CubeListBuilder.create().texOffs(60, 40).addBox(-10.0F, 0.0F, 0.5F, 20.0F, 2.0F, 5.0F),
+                PartPose.ZERO
+        );
+        // Middle interlocked tier (18 x 3 x 10)
+        root.addOrReplaceChild(
+                "ingot3",
+                CubeListBuilder.create().texOffs(0, 52).addBox(-9.0F, -2.5F, -5.0F, 18.0F, 2.5F, 10.0F),
+                PartPose.ZERO
+        );
+        // Upper Left tier (16 x 3 x 4)
+        root.addOrReplaceChild(
+                "ingot4",
+                CubeListBuilder.create().texOffs(64, 52).addBox(-8.0F, -5.0F, -4.5F, 16.0F, 2.5F, 4.0F),
+                PartPose.ZERO
+        );
+        // Upper Right tier (16 x 3 x 4)
+        root.addOrReplaceChild(
+                "ingot5",
+                CubeListBuilder.create().texOffs(0, 70).addBox(-8.0F, -5.0F, 0.5F, 16.0F, 2.5F, 4.0F),
+                PartPose.ZERO
+        );
+
         return LayerDefinition.create(mesh, 128, 128);
     }
 
@@ -160,43 +248,33 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         super.setupAnim(state);
         int count = state.storedCount;
 
-        if (state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.LOG) {
-            this.log1.visible = count >= 1;
-            this.log2.visible = count >= 128;
-            this.log3.visible = count >= 256;
-            this.log4.visible = count >= 512;
-            this.log5.visible = count >= 1024;
+        boolean isLog = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.LOG;
+        boolean isWood = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.WOOD;
+        boolean isOre = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.ORE;
+        boolean isIngot = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.INGOT;
 
-            this.lumber1.visible = false;
-            this.lumber2.visible = false;
-            this.lumber3.visible = false;
-            this.lumber4.visible = false;
-            this.lumber5.visible = false;
-        } else if (state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.WOOD) {
-            this.log1.visible = false;
-            this.log2.visible = false;
-            this.log3.visible = false;
-            this.log4.visible = false;
-            this.log5.visible = false;
+        this.log1.visible = isLog && count >= 1;
+        this.log2.visible = isLog && count >= 128;
+        this.log3.visible = isLog && count >= 256;
+        this.log4.visible = isLog && count >= 512;
+        this.log5.visible = isLog && count >= 1024;
 
-            this.lumber1.visible = count >= 1;
-            this.lumber2.visible = count >= 128;
-            this.lumber3.visible = count >= 256;
-            this.lumber4.visible = count >= 512;
-            this.lumber5.visible = count >= 1024;
-        } else {
-            // Unfiltered / Empty / None: Always render as an empty flatbed
-            this.log1.visible = false;
-            this.log2.visible = false;
-            this.log3.visible = false;
-            this.log4.visible = false;
-            this.log5.visible = false;
+        this.lumber1.visible = isWood && count >= 1;
+        this.lumber2.visible = isWood && count >= 128;
+        this.lumber3.visible = isWood && count >= 256;
+        this.lumber4.visible = isWood && count >= 512;
+        this.lumber5.visible = isWood && count >= 1024;
 
-            this.lumber1.visible = false;
-            this.lumber2.visible = false;
-            this.lumber3.visible = false;
-            this.lumber4.visible = false;
-            this.lumber5.visible = false;
-        }
+        this.ore1.visible = isOre && count >= 1;
+        this.ore2.visible = isOre && count >= 128;
+        this.ore3.visible = isOre && count >= 256;
+        this.ore4.visible = isOre && count >= 512;
+        this.ore5.visible = isOre && count >= 1024;
+
+        this.ingot1.visible = isIngot && count >= 1;
+        this.ingot2.visible = isIngot && count >= 128;
+        this.ingot3.visible = isIngot && count >= 256;
+        this.ingot4.visible = isIngot && count >= 512;
+        this.ingot5.visible = isIngot && count >= 1024;
     }
 }
