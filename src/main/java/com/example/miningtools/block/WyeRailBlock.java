@@ -32,11 +32,13 @@ import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.redstone.Orientation;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 public class WyeRailBlock extends BaseRailBlock {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
     public static final EnumProperty<RailShape> SHAPE = EnumProperty.create("shape", RailShape.class,
+            RailShape.NORTH_SOUTH, RailShape.EAST_WEST,
             RailShape.SOUTH_EAST, RailShape.SOUTH_WEST,
             RailShape.NORTH_WEST, RailShape.NORTH_EAST);
 
@@ -45,26 +47,34 @@ public class WyeRailBlock extends BaseRailBlock {
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
                 .setValue(POWERED, false)
-                .setValue(SHAPE, RailShape.SOUTH_WEST)
+                .setValue(SHAPE, calculateShape(Direction.NORTH, false))
                 .setValue(WATERLOGGED, false));
+    }
+
+    public static Direction getStemDirection(Direction facing) {
+        return facing.getClockWise();
+    }
+
+    public static RailShape getStraightShape(Direction facing) {
+        return facing.getAxis() == Direction.Axis.Z ? RailShape.NORTH_SOUTH : RailShape.EAST_WEST;
     }
 
     public static RailShape getLeftBranch(Direction facing) {
         return switch (facing) {
-            case NORTH -> RailShape.SOUTH_WEST;
-            case SOUTH -> RailShape.NORTH_EAST;
-            case EAST -> RailShape.NORTH_WEST;
-            case WEST -> RailShape.SOUTH_EAST;
+            case NORTH -> RailShape.SOUTH_EAST;
+            case EAST -> RailShape.SOUTH_WEST;
+            case SOUTH -> RailShape.NORTH_WEST;
+            case WEST -> RailShape.NORTH_EAST;
             default -> RailShape.SOUTH_WEST;
         };
     }
 
     public static RailShape getRightBranch(Direction facing) {
         return switch (facing) {
-            case NORTH -> RailShape.SOUTH_EAST;
-            case SOUTH -> RailShape.NORTH_WEST;
-            case EAST -> RailShape.SOUTH_WEST;
-            case WEST -> RailShape.NORTH_EAST;
+            case NORTH -> RailShape.NORTH_EAST;
+            case EAST -> RailShape.SOUTH_EAST;
+            case SOUTH -> RailShape.SOUTH_WEST;
+            case WEST -> RailShape.NORTH_WEST;
             default -> RailShape.SOUTH_EAST;
         };
     }
@@ -89,7 +99,61 @@ public class WyeRailBlock extends BaseRailBlock {
     }
 
     @Override
+    public boolean isValidRailShape(RailShape shape) {
+        return shape == RailShape.NORTH_SOUTH || shape == RailShape.EAST_WEST
+                || shape == RailShape.SOUTH_EAST || shape == RailShape.SOUTH_WEST
+                || shape == RailShape.NORTH_WEST || shape == RailShape.NORTH_EAST;
+    }
+
+    @Override
     public RailShape getRailDirection(BlockState state, BlockGetter level, BlockPos pos, @Nullable AbstractMinecart cart) {
+        if (cart != null) {
+            Direction facing = state.getValue(FACING);
+            Direction stemDir = getStemDirection(facing);
+            Direction.Axis stemAxis = stemDir.getAxis();
+            Direction.Axis straightAxis = (stemAxis == Direction.Axis.X) ? Direction.Axis.Z : Direction.Axis.X;
+            RailShape straightShape = getStraightShape(facing);
+            RailShape switchShape = calculateShape(facing, state.getValue(POWERED));
+
+            Vec3 movement = cart.getDeltaMovement();
+            double dStraight = (straightAxis == Direction.Axis.X) ? Math.abs(movement.x) : Math.abs(movement.z);
+            double dStem = (stemAxis == Direction.Axis.X) ? Math.abs(movement.x) : Math.abs(movement.z);
+
+            // 1. If moving along the mainline straight track with negligible stem component, go straight through
+            if (dStraight > 1.0E-4 && dStem < 1.0E-4) {
+                return straightShape;
+            }
+
+            // 2. If moving from the stem towards the junction (opposite of stemDir), take the switched branch
+            double velocityAlongStem = stemDir.getStepX() * movement.x + stemDir.getStepZ() * movement.z;
+            if (velocityAlongStem < -1.0E-4) {
+                return switchShape;
+            }
+
+            // 3. If cart is primarily moving along the straight track (e.g. entering from mainline)
+            if (dStraight > dStem) {
+                return straightShape;
+            }
+
+            // 4. If moving away towards the stem or along the curve
+            if (velocityAlongStem > 1.0E-4 || dStem > dStraight) {
+                return switchShape;
+            }
+
+            // 5. Stationary cart: check yaw alignment
+            float yaw = cart.getYRot() % 180.0F;
+            if (yaw < 0.0F) {
+                yaw += 180.0F;
+            }
+            boolean yawAlignedStraight = (straightAxis == Direction.Axis.X)
+                    ? (yaw >= 45.0F && yaw <= 135.0F)
+                    : (yaw < 45.0F || yaw > 135.0F);
+            if (yawAlignedStraight) {
+                return straightShape;
+            }
+
+            return switchShape;
+        }
         return state.getValue(SHAPE);
     }
 
@@ -128,6 +192,14 @@ public class WyeRailBlock extends BaseRailBlock {
             return InteractionResult.SUCCESS;
         }
         Direction facing = state.getValue(FACING);
+        if (player.isShiftKeyDown()) {
+            Direction newFacing = facing.getClockWise();
+            RailShape newShape = calculateShape(newFacing, state.getValue(POWERED));
+            level.setBlock(pos, state.setValue(FACING, newFacing).setValue(SHAPE, newShape), 3);
+            level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5F, 1.2F);
+            player.sendOverlayMessage(Component.literal("Wye Facing: " + newFacing.getName()));
+            return InteractionResult.SUCCESS;
+        }
         boolean powered = !state.getValue(POWERED);
         RailShape newShape = calculateShape(facing, powered);
         level.setBlock(pos, state.setValue(POWERED, powered).setValue(SHAPE, newShape), 3);
