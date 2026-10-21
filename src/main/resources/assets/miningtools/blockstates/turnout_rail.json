@@ -1,0 +1,64 @@
+{
+  "variants": {
+    "curve_left=false,facing=north,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_right"
+    },
+    "curve_left=false,facing=north,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_right"
+    },
+    "curve_left=true,facing=north,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_left"
+    },
+    "curve_left=true,facing=north,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_left"
+    },
+    "curve_left=false,facing=east,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_right",
+      "y": 90
+    },
+    "curve_left=false,facing=east,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_right",
+      "y": 90
+    },
+    "curve_left=true,facing=east,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_left",
+      "y": 90
+    },
+    "curve_left=true,facing=east,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_left",
+      "y": 90
+    },
+    "curve_left=false,facing=south,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_right",
+      "y": 180
+    },
+    "curve_left=false,facing=south,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_right",
+      "y": 180
+    },
+    "curve_left=true,facing=south,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_left",
+      "y": 180
+    },
+    "curve_left=true,facing=south,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_left",
+      "y": 180
+    },
+    "curve_left=false,facing=west,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_right",
+      "y": 270
+    },
+    "curve_left=false,facing=west,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_right",
+      "y": 270
+    },
+    "curve_left=true,facing=west,powered=false": {
+      "model": "miningtools:block/turnout_rail_straight_left",
+      "y": 270
+    },
+    "curve_left=true,facing=west,powered=true": {
+      "model": "miningtools:block/turnout_rail_curved_left",
+      "y": 270
+    }
+  }
+}

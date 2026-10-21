@@ -1,0 +1,11 @@
+{
+  "locomotive_whistle": {
+    "category": "neutral",
+    "subtitle": "subtitles.miningtools.locomotive_whistle",
+    "sounds": [
+      "miningtools:locomotive/whistle1",
+      "miningtools:locomotive/whistle2",
+      "miningtools:locomotive/whistle3"
+    ]
+  }
+}

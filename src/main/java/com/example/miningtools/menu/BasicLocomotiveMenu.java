@@ -1,6 +1,7 @@
 package com.example.miningtools.menu;
 
 import com.example.miningtools.MiningTools;
+import com.example.miningtools.entity.BasicLocomotiveEntity;
 
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
@@ -16,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class BasicLocomotiveMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = 3;
-    public static final int DATA_COUNT = 5;
+    public static final int DATA_COUNT = 6;
 
     private final Container container;
     private final ContainerData data;
@@ -48,7 +49,7 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
         // Standard Player Inventory Slots (3 rows of 9 + 1 hotbar row)
         this.addStandardInventorySlots(playerInventory, 8, 84);
 
-        // Data slots for fuel, fuelTotal, running, facing, speedLevel
+        // Data slots for fuel, fuelTotal, running, facing, speedLevel, headlight
         this.addDataSlots(data);
     }
 
@@ -77,6 +78,10 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
         return level <= 0 ? 3 : level;
     }
 
+    public boolean isHeadlightEnabled() {
+        return this.data.get(5) != 0;
+    }
+
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id == 0) {
@@ -102,6 +107,17 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
             if (current < 5) {
                 this.data.set(4, current + 1);
             }
+            return true;
+        } else if (id == 4) {
+            // Blow horn
+            if (this.container instanceof BasicLocomotiveEntity loco) {
+                loco.blowHorn(player);
+            }
+            return true;
+        } else if (id == 5) {
+            // Toggle headlight
+            int nextLight = this.isHeadlightEnabled() ? 0 : 1;
+            this.data.set(5, nextLight);
             return true;
         }
         return false;

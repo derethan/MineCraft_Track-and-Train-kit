@@ -3,12 +3,12 @@ package com.example.miningtools.entity;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -29,18 +29,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
@@ -52,6 +52,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
+import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.storage.ValueInput;
@@ -68,6 +70,14 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DATA_LIT =
             SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_HEADLIGHT =
+            SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_SPEED_LEVEL =
+            SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_FUEL_PCT =
+            SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> DATA_COAL_COUNT =
+            SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.INT);
 
     private static final StackWalker STACK_WALKER =
             StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
@@ -79,6 +89,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     public static final int MAX_SPEED_LEVEL = 5;
     public static final int DEFAULT_SPEED_LEVEL = 1;
 
+    private @Nullable BlockPos currentLightPos = null;
     private NonNullList<ItemStack> itemStacks = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
 
     private boolean running = false;
@@ -95,6 +106,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 case 2 -> BasicLocomotiveEntity.this.running ? 1 : 0;
                 case 3 -> BasicLocomotiveEntity.this.getFacing().get2DDataValue();
                 case 4 -> BasicLocomotiveEntity.this.speedLevel;
+                case 5 -> BasicLocomotiveEntity.this.isHeadlightEnabled() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -107,12 +119,13 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 case 2 -> BasicLocomotiveEntity.this.setRunning(value != 0);
                 case 3 -> BasicLocomotiveEntity.this.setFacing(Direction.from2DDataValue(value));
                 case 4 -> BasicLocomotiveEntity.this.setSpeedLevel(value);
+                case 5 -> BasicLocomotiveEntity.this.setHeadlightEnabled(value != 0);
             }
         }
 
         @Override
         public int getCount() {
-            return 5;
+            return 6;
         }
     };
 
@@ -134,6 +147,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         builder.define(DATA_FACING, Direction.NORTH);
         builder.define(DATA_ACTIVE, false);
         builder.define(DATA_LIT, false);
+        builder.define(DATA_HEADLIGHT, true);
+        builder.define(DATA_SPEED_LEVEL, DEFAULT_SPEED_LEVEL);
+        builder.define(DATA_FUEL_PCT, 0);
+        builder.define(DATA_COAL_COUNT, 0);
     }
 
     public Direction getFacing() {
@@ -173,12 +190,36 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         this.entityData.set(DATA_LIT, lit);
     }
 
+    public boolean isHeadlightEnabled() {
+        return this.entityData.get(DATA_HEADLIGHT);
+    }
+
+    public void setHeadlightEnabled(boolean enabled) {
+        this.entityData.set(DATA_HEADLIGHT, enabled);
+        if (!enabled) {
+            this.clearDynamicLight();
+        }
+    }
+
+    public boolean isHeadlightActive() {
+        return this.isHeadlightEnabled() && (this.fuel > 0 || this.running || !this.getPassengers().isEmpty());
+    }
+
     public int getSpeedLevel() {
-        return this.speedLevel;
+        return this.level().isClientSide() ? this.entityData.get(DATA_SPEED_LEVEL) : this.speedLevel;
     }
 
     public void setSpeedLevel(int level) {
         this.speedLevel = Mth.clamp(level, MIN_SPEED_LEVEL, MAX_SPEED_LEVEL);
+        this.entityData.set(DATA_SPEED_LEVEL, this.speedLevel);
+    }
+
+    public int getFuelPercent() {
+        return this.entityData.get(DATA_FUEL_PCT);
+    }
+
+    public int getCoalCount() {
+        return this.entityData.get(DATA_COAL_COUNT);
     }
 
     public double getLocomotiveSpeed() {
@@ -346,11 +387,20 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                             0.0, 0.04, 0.0);
                 }
             }
+            if (this.isHeadlightActive() && this.random.nextInt(8) == 0) {
+                double headlightForward = 0.95;
+                double rad = Math.toRadians(targetYRot + 90.0);
+                double hlX = this.getX() + Math.cos(rad) * headlightForward;
+                double hlZ = this.getZ() + Math.sin(rad) * headlightForward;
+                double hlY = this.getY() + 0.65;
+                this.level().addParticle(ParticleTypes.SMALL_FLAME, hlX, hlY, hlZ, 0.0, 0.005, 0.0);
+            }
             return;
         }
 
-        // Server side fuel and rail kinematics
+        // Server side fuel, rail kinematics, and dynamic light
         this.tickFuelAndMovement();
+        this.updateDynamicLight();
 
         // Push entities in path
         Direction pushFacing = this.getFacing();
@@ -380,6 +430,26 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         return false;
     }
 
+    public void startLocomotiveFromRail() {
+        if (this.fuel <= 0) {
+            this.tryRefuel();
+        }
+        if (this.fuel > 0) {
+            this.setRunning(true);
+            this.setActive(true);
+            this.level().playSound(null, this.blockPosition(), SoundEvents.FLINTANDSTEEL_USE, SoundSource.BLOCKS, 1.0F, 1.0F);
+        }
+    }
+
+    public void stopLocomotiveFromRail() {
+        if (this.running || this.getDeltaMovement().lengthSqr() > 1.0E-4D) {
+            this.setRunning(false);
+            this.setActive(false);
+            this.setDeltaMovement(Vec3.ZERO);
+            this.level().playSound(null, this.blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.6F, 1.2F);
+        }
+    }
+
     private void tickFuelAndMovement() {
         if (this.running) {
             // Consume fuel
@@ -398,9 +468,44 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         boolean hasFuel = this.fuel > 0;
         this.setLit(hasFuel);
 
+        int fuelPct = (this.fuel > 0 && this.fuelTotal > 0)
+                ? Mth.clamp(Mth.ceil((this.fuel * 100.0F) / this.fuelTotal), 1, 100)
+                : 0;
+        if (this.entityData.get(DATA_FUEL_PCT) != fuelPct) {
+            this.entityData.set(DATA_FUEL_PCT, fuelPct);
+        }
+        int coalTotal = 0;
+        for (int i = 0; i < INVENTORY_SIZE; i++) {
+            ItemStack st = this.getItem(i);
+            if (!st.isEmpty() && st.is(ItemTags.COALS)) {
+                coalTotal += st.getCount();
+            }
+        }
+        if (this.entityData.get(DATA_COAL_COUNT) != coalTotal) {
+            this.entityData.set(DATA_COAL_COUNT, coalTotal);
+        }
+        if (this.entityData.get(DATA_SPEED_LEVEL) != this.speedLevel) {
+            this.entityData.set(DATA_SPEED_LEVEL, this.speedLevel);
+        }
+
         BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
         boolean onRails = BaseRailBlock.isRail(railState);
+
+        if (railState.is(MiningTools.CONTROL_RAIL.get())) {
+            boolean powered = railState.getValue(PoweredRailBlock.POWERED);
+            if (powered) {
+                if (!this.running) {
+                    this.startLocomotiveFromRail();
+                    hasFuel = this.fuel > 0;
+                    this.setLit(hasFuel);
+                }
+            } else {
+                if (this.running) {
+                    this.stopLocomotiveFromRail();
+                }
+            }
+        }
 
         if (this.running && hasFuel && onRails) {
             this.setActive(true);
@@ -433,6 +538,16 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
             Vec3i exit0 = exits.getFirst();
             Vec3i exit1 = exits.getSecond();
+
+            int entryX = -facing.getStepX();
+            int entryZ = -facing.getStepZ();
+            boolean entryMatches = (exit0.getX() == entryX && exit0.getZ() == entryZ) || (exit1.getX() == entryX && exit1.getZ() == entryZ);
+            boolean exitMatches = (exit0.getX() == facing.getStepX() && exit0.getZ() == facing.getStepZ()) || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
+            if (!shape.isSlope() && !entryMatches && !exitMatches) {
+                this.setPos(initialX, initialY, initialZ);
+                this.stopLocomotiveFromRail();
+                return;
+            }
 
             // Center X/Z on rail and pre-lift Y on slopes to avoid wall collision with upper step
             double x0 = railPos.getX() + 0.5 + exit0.getX() * 0.5;
@@ -501,6 +616,12 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             double actualDx = this.getX() - initialX;
             double actualDy = this.getY() - initialY;
             double actualDz = this.getZ() - initialZ;
+            double actualHoriz = Math.sqrt(actualDx * actualDx + actualDz * actualDz);
+            if (actualHoriz > maxSpeed * 1.05D && maxSpeed > 0.0D) {
+                double scale = (maxSpeed * 1.05D) / actualHoriz;
+                actualDx *= scale;
+                actualDz *= scale;
+            }
             Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
             this.setDeltaMovement(actualMovement);
 
@@ -522,6 +643,12 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                         && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
                     this.setFacing(currentMoveDir);
                 }
+            }
+
+            BlockPos currentRail = this.getCurrentBlockPosOrRailBelow();
+            BlockState currentRailState = this.level().getBlockState(currentRail);
+            if (currentRailState.is(MiningTools.CONTROL_RAIL.get()) && !currentRailState.getValue(PoweredRailBlock.POWERED)) {
+                this.stopLocomotiveFromRail();
             }
 
             if (this.running) {
@@ -936,7 +1063,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             }
             case LocomotiveControlPayload.ACTION_SPEED_DOWN -> {
                 if (this.speedLevel > MIN_SPEED_LEVEL) {
-                    this.speedLevel--;
+                    this.setSpeedLevel(this.speedLevel - 1);
                     this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 0.9F);
                     sendNotification(player, Component.translatable("message.miningtools.locomotive.speed", getSpeedName(this.speedLevel)));
                 } else {
@@ -945,7 +1072,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             }
             case LocomotiveControlPayload.ACTION_SPEED_UP -> {
                 if (this.speedLevel < MAX_SPEED_LEVEL) {
-                    this.speedLevel++;
+                    this.setSpeedLevel(this.speedLevel + 1);
                     this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 1.1F);
                     sendNotification(player, Component.translatable("message.miningtools.locomotive.speed", getSpeedName(this.speedLevel)));
                 } else {
@@ -958,7 +1085,110 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, 1.2F);
                 sendNotification(player, Component.translatable("message.miningtools.locomotive.direction", newFacing.getName().toUpperCase()));
             }
+            case LocomotiveControlPayload.ACTION_HORN -> {
+                this.blowHorn(player);
+            }
+            case LocomotiveControlPayload.ACTION_TOGGLE_LIGHT -> {
+                boolean newState = !this.isHeadlightEnabled();
+                this.setHeadlightEnabled(newState);
+                this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, newState ? 1.4F : 0.8F);
+                sendNotification(player, Component.translatable(newState ? "message.miningtools.locomotive.headlight_on" : "message.miningtools.locomotive.headlight_off"));
+            }
         }
+    }
+
+    public void blowHorn(@Nullable Player player) {
+        if (this.level().isClientSide()) {
+            return;
+        }
+        this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                MiningTools.LOCOMOTIVE_WHISTLE.get(), SoundSource.NEUTRAL, 3.0F, 0.95F + this.random.nextFloat() * 0.1F);
+
+        float targetYRot = this.getYRot();
+        double rad = Math.toRadians(targetYRot + 90.0);
+        double whistleForward = -0.25;
+        double whistleX = this.getX() + Math.cos(rad) * whistleForward;
+        double whistleZ = this.getZ() + Math.sin(rad) * whistleForward;
+        double whistleY = this.getY() + 1.45;
+
+        if (this.level() instanceof ServerLevel serverLevel) {
+            serverLevel.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, whistleX, whistleY, whistleZ, 12, 0.05, 0.25, 0.05, 0.03);
+            serverLevel.sendParticles(ParticleTypes.CLOUD, whistleX, whistleY, whistleZ, 6, 0.04, 0.12, 0.04, 0.02);
+        }
+
+        AABB scareBox = this.getBoundingBox().inflate(12.0, 4.0, 12.0);
+        List<PathfinderMob> mobs = this.level().getEntitiesOfClass(PathfinderMob.class, scareBox);
+        for (PathfinderMob mob : mobs) {
+            Vec3 away = mob.position().subtract(this.position()).normalize();
+            mob.getNavigation().moveTo(mob.getX() + away.x * 7.0, mob.getY(), mob.getZ() + away.z * 7.0, 1.4);
+        }
+    }
+
+    public void updateDynamicLight() {
+        if (this.level().isClientSide()) {
+            return;
+        }
+        if (!this.isHeadlightActive() || this.isRemoved()) {
+            this.clearDynamicLight();
+            return;
+        }
+
+        Direction facing = this.getFacing();
+        BlockPos frontPos = BlockPos.containing(
+                this.getX() + facing.getStepX() * 1.25,
+                this.getY() + 0.8,
+                this.getZ() + facing.getStepZ() * 1.25
+        );
+
+        BlockPos targetPos = frontPos;
+        BlockState targetState = this.level().getBlockState(targetPos);
+        if (!targetState.isAir() && !targetState.is(Blocks.LIGHT)) {
+            targetPos = this.blockPosition().above();
+            targetState = this.level().getBlockState(targetPos);
+            if (!targetState.isAir() && !targetState.is(Blocks.LIGHT)) {
+                targetPos = this.blockPosition();
+                targetState = this.level().getBlockState(targetPos);
+            }
+        }
+
+        if (!Objects.equals(this.currentLightPos, targetPos)) {
+            this.clearDynamicLight();
+            if (targetState.isAir() || targetState.is(Blocks.LIGHT)) {
+                this.level().setBlock(targetPos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
+                this.currentLightPos = targetPos;
+            }
+        } else if (targetState.isAir()) {
+            this.level().setBlock(targetPos, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
+        }
+    }
+
+    public void clearDynamicLight() {
+        if (this.currentLightPos != null && !this.level().isClientSide()) {
+            BlockState state = this.level().getBlockState(this.currentLightPos);
+            if (state.is(Blocks.LIGHT)) {
+                this.level().setBlock(this.currentLightPos, Blocks.AIR.defaultBlockState(), 3);
+            }
+            this.currentLightPos = null;
+        }
+    }
+
+    @Override
+    public void activateMinecart(ServerLevel level, int x, int y, int z, boolean receivingPower) {
+        if (receivingPower) {
+            this.blowHorn(null);
+        }
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason reason) {
+        this.clearDynamicLight();
+        super.remove(reason);
+    }
+
+    @Override
+    public void onRemovedFromLevel() {
+        this.clearDynamicLight();
+        super.onRemovedFromLevel();
     }
 
     @Override
@@ -1285,6 +1515,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         output.putInt("FuelTotal", this.fuelTotal);
         output.putString("Facing", this.getFacing().getName());
         output.putInt("SpeedLevel", this.speedLevel);
+        output.putBoolean("Headlight", this.isHeadlightEnabled());
     }
 
     @Override
@@ -1295,6 +1526,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         this.fuelTotal = input.getIntOr("FuelTotal", Config.LOCOMOTIVE_COAL_BURN_TICKS.get());
         String facingName = input.getStringOr("Facing", Direction.NORTH.getName());
         this.setFacing(Direction.byName(facingName) != null ? Direction.byName(facingName) : Direction.NORTH);
-        this.speedLevel = input.getIntOr("SpeedLevel", DEFAULT_SPEED_LEVEL);
+        this.setSpeedLevel(input.getIntOr("SpeedLevel", DEFAULT_SPEED_LEVEL));
+        this.setHeadlightEnabled(input.getBooleanOr("Headlight", true));
     }
 }

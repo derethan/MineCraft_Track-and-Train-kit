@@ -41,6 +41,7 @@ public class BasicLocomotiveRenderer extends EntityRenderer<BasicLocomotiveEntit
         state.facing = entity.getFacing();
         state.active = entity.isActive();
         state.lit = entity.isLit();
+        state.headlightActive = entity.isHeadlightActive();
         state.hurtTime = entity.getHurtTime() - partialTicks;
         state.hurtDir = entity.getHurtDir();
         state.damageTime = Math.max(entity.getDamage() - partialTicks, 0.0F);

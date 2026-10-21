@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "R": "minecraft:rail",
+    "L": "minecraft:lever"
+  },
+  "pattern": [
+    "R R",
+    " L ",
+    "R R"
+  ],
+  "result": {
+    "count": 4,
+    "id": "miningtools:turnout_rail"
+  }
+}

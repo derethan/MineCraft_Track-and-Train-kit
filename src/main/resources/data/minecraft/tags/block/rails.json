@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "miningtools:junction_rail"
+    "miningtools:junction_rail",
+    "miningtools:control_rail",
+    "miningtools:turnout_rail",
+    "miningtools:wye_rail"
   ]
 }

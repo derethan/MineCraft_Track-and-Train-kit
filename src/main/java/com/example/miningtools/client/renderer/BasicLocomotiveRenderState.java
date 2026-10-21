@@ -13,6 +13,7 @@ public class BasicLocomotiveRenderState extends EntityRenderState {
     public Direction facing = Direction.NORTH;
     public boolean active = false;
     public boolean lit = false;
+    public boolean headlightActive = false;
     public float hurtTime = 0.0F;
     public int hurtDir = 1;
     public float damageTime = 0.0F;

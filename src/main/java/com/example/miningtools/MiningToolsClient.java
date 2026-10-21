@@ -2,6 +2,7 @@ package com.example.miningtools;
 
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
+import com.example.miningtools.client.gui.SpeedometerOverlay;
 import com.example.miningtools.client.gui.TunnelBoreScreen;
 import com.example.miningtools.client.model.BasicLocomotiveModel;
 import com.example.miningtools.client.model.LoggingCartModel;
@@ -54,11 +55,25 @@ public class MiningToolsClient {
             MINING_TOOLS_CATEGORY
     );
 
+    public static final KeyMapping KEY_HORN = new KeyMapping(
+            "key.miningtools.horn",
+            InputConstants.KEY_H,
+            MINING_TOOLS_CATEGORY
+    );
+
+    public static final KeyMapping KEY_LIGHT = new KeyMapping(
+            "key.miningtools.light",
+            InputConstants.KEY_L,
+            MINING_TOOLS_CATEGORY
+    );
+
     private static boolean wasUpPressed = false;
     private static boolean wasDownPressed = false;
     private static boolean wasLeftPressed = false;
     private static boolean wasRightPressed = false;
     private static boolean wasReversePressed = false;
+    private static boolean wasHornPressed = false;
+    private static boolean wasLightPressed = false;
 
     public MiningToolsClient(IEventBus modEventBus, ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
@@ -71,6 +86,7 @@ public class MiningToolsClient {
         modEventBus.addListener(this::registerKeyMappings);
 
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
+        NeoForge.EVENT_BUS.addListener(SpeedometerOverlay::onRenderGui);
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {
@@ -97,10 +113,13 @@ public class MiningToolsClient {
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KEY_REVERSE);
+        event.register(KEY_HORN);
+        event.register(KEY_LIGHT);
     }
 
     private void onClientTick(ClientTickEvent.Post event) {
         Minecraft mc = Minecraft.getInstance();
+        SpeedometerOverlay.onClientTick(mc);
         if (mc.player == null || mc.level == null) return;
 
         if (mc.gui.screen() != null) {
@@ -109,6 +128,8 @@ public class MiningToolsClient {
             wasLeftPressed = false;
             wasRightPressed = false;
             wasReversePressed = false;
+            wasHornPressed = false;
+            wasLightPressed = false;
             return;
         }
 
@@ -119,6 +140,8 @@ public class MiningToolsClient {
             wasLeftPressed = false;
             wasRightPressed = false;
             wasReversePressed = false;
+            wasHornPressed = false;
+            wasLightPressed = false;
             return;
         }
 
@@ -129,6 +152,8 @@ public class MiningToolsClient {
             wasLeftPressed = false;
             wasRightPressed = false;
             wasReversePressed = false;
+            wasHornPressed = false;
+            wasLightPressed = false;
             return;
         }
 
@@ -137,6 +162,8 @@ public class MiningToolsClient {
         boolean isLeft = mc.options.keyLeft.isDown();
         boolean isRight = mc.options.keyRight.isDown();
         boolean isReverse = KEY_REVERSE.isDown();
+        boolean isHorn = KEY_HORN.isDown();
+        boolean isLight = KEY_LIGHT.isDown();
 
         if (isUp && !wasUpPressed) {
             ClientPacketDistributor.sendToServer(new LocomotiveControlPayload(LocomotiveControlPayload.ACTION_START));
@@ -153,11 +180,19 @@ public class MiningToolsClient {
         if (isReverse && !wasReversePressed) {
             ClientPacketDistributor.sendToServer(new LocomotiveControlPayload(LocomotiveControlPayload.ACTION_REVERSE));
         }
+        if (isHorn && !wasHornPressed) {
+            ClientPacketDistributor.sendToServer(new LocomotiveControlPayload(LocomotiveControlPayload.ACTION_HORN));
+        }
+        if (isLight && !wasLightPressed) {
+            ClientPacketDistributor.sendToServer(new LocomotiveControlPayload(LocomotiveControlPayload.ACTION_TOGGLE_LIGHT));
+        }
 
         wasUpPressed = isUp;
         wasDownPressed = isDown;
         wasLeftPressed = isLeft;
         wasRightPressed = isRight;
         wasReversePressed = isReverse;
+        wasHornPressed = isHorn;
+        wasLightPressed = isLight;
     }
 }

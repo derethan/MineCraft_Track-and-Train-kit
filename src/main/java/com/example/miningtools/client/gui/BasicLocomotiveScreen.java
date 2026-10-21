@@ -25,6 +25,8 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
 
     private @Nullable Button toggleButton;
     private @Nullable Button reverseButton;
+    private @Nullable Button hornButton;
+    private @Nullable Button lightButton;
     private @Nullable Button speedDownButton;
     private @Nullable Button speedUpButton;
 
@@ -42,7 +44,7 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
                     }
-                }).bounds(this.leftPos + 120, this.topPos + 20, 48, 20).build()
+                }).bounds(this.leftPos + 120, this.topPos + 16, 48, 16).build()
         );
 
         // Reverse Direction button
@@ -51,7 +53,25 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 1);
                     }
-                }).bounds(this.leftPos + 120, this.topPos + 44, 48, 20).build()
+                }).bounds(this.leftPos + 120, this.topPos + 34, 48, 16).build()
+        );
+
+        // Horn button
+        this.hornButton = this.addRenderableWidget(
+                Button.builder(Component.literal("Horn"), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 4);
+                    }
+                }).bounds(this.leftPos + 120, this.topPos + 52, 23, 16).build()
+        );
+
+        // Headlight toggle button
+        this.lightButton = this.addRenderableWidget(
+                Button.builder(this.getLightButtonLabel(), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 5);
+                    }
+                }).bounds(this.leftPos + 145, this.topPos + 52, 23, 16).build()
         );
 
         // Speed decrease button [-]
@@ -79,6 +99,9 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
         if (this.toggleButton != null) {
             this.toggleButton.setMessage(this.getToggleButtonLabel());
         }
+        if (this.lightButton != null) {
+            this.lightButton.setMessage(this.getLightButtonLabel());
+        }
         int speed = this.menu.getSpeedLevel();
         if (this.speedDownButton != null) {
             this.speedDownButton.active = speed > 1;
@@ -92,6 +115,12 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
         return this.menu.isRunning()
                 ? Component.literal("Stop").withStyle(ChatFormatting.RED)
                 : Component.literal("Start").withStyle(ChatFormatting.GREEN);
+    }
+
+    private Component getLightButtonLabel() {
+        return this.menu.isHeadlightEnabled()
+                ? Component.literal("Light").withStyle(ChatFormatting.GOLD)
+                : Component.literal("Light").withStyle(ChatFormatting.GRAY);
     }
 
     @Override

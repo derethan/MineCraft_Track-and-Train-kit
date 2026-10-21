@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "R": "minecraft:rail",
+    "T": "minecraft:redstone_torch"
+  },
+  "pattern": [
+    "R R",
+    " T ",
+    "R R"
+  ],
+  "result": {
+    "count": 4,
+    "id": "miningtools:wye_rail"
+  }
+}

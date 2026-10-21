@@ -18,6 +18,8 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
     public static final int ACTION_SPEED_DOWN = 2;
     public static final int ACTION_SPEED_UP = 3;
     public static final int ACTION_REVERSE = 4;
+    public static final int ACTION_HORN = 5;
+    public static final int ACTION_TOGGLE_LIGHT = 6;
 
     public static final Type<LocomotiveControlPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(MiningTools.MODID, "locomotive_control"));
