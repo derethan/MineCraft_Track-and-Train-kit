@@ -2,17 +2,24 @@ package com.example.miningtools;
 
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
+import com.example.miningtools.client.gui.ElectricLocomotiveScreen;
+import com.example.miningtools.client.gui.FluidLoaderScreen;
 import com.example.miningtools.client.gui.SpeedometerOverlay;
 import com.example.miningtools.client.gui.TrackSwitchScreen;
 import com.example.miningtools.client.gui.TunnelBoreScreen;
 import com.example.miningtools.client.model.BasicLocomotiveModel;
+import com.example.miningtools.client.model.ElectricLocomotiveModel;
+import com.example.miningtools.client.model.LiquidMinecartModel;
 import com.example.miningtools.client.model.LoggingCartModel;
 import com.example.miningtools.client.model.TunnelBoreModel;
 import com.example.miningtools.client.renderer.BasicLocomotiveRenderer;
 import com.example.miningtools.client.renderer.CargoMinecartRenderer;
+import com.example.miningtools.client.renderer.ElectricLocomotiveRenderer;
+import com.example.miningtools.client.renderer.LiquidMinecartRenderer;
 import com.example.miningtools.client.renderer.TunnelBoreRenderer;
 
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.TrackSwitchSyncPayload;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -47,6 +54,12 @@ public class MiningToolsClient {
 
     public static final ModelLayerLocation LOGGING_CART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "logging_cart"), "main");
+
+    public static final ModelLayerLocation LIQUID_MINECART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "liquid_minecart"), "main");
+
+    public static final ModelLayerLocation ELECTRIC_LOCOMOTIVE_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "electric_locomotive"), "main");
 
     public static final KeyMapping.Category MINING_TOOLS_CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MiningTools.MODID, "controls"));
@@ -100,18 +113,24 @@ public class MiningToolsClient {
         event.registerLayerDefinition(TUNNEL_BORE_LAYER, TunnelBoreModel::createBodyLayer);
         event.registerLayerDefinition(BASIC_LOCOMOTIVE_LAYER, BasicLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(LOGGING_CART_LAYER, LoggingCartModel::createBodyLayer);
+        event.registerLayerDefinition(LIQUID_MINECART_LAYER, LiquidMinecartModel::createBodyLayer);
+        event.registerLayerDefinition(ELECTRIC_LOCOMOTIVE_LAYER, ElectricLocomotiveModel::createBodyLayer);
     }
 
     private void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MiningTools.TUNNEL_BORE_ENTITY.get(), TunnelBoreRenderer::new);
         event.registerEntityRenderer(MiningTools.BASIC_LOCOMOTIVE_ENTITY.get(), BasicLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.CARGO_MINECART_ENTITY.get(), CargoMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.LIQUID_MINECART_ENTITY.get(), LiquidMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.ELECTRIC_LOCOMOTIVE_ENTITY.get(), ElectricLocomotiveRenderer::new);
     }
 
     private void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(MiningTools.TUNNEL_BORE_MENU.get(), TunnelBoreScreen::new);
         event.register(MiningTools.BASIC_LOCOMOTIVE_MENU.get(), BasicLocomotiveScreen::new);
         event.register(MiningTools.CARGO_MINECART_MENU.get(), CargoMinecartScreen::new);
+        event.register(MiningTools.FLUID_LOADER_MENU.get(), FluidLoaderScreen::new);
+        event.register(MiningTools.ELECTRIC_LOCOMOTIVE_MENU.get(), ElectricLocomotiveScreen::new);
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {
@@ -149,7 +168,8 @@ public class MiningToolsClient {
         }
 
         BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
-        if (loco == null || loco.isRemoved()) {
+        ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+        if ((loco == null || loco.isRemoved()) && (elecLoco == null || elecLoco.isRemoved())) {
             wasUpPressed = false;
             wasDownPressed = false;
             wasLeftPressed = false;

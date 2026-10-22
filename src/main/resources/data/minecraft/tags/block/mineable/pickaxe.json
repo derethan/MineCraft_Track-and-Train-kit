@@ -5,6 +5,8 @@
     "miningtools:control_rail",
     "miningtools:turnout_rail",
     "miningtools:wye_rail",
-    "miningtools:track_switch"
+    "miningtools:track_switch",
+    "miningtools:fluid_loader",
+    "miningtools:electric_rail"
   ]
 }

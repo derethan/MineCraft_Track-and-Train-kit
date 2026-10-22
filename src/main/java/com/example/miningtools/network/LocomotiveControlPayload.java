@@ -2,6 +2,7 @@ package com.example.miningtools.network;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -41,6 +42,11 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
                 BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
                 if (loco != null && !loco.isRemoved()) {
                     loco.handleHotkeyAction(player, payload.action());
+                    return;
+                }
+                ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+                if (elecLoco != null && !elecLoco.isRemoved()) {
+                    elecLoco.handleHotkeyAction(player, payload.action());
                 }
             }
         });

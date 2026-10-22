@@ -191,9 +191,19 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         if (entity instanceof BasicLocomotiveEntity loco) {
             return loco.getTrainName();
         }
+        if (entity instanceof ElectricLocomotiveEntity eloco) {
+            return eloco.getTrainName();
+        }
         BasicLocomotiveEntity connectedLoco = getConnectedLocomotive(entity);
         if (connectedLoco != null) {
             String locoName = connectedLoco.getTrainName();
+            if (!locoName.isBlank()) {
+                return locoName;
+            }
+        }
+        ElectricLocomotiveEntity connectedElec = ElectricLocomotiveEntity.getConnectedLocomotive(entity);
+        if (connectedElec != null) {
+            String locoName = connectedElec.getTrainName();
             if (!locoName.isBlank()) {
                 return locoName;
             }
