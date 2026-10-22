@@ -1326,10 +1326,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         }
 
         boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
-        double targetDist = 1.38D;
-        double minAllowed = moving ? 1.30D : 1.25D;
-        double maxAllowed = moving ? 1.46D : 1.50D;
-        double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.25D) : 0.08D;
+        double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.25D) : 0.15D;
 
         boolean blocked = false;
         for (Pair<Entity, AbstractMinecart> link : links) {
@@ -1339,6 +1336,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 anchorPos = (prev == this)
                     ? this.getAnchorPosFor(new Vec3(cart.getX(), cart.getY(), cart.getZ()))
                     : new Vec3(prev.getX(), prev.getY(), prev.getZ());
+
+            double targetDist = TrainChainingUtil.getTargetCouplingDistance(prev, cart, prev == this);
+            double minAllowed = moving ? (targetDist - 0.08D) : (targetDist - 0.12D);
+            double maxAllowed = moving ? (targetDist + 0.08D) : (targetDist + 0.12D);
 
             Vec3 cartPos = new Vec3(cart.getX(), cart.getY(), cart.getZ());
             Vec3 diff = cartPos.subtract(anchorPos);

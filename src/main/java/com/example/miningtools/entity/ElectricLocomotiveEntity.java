@@ -912,21 +912,15 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         if (links.isEmpty()) return false;
 
         boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
-        if (!moving) {
-            for (Pair<Entity, AbstractMinecart> link : links) {
-                link.getSecond().setDeltaMovement(Vec3.ZERO);
-            }
-            return false;
-        }
-
-        double targetDist = 1.38D;
-        double minAllowed = 1.30D;
-        double maxAllowed = 1.46D;
-        double maxStep = Math.max(this.getLocomotiveSpeed() * 1.6D, 0.35D);
+        double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.35D) : 0.15D;
 
         for (Pair<Entity, AbstractMinecart> link : links) {
             Entity prev = link.getFirst();
             AbstractMinecart c = link.getSecond();
+
+            double targetDist = TrainChainingUtil.getTargetCouplingDistance(prev, c, false);
+            double minAllowed = moving ? (targetDist - 0.08D) : (targetDist - 0.12D);
+            double maxAllowed = moving ? (targetDist + 0.08D) : (targetDist + 0.12D);
 
             Vec3 initialPos = initialCartPositions.get(c.getUUID());
             if (initialPos == null) {

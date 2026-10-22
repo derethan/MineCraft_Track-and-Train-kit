@@ -929,6 +929,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     private void pullTrailingCartsOnMove() {
         UUID nextId = TrainChainingUtil.getCartChildUUID(this);
+        Entity prevEnt = this;
         Vec3 prevAnchor = this.getRearAnchorPos();
         Set<UUID> visited = new HashSet<>();
         visited.add(this.getUUID());
@@ -938,33 +939,53 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             if (!(ent instanceof AbstractMinecart cart) || cart.isRemoved()) {
                 break;
             }
+            boolean isFirst = (prevEnt == this);
+            double targetDist = isFirst
+                    ? (TrainChainingUtil.getCartCouplerRadius(cart) + TrainChainingUtil.COUPLER_GAP)
+                    : TrainChainingUtil.getTargetCouplingDistance(prevEnt, cart, false);
+
             Vec3 cartPos = cart.position();
             Vec3 diff = prevAnchor.subtract(cartPos);
             double dist = diff.horizontalDistance();
-            if (dist > 1.42) {
-                double pull = Math.min(dist - 1.38, 0.25);
+            if (dist > targetDist + 0.06D) {
+                double pull = Math.min(dist - targetDist, 0.25D);
                 double nx = cart.getX() + (diff.x / dist) * pull;
                 double nz = cart.getZ() + (diff.z / dist) * pull;
                 cart.setPos(nx, cart.getY(), nz);
             }
+            prevEnt = cart;
             prevAnchor = cart.position();
             nextId = TrainChainingUtil.getCartChildUUID(cart);
         }
     }
 
-
     private void pushTrailingCartsOnReverse(Direction backwardDir) {
-        UUID childId = TrainChainingUtil.getCartChildUUID(this);
-        if (childId != null) {
-            Entity ent = this.level().getEntity(childId);
-            if (ent instanceof AbstractMinecart childCart && !childCart.isRemoved()) {
-                Vec3 rearAnchor = this.getRearAnchorPos();
-                double anchorDist = rearAnchor.distanceTo(childCart.position());
-                if (anchorDist < 1.35) {
-                    double pushDist = 0.05;
-                    childCart.setPos(childCart.getX() + backwardDir.getStepX() * pushDist, childCart.getY(), childCart.getZ() + backwardDir.getStepZ() * pushDist);
-                }
+        UUID nextId = TrainChainingUtil.getCartChildUUID(this);
+        Entity prevEnt = this;
+        Vec3 prevAnchor = this.getRearAnchorPos();
+        Set<UUID> visited = new HashSet<>();
+        visited.add(this.getUUID());
+
+        while (nextId != null && visited.add(nextId)) {
+            Entity ent = this.level().getEntity(nextId);
+            if (!(ent instanceof AbstractMinecart cart) || cart.isRemoved()) {
+                break;
             }
+            boolean isFirst = (prevEnt == this);
+            double targetDist = isFirst
+                    ? (TrainChainingUtil.getCartCouplerRadius(cart) + TrainChainingUtil.COUPLER_GAP)
+                    : TrainChainingUtil.getTargetCouplingDistance(prevEnt, cart, false);
+
+            Vec3 cartPos = cart.position();
+            double anchorDist = prevAnchor.distanceTo(cartPos);
+            if (anchorDist < targetDist - 0.05D) {
+                double pushDist = 0.05D;
+                cart.setPos(cart.getX() + backwardDir.getStepX() * pushDist, cart.getY(), cart.getZ() + backwardDir.getStepZ() * pushDist);
+            }
+            prevEnt = cart;
+            prevAnchor = cart.position();
+            nextId = TrainChainingUtil.getCartChildUUID(cart);
         }
     }
+
 }
