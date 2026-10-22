@@ -143,7 +143,9 @@ public class SpeedometerOverlay {
         }
         int headingW = font.width(heading);
 
-        String title = vehicle.getDisplayName().getString();
+        String title = (hasLoco && !loco.getTrainName().isBlank())
+                ? loco.getTrainName()
+                : vehicle.getDisplayName().getString();
         int maxTitleW = panelW - headingW - 10;
         if (font.width(title) > maxTitleW) {
             title = font.plainSubstrByWidth(title, Math.max(12, maxTitleW - 6)) + "..";

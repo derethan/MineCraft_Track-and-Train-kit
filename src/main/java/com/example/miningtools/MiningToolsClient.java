@@ -3,6 +3,7 @@ package com.example.miningtools;
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
 import com.example.miningtools.client.gui.SpeedometerOverlay;
+import com.example.miningtools.client.gui.TrackSwitchScreen;
 import com.example.miningtools.client.gui.TunnelBoreScreen;
 import com.example.miningtools.client.model.BasicLocomotiveModel;
 import com.example.miningtools.client.model.LoggingCartModel;
@@ -13,6 +14,7 @@ import com.example.miningtools.client.renderer.TunnelBoreRenderer;
 
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.network.LocomotiveControlPayload;
+import com.example.miningtools.network.TrackSwitchSyncPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
@@ -87,6 +89,7 @@ public class MiningToolsClient {
 
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
         NeoForge.EVENT_BUS.addListener(SpeedometerOverlay::onRenderGui);
+        TrackSwitchSyncPayload.CLIENT_HANDLER = TrackSwitchScreen::open;
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {

@@ -1,0 +1,55 @@
+{
+  "parent": "minecraft:block/block",
+  "textures": {
+    "particle": "miningtools:block/track_switch_metal",
+    "metal": "miningtools:block/track_switch_metal",
+    "signal": "miningtools:block/track_switch_front_open"
+  },
+  "elements": [
+    {
+      "from": [2, 0, 2],
+      "to": [14, 3, 14],
+      "faces": {
+        "down":  { "uv": [2, 2, 14, 14], "texture": "#metal", "cullface": "down" },
+        "up":    { "uv": [2, 2, 14, 14], "texture": "#metal" },
+        "north": { "uv": [2, 13, 14, 16], "texture": "#metal" },
+        "south": { "uv": [2, 13, 14, 16], "texture": "#metal" },
+        "west":  { "uv": [2, 13, 14, 16], "texture": "#metal" },
+        "east":  { "uv": [2, 13, 14, 16], "texture": "#metal" }
+      }
+    },
+    {
+      "from": [6, 3, 6],
+      "to": [10, 9, 10],
+      "faces": {
+        "north": { "uv": [6, 7, 10, 13], "texture": "#metal" },
+        "south": { "uv": [6, 7, 10, 13], "texture": "#metal" },
+        "west":  { "uv": [6, 7, 10, 13], "texture": "#metal" },
+        "east":  { "uv": [6, 7, 10, 13], "texture": "#metal" }
+      }
+    },
+    {
+      "from": [4, 9, 4],
+      "to": [12, 16, 12],
+      "faces": {
+        "down":  { "uv": [4, 4, 12, 12], "texture": "#metal" },
+        "up":    { "uv": [4, 4, 12, 12], "texture": "#metal" },
+        "north": { "uv": [0, 0, 16, 16], "texture": "#signal" },
+        "south": { "uv": [0, 0, 16, 16], "texture": "#signal" },
+        "west":  { "uv": [4, 0, 12, 7], "texture": "#metal" },
+        "east":  { "uv": [4, 0, 12, 7], "texture": "#metal" }
+      }
+    },
+    {
+      "from": [2, 6, 7],
+      "to": [6, 8, 9],
+      "faces": {
+        "down":  { "uv": [0, 0, 4, 2], "texture": "#metal" },
+        "up":    { "uv": [0, 0, 4, 2], "texture": "#metal" },
+        "north": { "uv": [0, 0, 4, 2], "texture": "#metal" },
+        "south": { "uv": [0, 0, 4, 2], "texture": "#metal" },
+        "west":  { "uv": [6, 4, 10, 7], "texture": "#signal" }
+      }
+    }
+  ]
+}
