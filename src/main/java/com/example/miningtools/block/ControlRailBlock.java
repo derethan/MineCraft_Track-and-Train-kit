@@ -2,6 +2,7 @@ package com.example.miningtools.block;
 
 import java.util.List;
 
+import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 
 import net.minecraft.core.BlockPos;
@@ -22,7 +23,7 @@ public class ControlRailBlock extends PoweredRailBlock {
     @Override
     protected boolean isSameRailWithPower(Level level, BlockPos pos, boolean searchForward, int distance, RailShape shape) {
         BlockState state = level.getBlockState(pos);
-        if (!state.is(this)) {
+        if (!state.is(this) && !state.is(MiningTools.HORN_RAIL.get())) {
             return false;
         }
         return super.isSameRailWithPower(level, pos, searchForward, distance, shape);
