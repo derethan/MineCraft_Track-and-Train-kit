@@ -158,26 +158,47 @@ public class TrackSwitchBlock extends Block implements EntityBlock {
     }
 
     public static void applySwitchToAdjacentRails(Level level, BlockPos switchPos, boolean open) {
+        boolean switchedTurnoutOrWye = false;
+
         // First pass: cardinal neighbors (horizontal + y-1..y+1)
-        boolean switchedAnyCardinal = false;
         for (int dy = -1; dy <= 1; dy++) {
             for (Direction dir : Direction.Plane.HORIZONTAL) {
                 BlockPos targetPos = switchPos.offset(dir.getStepX(), dy, dir.getStepZ());
-                if (applySwitchToSingleRail(level, switchPos, targetPos, open)) {
-                    switchedAnyCardinal = true;
+                BlockState st = level.getBlockState(targetPos);
+                if (st.getBlock() instanceof TurnoutRailBlock || st.getBlock() instanceof WyeRailBlock) {
+                    switchedTurnoutOrWye = true;
                 }
+                applySwitchToSingleRail(level, switchPos, targetPos, open);
             }
         }
-        if (switchedAnyCardinal) {
-            return;
-        }
 
-        // Second pass: diagonal neighbors if no cardinal rail was found
+        // Second pass: diagonal neighbors (radius 1)
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx += 2) {
                 for (int dz = -1; dz <= 1; dz += 2) {
                     BlockPos targetPos = switchPos.offset(dx, dy, dz);
+                    BlockState st = level.getBlockState(targetPos);
+                    if (st.getBlock() instanceof TurnoutRailBlock || st.getBlock() instanceof WyeRailBlock) {
+                        switchedTurnoutOrWye = true;
+                    }
                     applySwitchToSingleRail(level, switchPos, targetPos, open);
+                }
+            }
+        }
+
+        // Third pass: if no Turnout or Wye rail was within 1 block, check radius 2 for Turnout/Wye rails
+        if (!switchedTurnoutOrWye) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dx = -2; dx <= 2; dx++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) == 2) {
+                            BlockPos targetPos = switchPos.offset(dx, dy, dz);
+                            BlockState st = level.getBlockState(targetPos);
+                            if (st.getBlock() instanceof TurnoutRailBlock || st.getBlock() instanceof WyeRailBlock) {
+                                applySwitchToSingleRail(level, switchPos, targetPos, open);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -215,12 +236,11 @@ public class TrackSwitchBlock extends Block implements EntityBlock {
             return true;
         }
 
-        level.neighborChanged(railPos, level.getBlockState(switchPos).getBlock(), null);
-        return true;
+        return false;
     }
 
     public static @Nullable Boolean getAdjacentSwitchState(Level level, BlockPos railPos) {
-        // Check cardinal neighbors first
+        // 1. Check cardinal neighbors first (radius 1)
         for (int dy = -1; dy <= 1; dy++) {
             for (Direction dir : Direction.Plane.HORIZONTAL) {
                 BlockPos checkPos = railPos.offset(dir.getStepX(), dy, dir.getStepZ());
@@ -230,7 +250,7 @@ public class TrackSwitchBlock extends Block implements EntityBlock {
                 }
             }
         }
-        // Check diagonal neighbors
+        // 2. Check diagonal neighbors (radius 1)
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx += 2) {
                 for (int dz = -1; dz <= 1; dz += 2) {
@@ -238,6 +258,20 @@ public class TrackSwitchBlock extends Block implements EntityBlock {
                     BlockState st = level.getBlockState(checkPos);
                     if (st.is(MiningTools.TRACK_SWITCH.get())) {
                         return st.getValue(OPEN);
+                    }
+                }
+            }
+        }
+        // 3. Check radius 2 neighbors (e.g. switch placed beside approaching stem track)
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) == 2) {
+                        BlockPos checkPos = railPos.offset(dx, dy, dz);
+                        BlockState st = level.getBlockState(checkPos);
+                        if (st.is(MiningTools.TRACK_SWITCH.get())) {
+                            return st.getValue(OPEN);
+                        }
                     }
                 }
             }

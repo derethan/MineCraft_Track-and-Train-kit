@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.block.TrackSwitchBlock;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
@@ -127,8 +128,8 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     }
 
     private static boolean isApproachingOrAtSwitch(AbstractMinecart cart, double dxToSwitch, double dzToSwitch, double horizDist, boolean allowStationary) {
-        // If right next to the switch/rail (within 2.25 blocks), always allow
-        if (horizDist <= 2.25) {
+        // If right next to the switch/rail (within 2.5 blocks), always allow
+        if (horizDist <= 2.5) {
             return true;
         }
 
@@ -142,6 +143,15 @@ public class TrackSwitchBlockEntity extends BlockEntity {
             if (vx * vx + vz * vz < 1.0E-4) {
                 vx = facing.getStepX() * 0.1;
                 vz = facing.getStepZ() * 0.1;
+            }
+        } else {
+            ElectricLocomotiveEntity eloco = ElectricLocomotiveEntity.getConnectedLocomotive(cart);
+            if (eloco != null && eloco.isRunning()) {
+                Direction facing = eloco.getFacing();
+                if (vx * vx + vz * vz < 1.0E-4) {
+                    vx = facing.getStepX() * 0.1;
+                    vz = facing.getStepZ() * 0.1;
+                }
             }
         }
 
