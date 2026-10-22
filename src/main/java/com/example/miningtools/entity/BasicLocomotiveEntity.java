@@ -99,6 +99,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     private int fuel = 0;
     private int fuelTotal = 1600;
     private int speedLevel = DEFAULT_SPEED_LEVEL;
+    private @Nullable BlockPos lastHornRailPos = null;
+    private int hornRailCooldown = 0;
 
     private final ContainerData dataAccess = new ContainerData() {
         @Override
@@ -1133,6 +1135,21 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, newState ? 1.4F : 0.8F);
                 sendNotification(player, Component.translatable(newState ? "message.miningtools.locomotive.headlight_on" : "message.miningtools.locomotive.headlight_off"));
             }
+        }
+    }
+
+    public void triggerHornRail(BlockPos railPos, BlockState railState) {
+        if (this.level().isClientSide()) {
+            return;
+        }
+        // Option C: Muted by redstone
+        if (railState.getValue(PoweredRailBlock.POWERED)) {
+            return;
+        }
+        if (this.hornRailCooldown <= 0 && !railPos.equals(this.lastHornRailPos)) {
+            this.blowHorn(null);
+            this.lastHornRailPos = railPos;
+            this.hornRailCooldown = 25;
         }
     }
 

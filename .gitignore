@@ -39,3 +39,5 @@ run/
 repo/
 !**/src/**/repo/
 resourcePackSamples/
+build.bat
+A.I-Companion/

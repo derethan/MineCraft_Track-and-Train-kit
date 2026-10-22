@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import com.example.miningtools.block.ControlRailBlock;
 import com.example.miningtools.block.ElectricRailBlock;
 import com.example.miningtools.block.FluidLoaderBlock;
+import com.example.miningtools.block.HornRailBlock;
 import com.example.miningtools.block.JunctionRailBlock;
 import com.example.miningtools.block.TrackSwitchBlock;
 import com.example.miningtools.block.TurnoutRailBlock;
@@ -123,6 +124,18 @@ public class MiningTools {
             "control_rail",
             CONTROL_RAIL
     );
+
+    // Horn Rail Block & Item
+    public static final DeferredBlock<HornRailBlock> HORN_RAIL = BLOCKS.registerBlock(
+            "horn_rail",
+            HornRailBlock::new,
+            p -> p.noCollision().strength(0.7F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> HORN_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
+            "horn_rail",
+            HORN_RAIL
+    );
+
 
     // Turnout Rail Block & Item
     public static final DeferredBlock<TurnoutRailBlock> TURNOUT_RAIL = BLOCKS.registerBlock(
@@ -337,6 +350,7 @@ public class MiningTools {
                         output.accept(CROWBAR_ITEM.get());
                         output.accept(JUNCTION_RAIL_ITEM.get());
                         output.accept(CONTROL_RAIL_ITEM.get());
+                        output.accept(HORN_RAIL_ITEM.get());
                         output.accept(TURNOUT_RAIL_ITEM.get());
                         output.accept(WYE_RAIL_ITEM.get());
                         output.accept(TRACK_SWITCH_ITEM.get());
@@ -439,6 +453,7 @@ public class MiningTools {
             event.accept(CROWBAR_ITEM);
             event.accept(JUNCTION_RAIL_ITEM);
             event.accept(CONTROL_RAIL_ITEM);
+            event.accept(HORN_RAIL_ITEM);
             event.accept(TURNOUT_RAIL_ITEM);
             event.accept(WYE_RAIL_ITEM);
             event.accept(TRACK_SWITCH_ITEM);

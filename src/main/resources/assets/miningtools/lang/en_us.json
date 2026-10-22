@@ -5,6 +5,8 @@
   "item.miningtools.junction_rail": "Junction Rail",
   "block.miningtools.control_rail": "Locomotive Control Rail",
   "item.miningtools.control_rail": "Locomotive Control Rail",
+  "block.miningtools.horn_rail": "Locomotive Horn Rail",
+  "item.miningtools.horn_rail": "Locomotive Horn Rail",
   "block.miningtools.turnout_rail": "Turnout Rail",
   "item.miningtools.turnout_rail": "Turnout Rail",
   "block.miningtools.wye_rail": "Wye Rail",
