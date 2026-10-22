@@ -3,6 +3,7 @@
   "values": [
     "miningtools:junction_rail",
     "miningtools:control_rail",
+    "miningtools:horn_rail",
     "miningtools:turnout_rail",
     "miningtools:wye_rail",
     "miningtools:track_switch"
