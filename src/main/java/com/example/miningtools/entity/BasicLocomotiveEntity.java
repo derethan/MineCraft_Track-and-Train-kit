@@ -409,6 +409,12 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public void tick() {
+        if (this.hornRailCooldown > 0) {
+            this.hornRailCooldown--;
+            if (this.hornRailCooldown == 0) {
+                this.lastHornRailPos = null;
+            }
+        }
         if (this.getHurtTime() > 0) {
             this.setHurtTime(this.getHurtTime() - 1);
         }
@@ -716,6 +722,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             if (currentRailState.is(MiningTools.CONTROL_RAIL.get()) && !currentRailState.getValue(PoweredRailBlock.POWERED)) {
                 this.stopLocomotiveFromRail();
             }
+            if (currentRailState.is(MiningTools.HORN_RAIL.get())) {
+                this.triggerHornRail(currentRail, currentRailState);
+            }
+
 
             if (this.running) {
                 this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);

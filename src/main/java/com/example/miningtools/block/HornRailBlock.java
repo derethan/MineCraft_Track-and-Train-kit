@@ -2,6 +2,7 @@ package com.example.miningtools.block;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
@@ -21,7 +22,7 @@ public class HornRailBlock extends PoweredRailBlock {
     @Override
     protected boolean isSameRailWithPower(Level level, BlockPos pos, boolean searchForward, int distance, RailShape shape) {
         BlockState state = level.getBlockState(pos);
-        if (!state.is(this) && !state.is(MiningTools.CONTROL_RAIL.get())) {
+        if (!state.is(this) && !state.is(MiningTools.CONTROL_RAIL.get()) && !state.is(MiningTools.ELECTRIC_RAIL.get())) {
             return false;
         }
         return super.isSameRailWithPower(level, pos, searchForward, distance, shape);
@@ -29,8 +30,13 @@ public class HornRailBlock extends PoweredRailBlock {
 
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean isPrecise) {
-        if (!level.isClientSide() && entity instanceof BasicLocomotiveEntity loco) {
-            loco.triggerHornRail(pos, state);
+        if (!level.isClientSide()) {
+            if (entity instanceof BasicLocomotiveEntity loco) {
+                loco.triggerHornRail(pos, state);
+            } else if (entity instanceof ElectricLocomotiveEntity elecLoco) {
+                elecLoco.triggerHornRail(pos, state);
+            }
         }
     }
 }
+
