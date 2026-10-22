@@ -2,17 +2,28 @@ package com.example.miningtools;
 
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
+import com.example.miningtools.client.gui.ElectricLocomotiveScreen;
+import com.example.miningtools.client.gui.FluidLoaderScreen;
 import com.example.miningtools.client.gui.SpeedometerOverlay;
 import com.example.miningtools.client.gui.TrackSwitchScreen;
 import com.example.miningtools.client.gui.TunnelBoreScreen;
 import com.example.miningtools.client.model.BasicLocomotiveModel;
+import com.example.miningtools.client.model.CabooseModel;
+import com.example.miningtools.client.model.ElectricLocomotiveModel;
+import com.example.miningtools.client.model.LargeLiquidMinecartModel;
+import com.example.miningtools.client.model.LiquidMinecartModel;
 import com.example.miningtools.client.model.LoggingCartModel;
 import com.example.miningtools.client.model.TunnelBoreModel;
 import com.example.miningtools.client.renderer.BasicLocomotiveRenderer;
+import com.example.miningtools.client.renderer.CabooseRenderer;
 import com.example.miningtools.client.renderer.CargoMinecartRenderer;
+import com.example.miningtools.client.renderer.ElectricLocomotiveRenderer;
+import com.example.miningtools.client.renderer.LargeLiquidMinecartRenderer;
+import com.example.miningtools.client.renderer.LiquidMinecartRenderer;
 import com.example.miningtools.client.renderer.TunnelBoreRenderer;
 
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.TrackSwitchSyncPayload;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -48,6 +59,18 @@ public class MiningToolsClient {
     public static final ModelLayerLocation LOGGING_CART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "logging_cart"), "main");
 
+    public static final ModelLayerLocation LIQUID_MINECART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "liquid_minecart"), "main");
+
+    public static final ModelLayerLocation LARGE_LIQUID_MINECART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "large_liquid_minecart"), "main");
+
+    public static final ModelLayerLocation CABOOSE_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "caboose"), "main");
+
+    public static final ModelLayerLocation ELECTRIC_LOCOMOTIVE_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "electric_locomotive"), "main");
+
     public static final KeyMapping.Category MINING_TOOLS_CATEGORY =
             KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MiningTools.MODID, "controls"));
 
@@ -69,6 +92,12 @@ public class MiningToolsClient {
             MINING_TOOLS_CATEGORY
     );
 
+    public static final KeyMapping KEY_OPEN_GUI = new KeyMapping(
+            "key.miningtools.open_gui",
+            InputConstants.KEY_C,
+            MINING_TOOLS_CATEGORY
+    );
+
     private static boolean wasUpPressed = false;
     private static boolean wasDownPressed = false;
     private static boolean wasLeftPressed = false;
@@ -76,6 +105,7 @@ public class MiningToolsClient {
     private static boolean wasReversePressed = false;
     private static boolean wasHornPressed = false;
     private static boolean wasLightPressed = false;
+    private static boolean wasOpenGuiPressed = false;
 
     public MiningToolsClient(IEventBus modEventBus, ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
@@ -100,24 +130,35 @@ public class MiningToolsClient {
         event.registerLayerDefinition(TUNNEL_BORE_LAYER, TunnelBoreModel::createBodyLayer);
         event.registerLayerDefinition(BASIC_LOCOMOTIVE_LAYER, BasicLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(LOGGING_CART_LAYER, LoggingCartModel::createBodyLayer);
+        event.registerLayerDefinition(LIQUID_MINECART_LAYER, LiquidMinecartModel::createBodyLayer);
+        event.registerLayerDefinition(LARGE_LIQUID_MINECART_LAYER, LargeLiquidMinecartModel::createBodyLayer);
+        event.registerLayerDefinition(CABOOSE_LAYER, CabooseModel::createBodyLayer);
+        event.registerLayerDefinition(ELECTRIC_LOCOMOTIVE_LAYER, ElectricLocomotiveModel::createBodyLayer);
     }
 
     private void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MiningTools.TUNNEL_BORE_ENTITY.get(), TunnelBoreRenderer::new);
         event.registerEntityRenderer(MiningTools.BASIC_LOCOMOTIVE_ENTITY.get(), BasicLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.CARGO_MINECART_ENTITY.get(), CargoMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.LIQUID_MINECART_ENTITY.get(), LiquidMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.LARGE_LIQUID_MINECART_ENTITY.get(), LargeLiquidMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.CABOOSE_ENTITY.get(), CabooseRenderer::new);
+        event.registerEntityRenderer(MiningTools.ELECTRIC_LOCOMOTIVE_ENTITY.get(), ElectricLocomotiveRenderer::new);
     }
 
     private void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(MiningTools.TUNNEL_BORE_MENU.get(), TunnelBoreScreen::new);
         event.register(MiningTools.BASIC_LOCOMOTIVE_MENU.get(), BasicLocomotiveScreen::new);
         event.register(MiningTools.CARGO_MINECART_MENU.get(), CargoMinecartScreen::new);
+        event.register(MiningTools.FLUID_LOADER_MENU.get(), FluidLoaderScreen::new);
+        event.register(MiningTools.ELECTRIC_LOCOMOTIVE_MENU.get(), ElectricLocomotiveScreen::new);
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KEY_REVERSE);
         event.register(KEY_HORN);
         event.register(KEY_LIGHT);
+        event.register(KEY_OPEN_GUI);
     }
 
     private void onClientTick(ClientTickEvent.Post event) {
@@ -133,6 +174,7 @@ public class MiningToolsClient {
             wasReversePressed = false;
             wasHornPressed = false;
             wasLightPressed = false;
+            wasOpenGuiPressed = false;
             return;
         }
 
@@ -145,11 +187,34 @@ public class MiningToolsClient {
             wasReversePressed = false;
             wasHornPressed = false;
             wasLightPressed = false;
+            wasOpenGuiPressed = false;
             return;
         }
 
         BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
-        if (loco == null || loco.isRemoved()) {
+        ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+        boolean isBore = (vehicle instanceof com.example.miningtools.entity.TunnelBoreEntity b && !b.isRemoved());
+        boolean hasMenu = (vehicle instanceof net.minecraft.world.MenuProvider);
+        if ((loco == null || loco.isRemoved()) && (elecLoco == null || elecLoco.isRemoved()) && !isBore && !hasMenu) {
+            wasUpPressed = false;
+            wasDownPressed = false;
+            wasLeftPressed = false;
+            wasRightPressed = false;
+            wasReversePressed = false;
+            wasHornPressed = false;
+            wasLightPressed = false;
+            wasOpenGuiPressed = false;
+            return;
+        }
+
+        boolean isOpenGui = KEY_OPEN_GUI.isDown();
+        if (isOpenGui && !wasOpenGuiPressed) {
+            ClientPacketDistributor.sendToServer(new LocomotiveControlPayload(LocomotiveControlPayload.ACTION_OPEN_GUI));
+        }
+        wasOpenGuiPressed = isOpenGui;
+
+        boolean isLocoOrBore = (loco != null && !loco.isRemoved()) || (elecLoco != null && !elecLoco.isRemoved()) || isBore;
+        if (!isLocoOrBore) {
             wasUpPressed = false;
             wasDownPressed = false;
             wasLeftPressed = false;

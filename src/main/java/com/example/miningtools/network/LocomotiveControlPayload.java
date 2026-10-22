@@ -2,6 +2,7 @@ package com.example.miningtools.network;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -20,6 +21,7 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
     public static final int ACTION_REVERSE = 4;
     public static final int ACTION_HORN = 5;
     public static final int ACTION_TOGGLE_LIGHT = 6;
+    public static final int ACTION_OPEN_GUI = 7;
 
     public static final Type<LocomotiveControlPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(MiningTools.MODID, "locomotive_control"));
@@ -38,9 +40,42 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
             if (player == null) return;
             Entity vehicle = player.getVehicle();
             if (vehicle != null) {
+                if (payload.action() == ACTION_OPEN_GUI) {
+                    if (vehicle instanceof net.minecraft.world.MenuProvider menuProvider) {
+                        player.openMenu(menuProvider);
+                        return;
+                    }
+                    BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
+                    if (loco != null && !loco.isRemoved()) {
+                        player.openMenu(loco);
+                        return;
+                    }
+                    ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+                    if (elecLoco != null && !elecLoco.isRemoved()) {
+                        player.openMenu(elecLoco);
+                        return;
+                    }
+                    com.example.miningtools.entity.TunnelBoreEntity bore = com.example.miningtools.entity.TunnelBoreEntity.getConnectedBore(vehicle);
+                    if (bore != null && !bore.isRemoved()) {
+                        player.openMenu(bore);
+                        return;
+                    }
+                    return;
+                }
+
+                if (vehicle instanceof com.example.miningtools.entity.TunnelBoreEntity bore && !bore.isRemoved()) {
+
+                    bore.handleHotkeyAction(player, payload.action());
+                    return;
+                }
                 BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
                 if (loco != null && !loco.isRemoved()) {
                     loco.handleHotkeyAction(player, payload.action());
+                    return;
+                }
+                ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+                if (elecLoco != null && !elecLoco.isRemoved()) {
+                    elecLoco.handleHotkeyAction(player, payload.action());
                 }
             }
         });

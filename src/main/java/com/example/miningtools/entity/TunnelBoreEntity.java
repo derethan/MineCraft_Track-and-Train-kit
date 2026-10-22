@@ -1,17 +1,26 @@
 package com.example.miningtools.entity;
 
 import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.TunnelBoreMenu;
+import com.example.miningtools.network.LocomotiveControlPayload;
+import com.example.miningtools.util.TrainChainingUtil;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -20,10 +29,14 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecartContainer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -47,8 +60,14 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     public static final int INVENTORY_SIZE = 10;
     public static final int FUEL_SLOT = 0;
 
+    public static final int MODE_STOPPED = 0;
+    public static final int MODE_FORWARD = 1;
+    public static final int MODE_REVERSE = 2;
+
     // 15 ticks = 0.75 seconds per 1-block track step when moving without mining
     public static final int MOVE_TICKS_PER_BLOCK = 15;
+    // 25 ticks = 1.25 seconds per 1-block track step for very slow, safe reversing
+    public static final int REVERSE_TICKS_PER_BLOCK = 25;
     // Standard Iron (6.0) / Diamond (8.0) tool speed
     private static final float BORE_TOOL_SPEED = 7.5F;
 
@@ -58,6 +77,8 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(TunnelBoreEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DATA_DRILLING =
             SynchedEntityData.defineId(TunnelBoreEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> DATA_RUN_MODE =
+            SynchedEntityData.defineId(TunnelBoreEntity.class, EntityDataSerializers.INT);
 
     // Stack walker for soft-detecting caller mod interactions (such as minecart_trains_fork)
     private static final StackWalker STACK_WALKER =
@@ -91,7 +112,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             return switch (index) {
                 case 0 -> TunnelBoreEntity.this.fuel;
                 case 1 -> TunnelBoreEntity.this.fuelTotal;
-                case 2 -> TunnelBoreEntity.this.running ? 1 : 0;
+                case 2 -> TunnelBoreEntity.this.getRunMode();
                 default -> 0;
             };
         }
@@ -101,7 +122,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             switch (index) {
                 case 0 -> TunnelBoreEntity.this.fuel = value;
                 case 1 -> TunnelBoreEntity.this.fuelTotal = value;
-                case 2 -> TunnelBoreEntity.this.setRunning(value != 0);
+                case 2 -> TunnelBoreEntity.this.setRunMode(value);
             }
         }
 
@@ -129,6 +150,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
         entityData.define(DATA_FACING, Direction.NORTH);
         entityData.define(DATA_ACTIVE, false);
         entityData.define(DATA_DRILLING, false);
+        entityData.define(DATA_RUN_MODE, MODE_STOPPED);
     }
 
     public Direction getFacing() {
@@ -182,19 +204,34 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
         );
     }
 
-    public boolean isRunning() {
-        return this.running;
+    public int getRunMode() {
+        return this.entityData.get(DATA_RUN_MODE);
     }
 
-    public void setRunning(boolean running) {
-        this.running = running;
-        if (!running) {
+    public void setRunMode(int mode) {
+        this.entityData.set(DATA_RUN_MODE, mode);
+        this.running = (mode != MODE_STOPPED);
+        if (mode == MODE_STOPPED) {
             this.clearMiningTarget();
             this.isMoving = false;
             this.moveTicks = 0;
             this.setDrilling(false);
             this.setActive(false);
+        } else {
+            this.setActive(true);
         }
+    }
+
+    public boolean isRunning() {
+        return this.getRunMode() != MODE_STOPPED;
+    }
+
+    public void setRunning(boolean running) {
+        this.setRunMode(running ? MODE_FORWARD : MODE_STOPPED);
+    }
+
+    public boolean isReversing() {
+        return this.getRunMode() == MODE_REVERSE;
     }
 
     public boolean isActive() {
@@ -250,7 +287,77 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canAddPassenger(Entity passenger) {
-        return false;
+        return passenger instanceof Player && this.getPassengers().isEmpty();
+    }
+
+    @Override
+    protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
+        if (this.hasPassenger(passenger)) {
+            Direction facing = this.getFacing();
+            // Driver cabin seat is located behind the boiler/furnace inside the cab platform
+            double offsetX = -facing.getStepX() * 1.8;
+            double offsetZ = -facing.getStepZ() * 1.8;
+            double offsetY = 1.05;
+            moveFunction.accept(passenger, this.getX() + offsetX, this.getY() + offsetY, this.getZ() + offsetZ);
+        }
+    }
+
+    @Override
+    public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+        if (player.getItemInHand(hand).is(MiningTools.CROWBAR_ITEM.get())) {
+            return InteractionResult.PASS;
+        }
+
+        if (player.isShiftKeyDown()) {
+            if (!this.level().isClientSide()) {
+                player.openMenu(this);
+            }
+            return InteractionResult.SUCCESS;
+        }
+
+        if (this.getPassengers().isEmpty() && player.getItemInHand(hand).isEmpty()) {
+            if (!this.level().isClientSide()) {
+                player.startRiding(this);
+            }
+            return InteractionResult.SUCCESS;
+        }
+
+        if (!this.level().isClientSide()) {
+            player.openMenu(this);
+        }
+        return InteractionResult.SUCCESS;
+    }
+
+    public void handleHotkeyAction(Player player, int action) {
+        switch (action) {
+            case LocomotiveControlPayload.ACTION_START -> {
+                if (this.getRunMode() != MODE_FORWARD) {
+                    this.setRunMode(MODE_FORWARD);
+                    player.sendOverlayMessage(Component.literal("Tunnel Bore: Digging Forward").withStyle(ChatFormatting.GREEN));
+                }
+            }
+            case LocomotiveControlPayload.ACTION_STOP -> {
+                if (this.getRunMode() == MODE_FORWARD) {
+                    this.setRunMode(MODE_STOPPED);
+                    player.sendOverlayMessage(Component.literal("Tunnel Bore: Stopped").withStyle(ChatFormatting.RED));
+                } else if (this.getRunMode() == MODE_STOPPED) {
+                    this.setRunMode(MODE_REVERSE);
+                    player.sendOverlayMessage(Component.literal("Tunnel Bore: Reversing Slowly").withStyle(ChatFormatting.YELLOW));
+                } else if (this.getRunMode() == MODE_REVERSE) {
+                    this.setRunMode(MODE_STOPPED);
+                    player.sendOverlayMessage(Component.literal("Tunnel Bore: Stopped").withStyle(ChatFormatting.RED));
+                }
+            }
+            case LocomotiveControlPayload.ACTION_REVERSE -> {
+                if (this.getRunMode() == MODE_REVERSE) {
+                    this.setRunMode(MODE_STOPPED);
+                    player.sendOverlayMessage(Component.literal("Tunnel Bore: Stopped").withStyle(ChatFormatting.RED));
+                } else {
+                    this.setRunMode(MODE_REVERSE);
+                    player.sendOverlayMessage(Component.literal("Tunnel Bore: Reversing Slowly").withStyle(ChatFormatting.YELLOW));
+                }
+            }
+        }
     }
 
     @Override
@@ -361,31 +468,51 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     @Override
     public Vec3 getDeltaMovement() {
         if (this.isMoving) {
-            Direction facing = this.getFacing();
-            return new Vec3(facing.getStepX() * 0.12, 0.0, facing.getStepZ() * 0.12);
+            Direction dir = this.getRunMode() == MODE_REVERSE ? this.getFacing().getOpposite() : this.getFacing();
+            double speed = this.getRunMode() == MODE_REVERSE ? 0.05 : 0.12;
+            return new Vec3(dir.getStepX() * speed, 0.0, dir.getStepZ() * speed);
         }
         return Vec3.ZERO;
     }
 
     private boolean isChainedTo(Entity entity) {
-        if (entity instanceof AbstractMinecart) {
-            if (!CHECKED_PARENT_UUID_METHOD) {
-                CHECKED_PARENT_UUID_METHOD = true;
-                try {
-                    GET_PARENT_UUID_METHOD = entity.getClass().getMethod("getParentUUID");
-                } catch (Throwable ignored) {
+        return TrainChainingUtil.isChainedTo(this, entity);
+    }
+
+    public static @Nullable TunnelBoreEntity getConnectedBore(Entity entity) {
+        if (entity instanceof TunnelBoreEntity bore && !bore.isRemoved()) {
+            return bore;
+        }
+        if (!(entity instanceof AbstractMinecart cart) || cart.isRemoved()) {
+            return null;
+        }
+
+        Set<UUID> visited = new HashSet<>();
+        visited.add(cart.getUUID());
+        Deque<UUID> toCheck = new ArrayDeque<>();
+        UUID p = TrainChainingUtil.getCartParentUUID(cart);
+        if (p != null) toCheck.add(p);
+        UUID c = TrainChainingUtil.getCartChildUUID(cart);
+        if (c != null) toCheck.add(c);
+
+        while (!toCheck.isEmpty()) {
+            UUID nextId = toCheck.poll();
+            if (nextId != null && visited.add(nextId)) {
+                Entity ent = cart.level().getEntity(nextId);
+                if (ent instanceof TunnelBoreEntity bore && !bore.isRemoved()) {
+                    return bore;
                 }
-            }
-            if (GET_PARENT_UUID_METHOD != null) {
-                try {
-                    Object uuid = GET_PARENT_UUID_METHOD.invoke(entity);
-                    return this.getUUID().equals(uuid);
-                } catch (Throwable ignored) {
+                if (ent instanceof AbstractMinecart otherCart && !otherCart.isRemoved()) {
+                    UUID cp = TrainChainingUtil.getCartParentUUID(otherCart);
+                    if (cp != null && !visited.contains(cp)) toCheck.add(cp);
+                    UUID cc = TrainChainingUtil.getCartChildUUID(otherCart);
+                    if (cc != null && !visited.contains(cc)) toCheck.add(cc);
                 }
             }
         }
-        return false;
+        return null;
     }
+
 
     @Override
     public void push(Entity entity) {
@@ -426,7 +553,8 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
-        output.putBoolean("Running", this.running);
+        output.putBoolean("Running", this.isRunning());
+        output.putInt("RunMode", this.getRunMode());
         output.putInt("Fuel", this.fuel);
         output.putInt("FuelTotal", this.fuelTotal);
         output.putByte("Facing", (byte) this.getFacing().get2DDataValue());
@@ -440,7 +568,8 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
-        this.running = input.getBooleanOr("Running", false);
+        int savedMode = input.getIntOr("RunMode", input.getBooleanOr("Running", false) ? MODE_FORWARD : MODE_STOPPED);
+        this.setRunMode(savedMode);
         this.fuel = input.getIntOr("Fuel", 0);
         this.fuelTotal = input.getIntOr("FuelTotal", 1600);
         this.setFacing(Direction.from2DDataValue(input.getByteOr("Facing", (byte) 0)));
@@ -552,8 +681,8 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
                     double stack2Z = this.getZ() - right.getStepZ() * 0.9 - facing.getStepZ() * 1.15;
                     double stackY = this.getY() + 1.25;
 
-                    this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, stack1X, stackY, stack1Z, 0.0, 0.05, 0.0);
-                    this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, stack2X, stackY, stack2Z, 0.0, 0.05, 0.0);
+                    this.level().addParticle(ParticleTypes.SMOKE, stack1X, stackY, stack1Z, 0.0, 0.03, 0.0);
+                    this.level().addParticle(ParticleTypes.SMOKE, stack2X, stackY, stack2Z, 0.0, 0.03, 0.0);
                 }
 
                 if (this.isDrilling() && this.random.nextInt(2) == 0) {
@@ -582,8 +711,8 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             this.push(pushable);
         }
 
-        // If toggled off via UI, remain halted
-        if (!this.running) {
+        int runMode = this.getRunMode();
+        if (runMode == MODE_STOPPED) {
             this.clearMiningTarget();
             this.isMoving = false;
             this.moveTicks = 0;
@@ -591,6 +720,65 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             this.setActive(false);
             Vec3 restPos = Vec3.atBottomCenterOf(this.currentRailPos).add(0.0, 0.0625, 0.0);
             this.setPos(restPos.x, restPos.y, restPos.z);
+            return;
+        }
+
+        // Handle REVERSE Mode
+        if (runMode == MODE_REVERSE) {
+            this.clearMiningTarget();
+            this.setDrilling(false);
+
+            if (!this.consumeFuelTick()) {
+                this.setRunMode(MODE_STOPPED);
+                return;
+            }
+
+            this.setActive(true);
+
+            if (!this.isMoving) {
+                Direction backwardDir = facing.getOpposite();
+                BlockPos prevRailPos = this.currentRailPos.relative(backwardDir);
+                BlockPos targetRail = null;
+
+                if (this.level().getBlockState(prevRailPos).is(BlockTags.RAILS)) {
+                    targetRail = prevRailPos;
+                } else if (this.level().getBlockState(prevRailPos.below()).is(BlockTags.RAILS)) {
+                    targetRail = prevRailPos.below();
+                } else if (this.level().getBlockState(prevRailPos.above()).is(BlockTags.RAILS)) {
+                    targetRail = prevRailPos.above();
+                }
+
+                if (targetRail == null) {
+                    this.setRunMode(MODE_STOPPED);
+                    for (Entity p : this.getPassengers()) {
+                        if (p instanceof Player player) {
+                            player.sendOverlayMessage(Component.literal("End of rails behind bore.").withStyle(ChatFormatting.YELLOW));
+                        }
+                    }
+                    return;
+                }
+
+                this.isMoving = true;
+                this.moveTicks = 0;
+                this.moveTargetRailPos = targetRail;
+            }
+
+            this.moveTicks++;
+            double frac = (double) this.moveTicks / (double) REVERSE_TICKS_PER_BLOCK;
+            Vec3 start = Vec3.atBottomCenterOf(this.currentRailPos).add(0.0, 0.0625, 0.0);
+            Vec3 end = Vec3.atBottomCenterOf(this.moveTargetRailPos).add(0.0, 0.0625, 0.0);
+            Vec3 target = start.lerp(end, frac);
+            this.setPos(target.x, target.y, target.z);
+
+            this.pushTrailingCartsOnReverse(facing.getOpposite());
+
+            if (this.moveTicks >= REVERSE_TICKS_PER_BLOCK) {
+                this.currentRailPos = this.moveTargetRailPos;
+                this.moveTargetRailPos = null;
+                this.isMoving = false;
+                this.moveTicks = 0;
+                this.setPos(end.x, end.y, end.z);
+            }
             return;
         }
 
@@ -727,6 +915,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
         Vec3 end = Vec3.atBottomCenterOf(this.moveTargetRailPos).add(0.0, 0.0625, 0.0);
         Vec3 target = start.lerp(end, frac);
         this.setPos(target.x, target.y, target.z);
+        this.pullTrailingCartsOnMove();
 
         if (this.moveTicks >= MOVE_TICKS_PER_BLOCK) {
             this.currentRailPos = this.moveTargetRailPos;
@@ -734,6 +923,48 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             this.isMoving = false;
             this.moveTicks = 0;
             this.setPos(end.x, end.y, end.z);
+            this.pullTrailingCartsOnMove();
+        }
+    }
+
+    private void pullTrailingCartsOnMove() {
+        UUID nextId = TrainChainingUtil.getCartChildUUID(this);
+        Vec3 prevAnchor = this.getRearAnchorPos();
+        Set<UUID> visited = new HashSet<>();
+        visited.add(this.getUUID());
+
+        while (nextId != null && visited.add(nextId)) {
+            Entity ent = this.level().getEntity(nextId);
+            if (!(ent instanceof AbstractMinecart cart) || cart.isRemoved()) {
+                break;
+            }
+            Vec3 cartPos = cart.position();
+            Vec3 diff = prevAnchor.subtract(cartPos);
+            double dist = diff.horizontalDistance();
+            if (dist > 1.42) {
+                double pull = Math.min(dist - 1.38, 0.25);
+                double nx = cart.getX() + (diff.x / dist) * pull;
+                double nz = cart.getZ() + (diff.z / dist) * pull;
+                cart.setPos(nx, cart.getY(), nz);
+            }
+            prevAnchor = cart.position();
+            nextId = TrainChainingUtil.getCartChildUUID(cart);
+        }
+    }
+
+
+    private void pushTrailingCartsOnReverse(Direction backwardDir) {
+        UUID childId = TrainChainingUtil.getCartChildUUID(this);
+        if (childId != null) {
+            Entity ent = this.level().getEntity(childId);
+            if (ent instanceof AbstractMinecart childCart && !childCart.isRemoved()) {
+                Vec3 rearAnchor = this.getRearAnchorPos();
+                double anchorDist = rearAnchor.distanceTo(childCart.position());
+                if (anchorDist < 1.35) {
+                    double pushDist = 0.05;
+                    childCart.setPos(childCart.getX() + backwardDir.getStepX() * pushDist, childCart.getY(), childCart.getZ() + backwardDir.getStepZ() * pushDist);
+                }
+            }
         }
     }
 }

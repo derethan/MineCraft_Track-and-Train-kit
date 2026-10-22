@@ -3,20 +3,35 @@ package com.example.miningtools;
 import org.slf4j.Logger;
 
 import com.example.miningtools.block.ControlRailBlock;
+import com.example.miningtools.block.ElectricRailBlock;
+import com.example.miningtools.block.FluidLoaderBlock;
 import com.example.miningtools.block.HornRailBlock;
 import com.example.miningtools.block.JunctionRailBlock;
 import com.example.miningtools.block.TrackSwitchBlock;
 import com.example.miningtools.block.TurnoutRailBlock;
 import com.example.miningtools.block.WyeRailBlock;
+import com.example.miningtools.block.entity.ElectricRailBlockEntity;
+import com.example.miningtools.block.entity.FluidLoaderBlockEntity;
 import com.example.miningtools.block.entity.TrackSwitchBlockEntity;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.CabooseMinecartEntity;
 import com.example.miningtools.entity.CargoMinecartEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.entity.LargeLiquidMinecartEntity;
+import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.item.BasicLocomotiveItem;
+import com.example.miningtools.item.CabooseItem;
 import com.example.miningtools.item.CargoMinecartItem;
+import com.example.miningtools.item.CrowbarItem;
+import com.example.miningtools.item.ElectricLocomotiveItem;
+import com.example.miningtools.item.LargeLiquidMinecartItem;
+import com.example.miningtools.item.LiquidMinecartItem;
 import com.example.miningtools.item.TunnelBoreItem;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.menu.CargoMinecartMenu;
+import com.example.miningtools.menu.ElectricLocomotiveMenu;
+import com.example.miningtools.menu.FluidLoaderMenu;
 import com.example.miningtools.menu.TunnelBoreMenu;
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.LocomotiveRenamePayload;
@@ -24,6 +39,7 @@ import com.example.miningtools.network.TrackSwitchSyncPayload;
 import com.example.miningtools.network.TrackSwitchUpdatePayload;
 import com.mojang.logging.LogUtils;
 
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -36,6 +52,8 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
@@ -44,8 +62,11 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
@@ -53,6 +74,13 @@ import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
 import com.example.miningtools.network.LocomotiveControlPayload;
+import com.example.miningtools.network.TrainLinkSyncPayload;
+import com.example.miningtools.util.TrainChainingUtil;
+import java.util.UUID;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
@@ -146,6 +174,25 @@ public class MiningTools {
             () -> new BlockEntityType<>(TrackSwitchBlockEntity::new, TRACK_SWITCH.get())
     );
 
+    // Fluid Loader / Unloader Block, Item, BlockEntity & Menu
+    public static final DeferredBlock<FluidLoaderBlock> FLUID_LOADER = BLOCKS.registerBlock(
+            "fluid_loader",
+            FluidLoaderBlock::new,
+            p -> p.strength(2.5F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> FLUID_LOADER_ITEM = ITEMS.registerSimpleBlockItem(
+            "fluid_loader",
+            FLUID_LOADER
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<FluidLoaderBlockEntity>> FLUID_LOADER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "fluid_loader",
+            () -> new BlockEntityType<>(FluidLoaderBlockEntity::new, FLUID_LOADER.get())
+    );
+    public static final DeferredHolder<MenuType<?>, MenuType<FluidLoaderMenu>> FLUID_LOADER_MENU = MENUS.register(
+            "fluid_loader",
+            () -> new MenuType<>(FluidLoaderMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Tunnel Bore Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<TunnelBoreEntity>> TUNNEL_BORE_ENTITY = ENTITY_TYPES.register(
             "tunnel_bore",
@@ -206,6 +253,92 @@ public class MiningTools {
             () -> new MenuType<>(CargoMinecartMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
 
+    // Liquid Minecart Entity & Item
+    public static final DeferredHolder<EntityType<?>, EntityType<LiquidMinecartEntity>> LIQUID_MINECART_ENTITY = ENTITY_TYPES.register(
+            "liquid_minecart",
+            key -> EntityType.Builder.<LiquidMinecartEntity>of(LiquidMinecartEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 0.75F)
+                    .passengerAttachments(0.1875F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<LiquidMinecartItem> LIQUID_MINECART_ITEM = ITEMS.registerItem(
+            "liquid_minecart",
+            LiquidMinecartItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    // Large Liquid Minecart Entity & Item (16,000 mB / 16 Buckets)
+    public static final DeferredHolder<EntityType<?>, EntityType<LargeLiquidMinecartEntity>> LARGE_LIQUID_MINECART_ENTITY = ENTITY_TYPES.register(
+            "large_liquid_minecart",
+            key -> EntityType.Builder.<LargeLiquidMinecartEntity>of(LargeLiquidMinecartEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 0.75F)
+                    .passengerAttachments(0.1875F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<LargeLiquidMinecartItem> LARGE_LIQUID_MINECART_ITEM = ITEMS.registerItem(
+            "large_liquid_minecart",
+            LargeLiquidMinecartItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    // Caboose Minecart Entity & Item (Train Chunk Anchor)
+    public static final DeferredHolder<EntityType<?>, EntityType<CabooseMinecartEntity>> CABOOSE_ENTITY = ENTITY_TYPES.register(
+            "caboose",
+            key -> EntityType.Builder.<CabooseMinecartEntity>of(CabooseMinecartEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 1.2F)
+                    .passengerAttachments(0.35F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<CabooseItem> CABOOSE_ITEM = ITEMS.registerItem(
+            "caboose",
+            CabooseItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    // Electric Rail Block, Item & BlockEntity
+    public static final DeferredBlock<ElectricRailBlock> ELECTRIC_RAIL = BLOCKS.registerBlock(
+            "electric_rail",
+            ElectricRailBlock::new,
+            p -> p.noCollision().strength(0.8F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> ELECTRIC_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
+            "electric_rail",
+            ELECTRIC_RAIL
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ElectricRailBlockEntity>> ELECTRIC_RAIL_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "electric_rail",
+            () -> new BlockEntityType<>(ElectricRailBlockEntity::new, ELECTRIC_RAIL.get())
+    );
+
+    // Electric Bullet Locomotive Entity, Item & Menu
+    public static final DeferredHolder<EntityType<?>, EntityType<ElectricLocomotiveEntity>> ELECTRIC_LOCOMOTIVE_ENTITY = ENTITY_TYPES.register(
+            "electric_locomotive",
+            key -> EntityType.Builder.<ElectricLocomotiveEntity>of(ElectricLocomotiveEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 1.25F)
+                    .passengerAttachments(0.1875F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<ElectricLocomotiveItem> ELECTRIC_LOCOMOTIVE_ITEM = ITEMS.registerItem(
+            "electric_locomotive",
+            ElectricLocomotiveItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredItem<CrowbarItem> CROWBAR_ITEM = ITEMS.registerItem(
+            "crowbar",
+            CrowbarItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredHolder<MenuType<?>, MenuType<ElectricLocomotiveMenu>> ELECTRIC_LOCOMOTIVE_MENU = MENUS.register(
+            "electric_locomotive",
+            () -> new MenuType<>(ElectricLocomotiveMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Creative Mode Tab
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MINING_TOOLS_TAB = CREATIVE_MODE_TABS.register(
             "miningtools_tab",
@@ -214,15 +347,22 @@ public class MiningTools {
                     .withTabsBefore(CreativeModeTabs.COMBAT)
                     .icon(() -> BASIC_LOCOMOTIVE_ITEM.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
+                        output.accept(CROWBAR_ITEM.get());
                         output.accept(JUNCTION_RAIL_ITEM.get());
                         output.accept(CONTROL_RAIL_ITEM.get());
                         output.accept(HORN_RAIL_ITEM.get());
                         output.accept(TURNOUT_RAIL_ITEM.get());
                         output.accept(WYE_RAIL_ITEM.get());
                         output.accept(TRACK_SWITCH_ITEM.get());
+                        output.accept(FLUID_LOADER_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
+                        output.accept(ELECTRIC_LOCOMOTIVE_ITEM.get());
                         output.accept(CARGO_MINECART_ITEM.get());
+                        output.accept(LIQUID_MINECART_ITEM.get());
+                        output.accept(LARGE_LIQUID_MINECART_ITEM.get());
+                        output.accept(CABOOSE_ITEM.get());
+                        output.accept(ELECTRIC_RAIL_ITEM.get());
                     })
                     .build()
     );
@@ -240,9 +380,38 @@ public class MiningTools {
 
         modEventBus.addListener(this::addCreative);
         modEventBus.addListener(this::registerPayloadHandlers);
+        modEventBus.addListener(this::registerCapabilities);
 
         NeoForge.EVENT_BUS.register(this);
         modContainer.registerConfig(ModConfig.Type.LOCAL, Config.SPEC);
+    }
+
+    private void registerCapabilities(RegisterCapabilitiesEvent event) {
+        event.registerBlockEntity(
+                Capabilities.Fluid.BLOCK,
+                FLUID_LOADER_BLOCK_ENTITY.get(),
+                (be, side) -> be.getFluidHandler(side)
+        );
+        event.registerEntity(
+                Capabilities.Fluid.ENTITY,
+                LIQUID_MINECART_ENTITY.get(),
+                (entity, side) -> entity.getFluidHandler()
+        );
+        event.registerEntity(
+                Capabilities.Fluid.ENTITY,
+                LARGE_LIQUID_MINECART_ENTITY.get(),
+                (entity, side) -> entity.getFluidHandler()
+        );
+        event.registerBlockEntity(
+                Capabilities.Energy.BLOCK,
+                ELECTRIC_RAIL_BLOCK_ENTITY.get(),
+                (be, side) -> be.getEnergyHandler(side)
+        );
+        event.registerEntity(
+                Capabilities.Energy.ENTITY,
+                ELECTRIC_LOCOMOTIVE_ENTITY.get(),
+                (entity, side) -> entity.getEnergyHandler(side)
+        );
     }
 
     private void registerPayloadHandlers(RegisterPayloadHandlersEvent event) {
@@ -267,6 +436,12 @@ public class MiningTools {
                 TrackSwitchSyncPayload.STREAM_CODEC,
                 TrackSwitchSyncPayload::handle
         );
+        registrar.playToClient(
+                TrainLinkSyncPayload.TYPE,
+                TrainLinkSyncPayload.STREAM_CODEC,
+                TrainLinkSyncPayload::handle
+        );
+
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
@@ -275,19 +450,72 @@ public class MiningTools {
 
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.REDSTONE_BLOCKS || event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(CROWBAR_ITEM);
             event.accept(JUNCTION_RAIL_ITEM);
             event.accept(CONTROL_RAIL_ITEM);
             event.accept(HORN_RAIL_ITEM);
             event.accept(TURNOUT_RAIL_ITEM);
             event.accept(WYE_RAIL_ITEM);
             event.accept(TRACK_SWITCH_ITEM);
+            event.accept(FLUID_LOADER_ITEM);
             event.accept(TUNNEL_BORE_ITEM);
             event.accept(BASIC_LOCOMOTIVE_ITEM);
+            event.accept(ELECTRIC_LOCOMOTIVE_ITEM);
+            event.accept(CARGO_MINECART_ITEM);
+            event.accept(LIQUID_MINECART_ITEM);
+            event.accept(LARGE_LIQUID_MINECART_ITEM);
+            event.accept(CABOOSE_ITEM);
+            event.accept(ELECTRIC_RAIL_ITEM);
         }
     }
 
     @SubscribeEvent
+    public void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        ItemStack stack = event.getItemStack();
+        if (stack.is(CROWBAR_ITEM.get())) {
+            if (event.getTarget() instanceof AbstractMinecart cart) {
+                event.setCanceled(true);
+                event.setCancellationResult(CrowbarItem.handleCartInteraction(
+                        event.getEntity(),
+                        event.getHand(),
+                        stack,
+                        cart,
+                        event.getLevel()
+                ));
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onStartTracking(PlayerEvent.StartTracking event) {
+        if (event.getTarget() instanceof AbstractMinecart cart) {
+            UUID p = TrainChainingUtil.getCartParentUUID(cart);
+            UUID c = TrainChainingUtil.getCartChildUUID(cart);
+            if (p != null || c != null) {
+                if (event.getEntity() instanceof ServerPlayer sp) {
+                    PacketDistributor.sendToPlayer(
+                            sp,
+                            new TrainLinkSyncPayload(cart.getUUID(), java.util.Optional.ofNullable(p), java.util.Optional.ofNullable(c))
+                    );
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public void onEntityLeave(net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent event) {
+        if (event.getEntity() instanceof AbstractMinecart cart && event.getLevel() instanceof ServerLevel sl) {
+            if (cart.getRemovalReason() != null && cart.getRemovalReason().shouldDestroy()) {
+                TrainChainingUtil.unlinkCart(cart, sl);
+            }
+        }
+    }
+
+
+    @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
+
+
         LOGGER.info("Mining Tools server starting");
     }
 }

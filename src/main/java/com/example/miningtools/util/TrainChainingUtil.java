@@ -1,0 +1,365 @@
+package com.example.miningtools.util;
+
+import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.jspecify.annotations.Nullable;
+
+import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.CabooseMinecartEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.network.TrainLinkSyncPayload;
+import com.mojang.datafixers.util.Pair;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.network.PacketDistributor;
+
+public final class TrainChainingUtil {
+    private TrainChainingUtil() {}
+
+    public static final String TAG_PARENT_CART = "miningtools:parent_cart";
+    public static final String TAG_CHILD_CART = "miningtools:child_cart";
+
+    private static final Map<UUID, UUID> CLIENT_PARENT_MAP = new ConcurrentHashMap<>();
+    private static final Map<UUID, UUID> CLIENT_CHILD_MAP = new ConcurrentHashMap<>();
+
+    private static @Nullable Method EXTERNAL_GET_PARENT = null;
+    private static boolean CHECKED_EXTERNAL_GET_PARENT = false;
+    private static @Nullable Method EXTERNAL_GET_CHILD = null;
+    private static boolean CHECKED_EXTERNAL_GET_CHILD = false;
+
+    public static @Nullable UUID getCartParentUUID(Entity entity) {
+        if (entity == null) return null;
+
+        var nbt = entity.getPersistentData();
+        if (nbt.contains(TAG_PARENT_CART)) {
+            try {
+                return nbt.getString(TAG_PARENT_CART).map(UUID::fromString).orElse(null);
+            } catch (Throwable ignored) {}
+        }
+
+        UUID mapped = CLIENT_PARENT_MAP.get(entity.getUUID());
+        if (mapped != null) {
+            return mapped;
+        }
+
+        if (!CHECKED_EXTERNAL_GET_PARENT) {
+            CHECKED_EXTERNAL_GET_PARENT = true;
+            try {
+                EXTERNAL_GET_PARENT = entity.getClass().getMethod("getParentUUID");
+            } catch (Throwable ignored) {}
+        }
+        if (EXTERNAL_GET_PARENT != null) {
+            try {
+                return (UUID) EXTERNAL_GET_PARENT.invoke(entity);
+            } catch (Throwable ignored) {}
+        }
+
+        return null;
+    }
+
+    public static @Nullable UUID getCartChildUUID(Entity entity) {
+        if (entity == null) return null;
+
+        var nbt = entity.getPersistentData();
+        if (nbt.contains(TAG_CHILD_CART)) {
+            try {
+                return nbt.getString(TAG_CHILD_CART).map(UUID::fromString).orElse(null);
+            } catch (Throwable ignored) {}
+        }
+
+        UUID mapped = CLIENT_CHILD_MAP.get(entity.getUUID());
+        if (mapped != null) {
+            return mapped;
+        }
+
+        if (!CHECKED_EXTERNAL_GET_CHILD) {
+            CHECKED_EXTERNAL_GET_CHILD = true;
+            try {
+                EXTERNAL_GET_CHILD = entity.getClass().getMethod("getChildUUID");
+            } catch (Throwable ignored) {}
+        }
+        if (EXTERNAL_GET_CHILD != null) {
+            try {
+                return (UUID) EXTERNAL_GET_CHILD.invoke(entity);
+            } catch (Throwable ignored) {}
+        }
+
+        return null;
+    }
+
+    public static void setCartParent(AbstractMinecart cart, @Nullable UUID parentUUID, Level level) {
+        var nbt = cart.getPersistentData();
+        if (parentUUID != null) {
+            nbt.putString(TAG_PARENT_CART, parentUUID.toString());
+        } else {
+            nbt.remove(TAG_PARENT_CART);
+        }
+
+        try {
+            Method m = cart.getClass().getMethod("setParentUUID", UUID.class);
+            m.invoke(cart, parentUUID);
+        } catch (Throwable ignored) {}
+
+        if (!level.isClientSide()) {
+            PacketDistributor.sendToPlayersTrackingEntityAndSelf(
+                    cart,
+                    new TrainLinkSyncPayload(
+                            cart.getUUID(),
+                            Optional.ofNullable(parentUUID),
+                            Optional.ofNullable(getCartChildUUID(cart))
+                    )
+            );
+        } else {
+            if (parentUUID != null) {
+                CLIENT_PARENT_MAP.put(cart.getUUID(), parentUUID);
+            } else {
+                CLIENT_PARENT_MAP.remove(cart.getUUID());
+            }
+        }
+    }
+
+    public static void setCartChild(AbstractMinecart cart, @Nullable UUID childUUID, Level level) {
+        var nbt = cart.getPersistentData();
+        if (childUUID != null) {
+            nbt.putString(TAG_CHILD_CART, childUUID.toString());
+        } else {
+            nbt.remove(TAG_CHILD_CART);
+        }
+
+        try {
+            Method m = cart.getClass().getMethod("setChildUUID", UUID.class);
+            m.invoke(cart, childUUID);
+        } catch (Throwable ignored) {}
+
+        if (!level.isClientSide()) {
+            PacketDistributor.sendToPlayersTrackingEntityAndSelf(
+                    cart,
+                    new TrainLinkSyncPayload(
+                            cart.getUUID(),
+                            Optional.ofNullable(getCartParentUUID(cart)),
+                            Optional.ofNullable(childUUID)
+                    )
+            );
+        } else {
+            if (childUUID != null) {
+                CLIENT_CHILD_MAP.put(cart.getUUID(), childUUID);
+            } else {
+                CLIENT_CHILD_MAP.remove(cart.getUUID());
+            }
+        }
+    }
+
+    public static void updateClientLink(UUID cartUUID, @Nullable UUID parentUUID, @Nullable UUID childUUID) {
+        if (parentUUID != null) {
+            CLIENT_PARENT_MAP.put(cartUUID, parentUUID);
+        } else {
+            CLIENT_PARENT_MAP.remove(cartUUID);
+        }
+
+        if (childUUID != null) {
+            CLIENT_CHILD_MAP.put(cartUUID, childUUID);
+        } else {
+            CLIENT_CHILD_MAP.remove(cartUUID);
+        }
+
+        try {
+            net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+            if (mc.level != null) {
+                for (Entity entity : mc.level.entitiesForRendering()) {
+                    if (entity.getUUID().equals(cartUUID)) {
+                        var nbt = entity.getPersistentData();
+                        if (parentUUID != null) {
+                            nbt.putString(TAG_PARENT_CART, parentUUID.toString());
+                        } else {
+                            nbt.remove(TAG_PARENT_CART);
+                        }
+                        if (childUUID != null) {
+                            nbt.putString(TAG_CHILD_CART, childUUID.toString());
+                        } else {
+                            nbt.remove(TAG_CHILD_CART);
+                        }
+                        break;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    public static boolean isChainedTo(Entity a, Entity b) {
+        if (!(a instanceof AbstractMinecart) || !(b instanceof AbstractMinecart)) {
+            return false;
+        }
+        UUID aId = a.getUUID();
+        UUID bId = b.getUUID();
+        if (aId.equals(bId)) return false;
+
+        UUID aP = getCartParentUUID(a);
+        UUID aC = getCartChildUUID(a);
+        if (bId.equals(aP) || bId.equals(aC)) return true;
+
+        UUID bP = getCartParentUUID(b);
+        UUID bC = getCartChildUUID(b);
+        return aId.equals(bP) || aId.equals(bC);
+    }
+
+    public static boolean isConnectedInSameTrain(Entity a, Entity b) {
+        if (!(a instanceof AbstractMinecart) || !(b instanceof AbstractMinecart)) return false;
+        if (a.getUUID().equals(b.getUUID())) return true;
+
+        Set<UUID> visited = new HashSet<>();
+        Deque<UUID> queue = new ArrayDeque<>();
+        visited.add(a.getUUID());
+
+        UUID ap = getCartParentUUID(a);
+        if (ap != null) queue.add(ap);
+        UUID ac = getCartChildUUID(a);
+        if (ac != null) queue.add(ac);
+
+        while (!queue.isEmpty() && visited.size() < 100) {
+            UUID next = queue.poll();
+            if (next == null) continue;
+            if (next.equals(b.getUUID())) return true;
+            if (visited.add(next)) {
+                Entity ent = a.level().getEntity(next);
+                if (ent instanceof AbstractMinecart cart && !cart.isRemoved()) {
+                    UUID p = getCartParentUUID(cart);
+                    if (p != null && !visited.contains(p)) queue.add(p);
+                    UUID c = getCartChildUUID(cart);
+                    if (c != null && !visited.contains(c)) queue.add(c);
+                }
+            }
+        }
+        return false;
+    }
+
+    public static Pair<AbstractMinecart, AbstractMinecart> determineRoles(AbstractMinecart first, AbstractMinecart second) {
+        boolean firstIsLead = isLeadCart(first);
+        boolean secondIsLead = isLeadCart(second);
+        boolean firstIsTail = isTailCart(first);
+        boolean secondIsTail = isTailCart(second);
+
+        if (firstIsLead || secondIsTail) {
+            return Pair.of(first, second);
+        }
+        if (secondIsLead || firstIsTail) {
+            return Pair.of(second, first);
+        }
+
+        UUID firstChild = getCartChildUUID(first);
+        UUID firstParent = getCartParentUUID(first);
+        UUID secondChild = getCartChildUUID(second);
+        UUID secondParent = getCartParentUUID(second);
+
+        if (firstChild == null && secondParent == null) {
+            return Pair.of(first, second);
+        }
+        if (secondChild == null && firstParent == null) {
+            return Pair.of(second, first);
+        }
+
+        return Pair.of(first, second);
+    }
+
+    public static boolean isLeadCart(AbstractMinecart cart) {
+        return cart instanceof BasicLocomotiveEntity
+                || cart instanceof ElectricLocomotiveEntity
+                || cart instanceof TunnelBoreEntity;
+    }
+
+    public static boolean isTailCart(AbstractMinecart cart) {
+        return cart instanceof CabooseMinecartEntity;
+    }
+
+    public static boolean linkCarts(AbstractMinecart parent, AbstractMinecart child, ServerLevel level) {
+        if (parent == null || child == null) return false;
+        if (parent.getUUID().equals(child.getUUID())) return false;
+
+        // Check if already connected in same train
+        UUID currentParentChild = getCartChildUUID(parent);
+        UUID currentChildParent = getCartParentUUID(child);
+        if (child.getUUID().equals(currentParentChild) && parent.getUUID().equals(currentChildParent)) {
+            return true; // Already coupled
+        }
+
+        // Prevent circular loops
+        if (isConnectedInSameTrain(parent, child)) {
+            return false;
+        }
+
+        // Disconnect old child of parent if any
+        if (currentParentChild != null && !currentParentChild.equals(child.getUUID())) {
+            Entity oldChild = level.getEntity(currentParentChild);
+            if (oldChild instanceof AbstractMinecart oldChildCart) {
+                setCartParent(oldChildCart, null, level);
+            }
+        }
+
+        // Disconnect old parent of child if any
+        if (currentChildParent != null && !currentChildParent.equals(parent.getUUID())) {
+            Entity oldParent = level.getEntity(currentChildParent);
+            if (oldParent instanceof AbstractMinecart oldParentCart) {
+                setCartChild(oldParentCart, null, level);
+            }
+        }
+
+        setCartChild(parent, child.getUUID(), level);
+        setCartParent(child, parent.getUUID(), level);
+
+        // Attempt external mod linkage if present
+        try {
+            Class<?> chainableClass = Class.forName("org.fuseleaf.minecarttrainsfork.chaining.Chainable");
+            Method setParentChild = chainableClass.getMethod("setChainedParentChild", chainableClass, chainableClass);
+            setParentChild.invoke(null, parent, child);
+        } catch (Throwable ignored) {}
+
+        return true;
+    }
+
+    public static boolean unlinkCart(AbstractMinecart cart, ServerLevel level) {
+        if (cart == null) return false;
+
+        UUID parentId = getCartParentUUID(cart);
+        UUID childId = getCartChildUUID(cart);
+        boolean hadLinks = (parentId != null || childId != null);
+
+        if (parentId != null) {
+            Entity pEnt = level.getEntity(parentId);
+            if (pEnt instanceof AbstractMinecart pCart) {
+                setCartChild(pCart, null, level);
+            }
+        }
+
+        if (childId != null) {
+            Entity cEnt = level.getEntity(childId);
+            if (cEnt instanceof AbstractMinecart cCart) {
+                setCartParent(cCart, null, level);
+            }
+        }
+
+        setCartParent(cart, null, level);
+        setCartChild(cart, null, level);
+
+        // Attempt external mod unlink if present
+        try {
+            Class<?> chainableClass = Class.forName("org.fuseleaf.minecarttrainsfork.chaining.Chainable");
+            Class<?> connClass = Class.forName("org.fuseleaf.minecarttrainsfork.chaining.Connection");
+            Method unlinkMethod = connClass.getMethod("unlink", chainableClass, ServerLevel.class);
+            unlinkMethod.invoke(null, cart, level);
+            hadLinks = true;
+        } catch (Throwable ignored) {}
+
+        return hadLinks;
+    }
+}

@@ -2,7 +2,9 @@ package com.example.miningtools.network;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
+import com.example.miningtools.menu.ElectricLocomotiveMenu;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -38,11 +40,23 @@ public record LocomotiveRenamePayload(String trainName) implements CustomPacketP
                 loco.setTrainName(payload.trainName());
                 return;
             }
+            if (player.containerMenu instanceof ElectricLocomotiveMenu menu
+                    && menu.getContainer() instanceof ElectricLocomotiveEntity loco
+                    && !loco.isRemoved()
+                    && loco.stillValid(player)) {
+                loco.setTrainName(payload.trainName());
+                return;
+            }
             Entity vehicle = player.getVehicle();
             if (vehicle != null) {
                 BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
                 if (loco != null && !loco.isRemoved()) {
                     loco.setTrainName(payload.trainName());
+                    return;
+                }
+                ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+                if (elecLoco != null && !elecLoco.isRemoved()) {
+                    elecLoco.setTrainName(payload.trainName());
                 }
             }
         });

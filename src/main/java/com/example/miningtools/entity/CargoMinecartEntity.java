@@ -397,6 +397,9 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+        if (player.getItemInHand(hand).is(MiningTools.CROWBAR_ITEM.get())) {
+            return InteractionResult.PASS;
+        }
         return this.interactWithContainerVehicle(player);
     }
 

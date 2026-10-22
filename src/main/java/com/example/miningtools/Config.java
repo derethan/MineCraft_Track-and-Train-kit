@@ -10,6 +10,14 @@ public class Config {
     public static final ModConfigSpec.DoubleValue LOCOMOTIVE_MAX_SPEED;
     public static final ModConfigSpec.DoubleValue LOCOMOTIVE_ACCELERATION;
 
+    public static final ModConfigSpec.DoubleValue ELECTRIC_LOCOMOTIVE_MAX_SPEED;
+    public static final ModConfigSpec.DoubleValue ELECTRIC_LOCOMOTIVE_ACCELERATION;
+    public static final ModConfigSpec.IntValue ELECTRIC_LOCOMOTIVE_BATTERY_CAPACITY;
+    public static final ModConfigSpec.IntValue ELECTRIC_LOCOMOTIVE_FE_PER_TICK;
+
+    public static final ModConfigSpec.IntValue ELECTRIC_RAIL_CAPACITY;
+    public static final ModConfigSpec.IntValue ELECTRIC_RAIL_TRANSFER_RATE;
+
     static {
         BUILDER.push("locomotive");
 
@@ -25,6 +33,38 @@ public class Config {
         LOCOMOTIVE_ACCELERATION = BUILDER
                 .comment("Acceleration rate of the Basic Locomotive when starting up.")
                 .defineInRange("acceleration", 0.04D, 0.005D, 0.2D);
+
+        BUILDER.pop();
+
+        BUILDER.push("electric_locomotive");
+
+        ELECTRIC_LOCOMOTIVE_MAX_SPEED = BUILDER
+                .comment("Maximum travel speed of the Electric Bullet Train at Speed Level 5 (blocks per tick). Default 1.75 is 5x the Steam Locomotive max speed of 0.35.")
+                .defineInRange("maxSpeed", 1.75D, 0.2D, 5.0D);
+
+        ELECTRIC_LOCOMOTIVE_ACCELERATION = BUILDER
+                .comment("Acceleration rate of the Electric Bullet Train when starting up.")
+                .defineInRange("acceleration", 0.06D, 0.01D, 0.3D);
+
+        ELECTRIC_LOCOMOTIVE_BATTERY_CAPACITY = BUILDER
+                .comment("Internal battery capacity in FE of the Electric Bullet Train.")
+                .defineInRange("batteryCapacity", 100000, 1000, 10000000);
+
+        ELECTRIC_LOCOMOTIVE_FE_PER_TICK = BUILDER
+                .comment("Energy consumption in FE per tick at max speed (Level 5). Lower levels consume proportionately less.")
+                .defineInRange("energyPerTick", 40, 1, 2000);
+
+        BUILDER.pop();
+
+        BUILDER.push("electric_rail");
+
+        ELECTRIC_RAIL_CAPACITY = BUILDER
+                .comment("Energy capacity in FE for each Electric Rail block.")
+                .defineInRange("capacity", 10000, 500, 1000000);
+
+        ELECTRIC_RAIL_TRANSFER_RATE = BUILDER
+                .comment("Maximum FE per tick transferred into or between adjacent electric rails.")
+                .defineInRange("transferRate", 2000, 100, 50000);
 
         BUILDER.pop();
     }

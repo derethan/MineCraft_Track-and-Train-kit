@@ -22,6 +22,7 @@ public class TunnelBoreScreen extends AbstractContainerScreen<TunnelBoreMenu> {
     private static final Identifier LIT_PROGRESS_SPRITE = Identifier.withDefaultNamespace("container/furnace/lit_progress");
 
     private @Nullable Button toggleButton;
+    private @Nullable Button reverseButton;
 
     public TunnelBoreScreen(TunnelBoreMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 176, 166);
@@ -36,7 +37,15 @@ public class TunnelBoreScreen extends AbstractContainerScreen<TunnelBoreMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
                     }
-                }).bounds(this.leftPos + 108, this.topPos + 16, 58, 20).build()
+                }).bounds(this.leftPos + 106, this.topPos + 16, 62, 17).build()
+        );
+
+        this.reverseButton = this.addRenderableWidget(
+                Button.builder(this.getReverseButtonLabel(), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 1);
+                    }
+                }).bounds(this.leftPos + 106, this.topPos + 35, 62, 17).build()
         );
     }
 
@@ -46,21 +55,38 @@ public class TunnelBoreScreen extends AbstractContainerScreen<TunnelBoreMenu> {
         if (this.toggleButton != null) {
             this.toggleButton.setMessage(this.getToggleButtonLabel());
         }
+        if (this.reverseButton != null) {
+            this.reverseButton.setMessage(this.getReverseButtonLabel());
+        }
     }
 
     private Component getToggleButtonLabel() {
-        return this.menu.isRunning()
+        return this.menu.isForward()
                 ? Component.literal("Stop").withStyle(ChatFormatting.RED)
-                : Component.literal("Start").withStyle(ChatFormatting.GREEN);
+                : Component.literal("Forward").withStyle(ChatFormatting.GREEN);
+    }
+
+    private Component getReverseButtonLabel() {
+        return this.menu.isReversing()
+                ? Component.literal("Stop").withStyle(ChatFormatting.RED)
+                : Component.literal("Reverse").withStyle(ChatFormatting.GOLD);
     }
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         super.extractLabels(graphics, xm, ym);
-        Component statusText = this.menu.isRunning()
-                ? Component.literal("Running")
-                : Component.literal("Stopped");
-        int statusColor = this.menu.isRunning() ? 0xFF1E7A1E : 0xFF9E2020;
+        Component statusText;
+        int statusColor;
+        if (this.menu.isForward()) {
+            statusText = Component.literal("Forward");
+            statusColor = 0xFF1E7A1E;
+        } else if (this.menu.isReversing()) {
+            statusText = Component.literal("Reversing");
+            statusColor = 0xFFD4A017;
+        } else {
+            statusText = Component.literal("Stopped");
+            statusColor = 0xFF9E2020;
+        }
         graphics.text(this.font, statusText, 8, 22, statusColor, false);
     }
 

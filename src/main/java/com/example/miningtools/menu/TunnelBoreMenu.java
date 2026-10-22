@@ -77,14 +77,30 @@ public class TunnelBoreMenu extends AbstractContainerMenu {
         return Mth.clamp((float) this.data.get(0) / (float) total, 0.0F, 1.0F);
     }
 
+    public int getRunMode() {
+        return this.data.get(2);
+    }
+
     public boolean isRunning() {
-        return this.data.get(2) != 0;
+        return this.getRunMode() != 0;
+    }
+
+    public boolean isForward() {
+        return this.getRunMode() == 1;
+    }
+
+    public boolean isReversing() {
+        return this.getRunMode() == 2;
     }
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id == 0) {
-            int nextState = this.isRunning() ? 0 : 1;
+            int nextState = (this.getRunMode() == 1) ? 0 : 1;
+            this.data.set(2, nextState);
+            return true;
+        } else if (id == 1) {
+            int nextState = (this.getRunMode() == 2) ? 0 : 2;
             this.data.set(2, nextState);
             return true;
         }

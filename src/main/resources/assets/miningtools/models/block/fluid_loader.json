@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "miningtools:block/fluid_loader_side",
+    "up": "miningtools:block/fluid_loader_top",
+    "down": "miningtools:block/fluid_loader_bottom",
+    "north": "miningtools:block/fluid_loader_front",
+    "south": "miningtools:block/fluid_loader_side",
+    "east": "miningtools:block/fluid_loader_side",
+    "west": "miningtools:block/fluid_loader_side"
+  }
+}
