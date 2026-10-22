@@ -508,6 +508,9 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             double nextSpeed = currentSpeed + (maxSpeed - currentSpeed) * accel;
             double newVx = facing.getStepX() * nextSpeed;
             double newVz = facing.getStepZ() * nextSpeed;
+            if (currentSpeed < 1.0E-4D) {
+                this.setDeltaMovement(newVx, currentDelta.y, newVz);
+            }
 
             RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, this.level(), railPos, this);
 
@@ -584,6 +587,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 newVz = pow * zD / length;
             }
 
+            this.setDeltaMovement(newVx, 0.0, newVz);
             this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
 
             if (exit0.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit0.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit0.getZ()) {
@@ -618,11 +622,28 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.6F, 1.4F);
             } else {
-                Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
-                if (currentMoveDir.getAxis().isHorizontal()
-                        && actualMovement.horizontalDistanceSqr() > 1.0E-4D
-                        && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
-                    this.setFacing(currentMoveDir);
+                boolean isCurveShape = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+                if (isCurveShape) {
+                    Vec3i targetExit = (exit0.getX() != -facing.getStepX() || exit0.getZ() != -facing.getStepZ()) ? exit0 : exit1;
+                    Direction targetDir = Direction.getApproximateNearest(targetExit.getX(), 0.0, targetExit.getZ());
+                    if (targetDir.getAxis().isHorizontal() && targetDir.getAxis() != facing.getAxis()) {
+                        double entryEdgeX = railPos.getX() + 0.5 - facing.getStepX() * 0.5;
+                        double entryEdgeZ = railPos.getZ() + 0.5 - facing.getStepZ() * 0.5;
+                        double targetEdgeX = railPos.getX() + 0.5 + targetExit.getX() * 0.5;
+                        double targetEdgeZ = railPos.getZ() + 0.5 + targetExit.getZ() * 0.5;
+                        double distToEntrySqr = (this.getX() - entryEdgeX) * (this.getX() - entryEdgeX) + (this.getZ() - entryEdgeZ) * (this.getZ() - entryEdgeZ);
+                        double distToTargetSqr = (this.getX() - targetEdgeX) * (this.getX() - targetEdgeX) + (this.getZ() - targetEdgeZ) * (this.getZ() - targetEdgeZ);
+                        if (distToTargetSqr <= distToEntrySqr) {
+                            this.setFacing(targetDir);
+                        }
+                    }
+                } else {
+                    Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
+                    if (currentMoveDir.getAxis().isHorizontal()
+                            && actualMovement.horizontalDistanceSqr() > 1.0E-4D
+                            && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
+                        this.setFacing(currentMoveDir);
+                    }
                 }
             }
 
@@ -935,12 +956,21 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             double cY = initialPos.y;
             double cZ = initialPos.z;
 
+            Vec3 prevInitPos = (prev == this)
+                    ? new Vec3(initialLocoX, initialLocoY, initialLocoZ)
+                    : initialCartPositions.getOrDefault(prev.getUUID(), new Vec3(prev.getX(), prev.getY(), prev.getZ()));
+            double prevMoveX = prev.getX() - prevInitPos.x;
+            double prevMoveZ = prev.getZ() - prevInitPos.z;
+
             double dx = pX - cX;
             double dy = pY - cY;
             double dz = pZ - cZ;
             double currentDist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-            if (currentDist > 1.0E-4D && (currentDist > maxAllowed || currentDist < minAllowed)) {
+            double moveTowardCart = prevMoveX * (-dx) + prevMoveZ * (-dz);
+            double effectiveMinAllowed = (moveTowardCart < -1.0E-4D) ? 0.85D : minAllowed;
+
+            if (currentDist > 1.0E-4D && (currentDist > maxAllowed || currentDist < effectiveMinAllowed)) {
                 double diff = currentDist - targetDist;
                 double pullDist = Mth.clamp(diff, -maxStep, maxStep);
                 double moveRatio = pullDist / currentDist;
@@ -962,15 +992,60 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             return false;
         }
 
-        double initialX = cart.getX();
-        double initialZ = cart.getZ();
+        cart.setDeltaMovement(dirX, 0.0, dirZ);
 
-        double nextX = cart.getX() + dirX;
-        double nextZ = cart.getZ() + dirZ;
-        double nextY = cart.getY();
+        RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, this.level(), currentRail, cart);
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
 
+        double x = cart.getX();
+        double y = cart.getY();
+        double z = cart.getZ();
+        double initialX = x;
+        double initialZ = z;
+
+        double x0 = currentRail.getX() + 0.5 + exit0.getX() * 0.5;
+        double z0 = currentRail.getZ() + 0.5 + exit0.getZ() * 0.5;
+        double x1 = currentRail.getX() + 0.5 + exit1.getX() * 0.5;
+        double z1 = currentRail.getZ() + 0.5 + exit1.getZ() * 0.5;
+        double xD = x1 - x0;
+        double zD = z1 - z0;
+        double progress;
+        if (xD == 0.0) {
+            progress = z - currentRail.getZ();
+        } else if (zD == 0.0) {
+            progress = x - currentRail.getX();
+        } else {
+            double xx = x - x0;
+            double zz = z - z0;
+            progress = (xx * xD + zz * zD) * 2.0;
+        }
+
+        x = x0 + xD * progress;
+        z = z0 + zD * progress;
+
+        double stepMag = Math.sqrt(dirX * dirX + dirZ * dirZ);
+        double length = Math.sqrt(xD * xD + zD * zD);
+        double alignedDx = dirX;
+        double alignedDz = dirZ;
+        if (length > 0.0 && stepMag > 1.0E-5D) {
+            double flip = dirX * xD + dirZ * zD;
+            if (flip < 0.0) {
+                xD = -xD;
+                zD = -zD;
+            }
+            alignedDx = stepMag * xD / length;
+            alignedDz = stepMag * zD / length;
+        }
+
+        double nextX = x + alignedDx;
+        double nextZ = z + alignedDz;
+        double nextY = y;
+
+        cart.setDeltaMovement(alignedDx, 0.0, alignedDz);
         cart.setPos(nextX, nextY, nextZ);
-        Vec3 newRailPos = this.getRailPos(cart.getX(), cart.getY(), cart.getZ());
+        Vec3 newRailPos = this.getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
         if (newRailPos != null) {
             cart.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
         }

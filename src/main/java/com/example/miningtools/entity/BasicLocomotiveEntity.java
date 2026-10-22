@@ -523,6 +523,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     private void tickFuelAndMovement() {
+        if (this.hornRailCooldown > 0) {
+            this.hornRailCooldown--;
+        }
         if (this.running) {
             // Consume fuel
             if (this.fuel > 0) {
@@ -590,6 +593,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             double nextSpeed = currentSpeed + (maxSpeed - currentSpeed) * accel;
             double newVx = facing.getStepX() * nextSpeed;
             double newVz = facing.getStepZ() * nextSpeed;
+            if (currentSpeed < 1.0E-4D) {
+                this.setDeltaMovement(newVx, currentDelta.y, newVz);
+            }
 
             RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, this.level(), railPos, this);
 
@@ -668,6 +674,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 newVz = pow * zD / length;
             }
 
+            // Update deltaMovement before moving and snapping so rail queries see current velocity
+            this.setDeltaMovement(newVx, 0.0, newVz);
+
             // Move horizontally along track
             this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
 
@@ -708,12 +717,29 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.6F, 1.4F);
             } else {
-                // Update facing only if track turned around a curve (orthogonal axis change)
-                Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
-                if (currentMoveDir.getAxis().isHorizontal()
-                        && actualMovement.horizontalDistanceSqr() > 1.0E-4D
-                        && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
-                    this.setFacing(currentMoveDir);
+                // Update facing when turning around a curve (orthogonal axis change)
+                boolean isCurveShape = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+                if (isCurveShape) {
+                    Vec3i targetExit = (exit0.getX() != -facing.getStepX() || exit0.getZ() != -facing.getStepZ()) ? exit0 : exit1;
+                    Direction targetDir = Direction.getApproximateNearest(targetExit.getX(), 0.0, targetExit.getZ());
+                    if (targetDir.getAxis().isHorizontal() && targetDir.getAxis() != facing.getAxis()) {
+                        double entryEdgeX = railPos.getX() + 0.5 - facing.getStepX() * 0.5;
+                        double entryEdgeZ = railPos.getZ() + 0.5 - facing.getStepZ() * 0.5;
+                        double targetEdgeX = railPos.getX() + 0.5 + targetExit.getX() * 0.5;
+                        double targetEdgeZ = railPos.getZ() + 0.5 + targetExit.getZ() * 0.5;
+                        double distToEntrySqr = (this.getX() - entryEdgeX) * (this.getX() - entryEdgeX) + (this.getZ() - entryEdgeZ) * (this.getZ() - entryEdgeZ);
+                        double distToTargetSqr = (this.getX() - targetEdgeX) * (this.getX() - targetEdgeX) + (this.getZ() - targetEdgeZ) * (this.getZ() - targetEdgeZ);
+                        if (distToTargetSqr <= distToEntrySqr) {
+                            this.setFacing(targetDir);
+                        }
+                    }
+                } else {
+                    Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
+                    if (currentMoveDir.getAxis().isHorizontal()
+                            && actualMovement.horizontalDistanceSqr() > 1.0E-4D
+                            && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
+                        this.setFacing(currentMoveDir);
+                    }
                 }
             }
 
@@ -756,7 +782,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     public static boolean isPathBlockedByObstacle(Level level, BlockPos currentRailPos, Direction moveDir, Entity entity) {
         BlockState currentState = level.getBlockState(currentRailPos);
         if (BaseRailBlock.isRail(currentState)) {
-            RailShape currentShape = ((BaseRailBlock) currentState.getBlock()).getRailDirection(currentState, level, currentRailPos, null);
+            AbstractMinecart cartEntity = (entity instanceof AbstractMinecart m) ? m : null;
+            RailShape currentShape = ((BaseRailBlock) currentState.getBlock()).getRailDirection(currentState, level, currentRailPos, cartEntity);
             boolean isCurve = !currentShape.isSlope() && currentShape != RailShape.NORTH_SOUTH && currentShape != RailShape.EAST_WEST;
             if (isCurve) {
                 // If on a curve, the track bends into the curve exits
@@ -807,7 +834,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         }
 
         // For locomotive (which is 1.25m tall), also check clearancePos.above()
-        if (entity instanceof BasicLocomotiveEntity) {
+        if (entity instanceof BasicLocomotiveEntity || entity instanceof ElectricLocomotiveEntity) {
             BlockPos clearancePos2 = clearancePos.above();
             BlockState clearanceState2 = level.getBlockState(clearancePos2);
             if (!clearanceState2.isAir() && !clearanceState2.getCollisionShape(level, clearancePos2).isEmpty()) {
@@ -1337,6 +1364,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                     ? this.getAnchorPosFor(new Vec3(cart.getX(), cart.getY(), cart.getZ()))
                     : new Vec3(prev.getX(), prev.getY(), prev.getZ());
 
+            Vec3 prevInitPos = (prev == this)
+                    ? new Vec3(initialLocoX, initialLocoY, initialLocoZ)
+                    : initialCartPositions.getOrDefault(prev.getUUID(), new Vec3(prev.getX(), prev.getY(), prev.getZ()));
+            double prevMoveX = prev.getX() - prevInitPos.x;
+            double prevMoveZ = prev.getZ() - prevInitPos.z;
             double targetDist = TrainChainingUtil.getTargetCouplingDistance(prev, cart, prev == this);
             double minAllowed = moving ? (targetDist - 0.08D) : (targetDist - 0.12D);
             double maxAllowed = moving ? (targetDist + 0.08D) : (targetDist + 0.12D);
@@ -1345,6 +1377,12 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 diff = cartPos.subtract(anchorPos);
             double horizDist = diff.horizontalDistance();
             double trackDist = horizDist + 0.41421356D * Math.abs(diff.y);
+
+            // If prev moved away from cart this tick, prev is pulling cart behind it.
+            // Around a 90-degree curve, Euclidean chord distance shrinks below 1.30 even when
+            // rail arc distance is 1.38+, so do not push a pulled cart backwards on curves.
+            double moveTowardCart = prevMoveX * diff.x + prevMoveZ * diff.z;
+            double effectiveMinAllowed = (moveTowardCart < -1.0E-4D) ? 0.85D : minAllowed;
 
             double dirX;
             double dirZ;
@@ -1364,7 +1402,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                     blocked = true;
                     break;
                 }
-            } else if (trackDist < minAllowed) {
+            } else if (trackDist < effectiveMinAllowed) {
                 // Cart is ahead of or too close to anchor -> push cart along its rails away from anchor
                 double needed = Math.min(targetDist - trackDist, maxStep);
                 boolean success = this.moveCartAlongRails(cart, dirX, dirZ, needed);
@@ -1442,6 +1480,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             return !cart.horizontalCollision;
         }
 
+        // Set cart deltaMovement before querying rail direction so Wye/Junction rails see the active pull vector
+        cart.setDeltaMovement(dirX * distance3D, 0.0, dirZ * distance3D);
+
         RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, this.level(), railPos, cart);
         Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
         Vec3i exit0 = exits.getFirst();
@@ -1498,6 +1539,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             alignedVz = horizStep * zD / length;
         }
 
+        cart.setDeltaMovement(alignedVx, 0.0, alignedVz);
         cart.move(MoverType.SELF, new Vec3(alignedVx, 0.0, alignedVz));
 
         // Step down Y if exiting slope through the lower exit
