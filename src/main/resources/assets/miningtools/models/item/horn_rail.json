@@ -1,3 +1,6 @@
 {
-  "parent": "miningtools:block/horn_rail"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "miningtools:item/horn_rail"
+  }
 }
