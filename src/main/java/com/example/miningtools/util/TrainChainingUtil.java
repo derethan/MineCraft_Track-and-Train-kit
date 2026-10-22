@@ -14,7 +14,10 @@ import org.jspecify.annotations.Nullable;
 
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CabooseMinecartEntity;
+import com.example.miningtools.entity.CargoMinecartEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.entity.LargeLiquidMinecartEntity;
+import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
@@ -30,6 +33,67 @@ public final class TrainChainingUtil {
 
     public static final String TAG_PARENT_CART = "miningtools:parent_cart";
     public static final String TAG_CHILD_CART = "miningtools:child_cart";
+
+    public static final double COUPLER_GAP = 0.08D;
+
+    /**
+     * Returns the half-length radius (center to coupler bumper) of a train vehicle in blocks.
+     */
+    public static double getCartCouplerRadius(Entity entity) {
+        if (entity instanceof BasicLocomotiveEntity) {
+            // Steam locomotive frame is 25px long (1.56m) -> 0.78m radius
+            return 0.78D;
+        }
+        if (entity instanceof ElectricLocomotiveEntity) {
+            // Bullet train rear is 14px (0.88m)
+            return 0.88D;
+        }
+        if (entity instanceof LargeLiquidMinecartEntity) {
+            // Heavy DOT-111 tank car couplers extend to 128px * 0.14 = 17.92px = 1.12m
+            return 1.12D;
+        }
+        if (entity instanceof CabooseMinecartEntity) {
+            // Caboose porches and couplers extend to 108px * 0.14 = 15.12px = 0.95m
+            return 0.95D;
+        }
+        if (entity instanceof CargoMinecartEntity) {
+            // Flatbed logging / cargo cart couplers extend to 14px = 0.88m
+            return 0.88D;
+        }
+        if (entity instanceof LiquidMinecartEntity) {
+            // Compact short tank car couplers extend to ~86px * 0.14 = 12px = 0.75m
+            return 0.75D;
+        }
+        if (entity instanceof TunnelBoreEntity) {
+            // Tunnel bore rear bumper anchor
+            return 4.16D;
+        }
+        // Vanilla minecarts are 0.98m long -> 0.49m (~0.50m) radius
+        if (entity instanceof AbstractMinecart) {
+            return 0.50D;
+        }
+        return 0.60D;
+    }
+
+    /**
+     * Calculates the target distance between two linked vehicles on the rail.
+     * @param prev The forward entity (parent)
+     * @param next The trailing cart (child)
+     * @param isBumperAnchor True if the parent uses an anchor point already offset toward the bumper (e.g. BasicLocomotiveEntity.getAnchorPosFor)
+     * @return The target distance in blocks.
+     */
+    public static double getTargetCouplingDistance(Entity prev, Entity next, boolean isBumperAnchor) {
+        double nextRadius = getCartCouplerRadius(next);
+        if (isBumperAnchor) {
+            // The locomotive anchor is already offset by 0.36m toward the bumper.
+            // Locomotive total coupler radius is 0.78m, so remaining distance is 0.78 - 0.36 = 0.42m.
+            // 0.42m + 0.88m (Cargo Cart) + 0.08m = 1.38m (the exact distance between steam locomotive and first cargo cart).
+            return 0.42D + nextRadius + COUPLER_GAP;
+        }
+        double prevRadius = getCartCouplerRadius(prev);
+        return prevRadius + nextRadius + COUPLER_GAP;
+    }
+
 
     private static final Map<UUID, UUID> CLIENT_PARENT_MAP = new ConcurrentHashMap<>();
     private static final Map<UUID, UUID> CLIENT_CHILD_MAP = new ConcurrentHashMap<>();

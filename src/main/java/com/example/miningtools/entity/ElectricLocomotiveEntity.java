@@ -104,6 +104,8 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
     private boolean running = false;
     private int speedLevel = DEFAULT_SPEED_LEVEL;
     private boolean poweredFromRail = false;
+    private @Nullable BlockPos lastHornRailPos = null;
+    private int hornRailCooldown = 0;
 
     private final SimpleEnergyHandler battery = new SimpleEnergyHandler(
             Config.ELECTRIC_LOCOMOTIVE_BATTERY_CAPACITY.get(),
@@ -368,6 +370,12 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public void tick() {
+        if (this.hornRailCooldown > 0) {
+            this.hornRailCooldown--;
+            if (this.hornRailCooldown == 0) {
+                this.lastHornRailPos = null;
+            }
+        }
         super.tick();
 
         float targetYRot = this.getFacing().toYRot();
@@ -623,6 +631,10 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             if (currentRailState.is(MiningTools.CONTROL_RAIL.get()) && !currentRailState.getValue(PoweredRailBlock.POWERED)) {
                 this.stopLocomotiveFromRail();
             }
+            if (currentRailState.is(MiningTools.HORN_RAIL.get())) {
+                this.triggerHornRail(currentRail, currentRailState);
+            }
+
 
             if (this.running) {
                 this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
@@ -717,6 +729,20 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, newState ? 1.4F : 0.8F);
                 sendNotification(player, Component.literal(newState ? "Headlights: ON" : "Headlights: OFF").withStyle(newState ? net.minecraft.ChatFormatting.GREEN : net.minecraft.ChatFormatting.GRAY));
             }
+        }
+    }
+
+    public void triggerHornRail(BlockPos railPos, BlockState railState) {
+        if (this.level().isClientSide()) {
+            return;
+        }
+        if (railState.getValue(PoweredRailBlock.POWERED)) {
+            return;
+        }
+        if (this.hornRailCooldown <= 0 && !railPos.equals(this.lastHornRailPos)) {
+            this.blowHorn(null);
+            this.lastHornRailPos = railPos;
+            this.hornRailCooldown = 25;
         }
     }
 
@@ -886,21 +912,15 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         if (links.isEmpty()) return false;
 
         boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
-        if (!moving) {
-            for (Pair<Entity, AbstractMinecart> link : links) {
-                link.getSecond().setDeltaMovement(Vec3.ZERO);
-            }
-            return false;
-        }
-
-        double targetDist = 1.38D;
-        double minAllowed = 1.30D;
-        double maxAllowed = 1.46D;
-        double maxStep = Math.max(this.getLocomotiveSpeed() * 1.6D, 0.35D);
+        double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.35D) : 0.15D;
 
         for (Pair<Entity, AbstractMinecart> link : links) {
             Entity prev = link.getFirst();
             AbstractMinecart c = link.getSecond();
+
+            double targetDist = TrainChainingUtil.getTargetCouplingDistance(prev, c, false);
+            double minAllowed = moving ? (targetDist - 0.08D) : (targetDist - 0.12D);
+            double maxAllowed = moving ? (targetDist + 0.08D) : (targetDist + 0.12D);
 
             Vec3 initialPos = initialCartPositions.get(c.getUUID());
             if (initialPos == null) {
