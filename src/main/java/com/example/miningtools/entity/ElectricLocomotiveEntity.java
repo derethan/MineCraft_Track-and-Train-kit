@@ -20,6 +20,7 @@ import com.example.miningtools.MiningTools;
 import com.example.miningtools.block.entity.ElectricRailBlockEntity;
 import com.example.miningtools.menu.ElectricLocomotiveMenu;
 import com.example.miningtools.network.LocomotiveControlPayload;
+import com.example.miningtools.util.TrainChainingUtil;
 import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -66,6 +67,7 @@ import net.neoforged.neoforge.transfer.access.ItemAccess;
 import net.neoforged.neoforge.transfer.energy.EnergyHandler;
 import net.neoforged.neoforge.transfer.energy.EnergyHandlerUtil;
 import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 
 public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
     public static final int INVENTORY_SIZE = 1;
@@ -89,6 +91,8 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
     private static @Nullable Method GET_PARENT_UUID_METHOD = null;
     private static boolean CHECKED_PARENT_UUID_METHOD = false;
+    private static @Nullable Method GET_CHILD_UUID_METHOD = null;
+    private static boolean CHECKED_CHILD_UUID_METHOD = false;
 
     public static final int MIN_SPEED_LEVEL = 1;
     public static final int MAX_SPEED_LEVEL = 5;
@@ -336,6 +340,10 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+        if (player.getItemInHand(hand).is(MiningTools.CROWBAR_ITEM.get())) {
+            return InteractionResult.PASS;
+        }
+
         if (player.isShiftKeyDown()) {
             if (!this.level().isClientSide()) {
                 player.openMenu(this);
@@ -469,7 +477,10 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 hasPower = true;
             } else if (this.battery.getAmountAsInt() >= cost) {
                 // Coasting over unpowered rails/switches/curves using onboard battery!
-                this.battery.extract(cost, null);
+                try (Transaction tx = Transaction.open(null)) {
+                    this.battery.extract(cost, tx);
+                    tx.commit();
+                }
                 hasPower = true;
             } else {
                 // Out of power
@@ -763,87 +774,65 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     // Train chaining implementation
-    public static @Nullable UUID getCartParentUUID(AbstractMinecart cart) {
-        if (!CHECKED_PARENT_UUID_METHOD) {
-            CHECKED_PARENT_UUID_METHOD = true;
-            try {
-                Class<?> utilClass = Class.forName("com.railwayteam.railways.util.TrainLinkUtil");
-                GET_PARENT_UUID_METHOD = utilClass.getMethod("getParentUUID", AbstractMinecart.class);
-            } catch (Throwable ignored) {}
-        }
-        if (GET_PARENT_UUID_METHOD != null) {
-            try {
-                return (UUID) GET_PARENT_UUID_METHOD.invoke(null, cart);
-            } catch (Throwable ignored) {}
-        }
-        return null;
+    public static @Nullable UUID getCartParentUUID(Entity entity) {
+        return TrainChainingUtil.getCartParentUUID(entity);
     }
 
-    public static @Nullable UUID getCartChildUUID(AbstractMinecart cart) {
-        try {
-            Class<?> utilClass = Class.forName("com.railwayteam.railways.util.TrainLinkUtil");
-            Method method = utilClass.getMethod("getChildUUID", AbstractMinecart.class);
-            return (UUID) method.invoke(null, cart);
-        } catch (Throwable ignored) {}
-        return null;
+    public static @Nullable UUID getCartChildUUID(Entity entity) {
+        return TrainChainingUtil.getCartChildUUID(entity);
+    }
+
+
+    public List<AbstractMinecart> getConnectedTrainCarts() {
+        List<AbstractMinecart> result = new ArrayList<>();
+        for (Pair<Entity, AbstractMinecart> link : this.getOrderedTrainLinks()) {
+            result.add(link.getSecond());
+        }
+        return result;
     }
 
     public boolean isChainedTo(Entity entity) {
-        if (!(entity instanceof AbstractMinecart cart)) return false;
-        List<Pair<Entity, AbstractMinecart>> links = this.getOrderedTrainLinks();
-        for (Pair<Entity, AbstractMinecart> link : links) {
-            if (link.getSecond().getUUID().equals(cart.getUUID())) return true;
+        if (entity instanceof AbstractMinecart cart) {
+            UUID id = cart.getUUID();
+            UUID p = getCartParentUUID(this);
+            UUID c = getCartChildUUID(this);
+            if (id.equals(p) || id.equals(c)) return true;
+            UUID ep = getCartParentUUID(cart);
+            UUID ec = getCartChildUUID(cart);
+            if (this.getUUID().equals(ep) || this.getUUID().equals(ec)) return true;
+            for (AbstractMinecart tc : this.getConnectedTrainCarts()) {
+                if (tc.getUUID().equals(id)) return true;
+            }
         }
         return false;
     }
 
     public List<Pair<Entity, AbstractMinecart>> getOrderedTrainLinks() {
-        List<Pair<Entity, AbstractMinecart>> chain = new ArrayList<>();
+        List<Pair<Entity, AbstractMinecart>> result = new ArrayList<>();
         Set<UUID> visited = new HashSet<>();
         visited.add(this.getUUID());
 
-        Entity currentParent = this;
-        while (currentParent != null) {
-            AbstractMinecart nextCart = this.findCartBehind(currentParent, visited);
-            if (nextCart != null) {
-                visited.add(nextCart.getUUID());
-                chain.add(Pair.of(currentParent, nextCart));
-                currentParent = nextCart;
-            } else {
-                currentParent = null;
-            }
-        }
-        return chain;
-    }
+        Deque<Pair<Entity, UUID>> toCheck = new ArrayDeque<>();
+        UUID p = getCartParentUUID(this);
+        if (p != null) toCheck.add(Pair.of(this, p));
+        UUID c = getCartChildUUID(this);
+        if (c != null) toCheck.add(Pair.of(this, c));
 
-    private @Nullable AbstractMinecart findCartBehind(Entity parent, Set<UUID> visited) {
-        if (parent instanceof AbstractMinecart mcParent) {
-            UUID childId = getCartChildUUID(mcParent);
-            if (childId != null && !visited.contains(childId)) {
-                Entity ent = this.level().getEntity(childId);
-                if (ent instanceof AbstractMinecart directChild && !directChild.isRemoved()) {
-                    return directChild;
+        while (!toCheck.isEmpty()) {
+            Pair<Entity, UUID> next = toCheck.poll();
+            UUID nextId = next.getSecond();
+            if (nextId != null && visited.add(nextId)) {
+                Entity ent = this.level().getEntity(nextId);
+                if (ent instanceof AbstractMinecart cart && !cart.isRemoved()) {
+                    result.add(Pair.of(next.getFirst(), cart));
+                    UUID cp = getCartParentUUID(cart);
+                    if (cp != null && !visited.contains(cp)) toCheck.add(Pair.of(cart, cp));
+                    UUID cc = getCartChildUUID(cart);
+                    if (cc != null && !visited.contains(cc)) toCheck.add(Pair.of(cart, cc));
                 }
             }
         }
-
-        AABB searchBox = parent.getBoundingBox().inflate(3.5D);
-        List<AbstractMinecart> carts = this.level().getEntitiesOfClass(
-                AbstractMinecart.class,
-                searchBox,
-                c -> !c.getUUID().equals(parent.getUUID()) && !visited.contains(c.getUUID()) && !c.isRemoved()
-        );
-
-        AbstractMinecart nearest = null;
-        double nearestDistSq = Double.MAX_VALUE;
-        for (AbstractMinecart c : carts) {
-            double dSq = parent.distanceToSqr(c);
-            if (dSq < nearestDistSq) {
-                nearestDistSq = dSq;
-                nearest = c;
-            }
-        }
-        return nearest;
+        return result;
     }
 
     public static @Nullable ElectricLocomotiveEntity getConnectedLocomotive(Entity entity) {
@@ -897,10 +886,17 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         if (links.isEmpty()) return false;
 
         boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
+        if (!moving) {
+            for (Pair<Entity, AbstractMinecart> link : links) {
+                link.getSecond().setDeltaMovement(Vec3.ZERO);
+            }
+            return false;
+        }
+
         double targetDist = 1.38D;
-        double minAllowed = moving ? 1.30D : 1.25D;
-        double maxAllowed = moving ? 1.46D : 1.50D;
-        double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.35D) : 0.08D;
+        double minAllowed = 1.30D;
+        double maxAllowed = 1.46D;
+        double maxStep = Math.max(this.getLocomotiveSpeed() * 1.6D, 0.35D);
 
         for (Pair<Entity, AbstractMinecart> link : links) {
             Entity prev = link.getFirst();

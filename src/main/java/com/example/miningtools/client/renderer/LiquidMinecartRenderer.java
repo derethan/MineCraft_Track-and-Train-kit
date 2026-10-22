@@ -86,7 +86,7 @@ public class LiquidMinecartRenderer extends AbstractMinecartRenderer<LiquidMinec
             poseStack.rotateDegrees(Axis.XP, Mth.sin(hurt) * hurt * state.damageTime / 10.0F * state.hurtDir);
         }
 
-        poseStack.scale(-1.0F, -1.0F, 1.0F);
+        poseStack.scale(-0.14F, -0.14F, 0.14F);
 
         submitNodeCollector.submitModel(
                 this.liquidCartModel,

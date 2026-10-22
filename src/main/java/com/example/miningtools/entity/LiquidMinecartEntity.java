@@ -34,31 +34,40 @@ import net.neoforged.neoforge.transfer.fluid.FluidStacksResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidUtil;
 
 public class LiquidMinecartEntity extends AbstractMinecart {
-    public static final int TANK_CAPACITY = 16 * FluidType.BUCKET_VOLUME; // 16,000 mB
+    public static final int DEFAULT_TANK_CAPACITY = 8 * FluidType.BUCKET_VOLUME; // 8,000 mB (8 Buckets)
 
     private static final EntityDataAccessor<String> DATA_FLUID_NAME =
             SynchedEntityData.defineId(LiquidMinecartEntity.class, EntityDataSerializers.STRING);
     private static final EntityDataAccessor<Integer> DATA_FLUID_AMOUNT =
             SynchedEntityData.defineId(LiquidMinecartEntity.class, EntityDataSerializers.INT);
 
-    private final FluidStacksResourceHandler tank = new FluidStacksResourceHandler(1, TANK_CAPACITY) {
-        @Override
-        protected void onContentsChanged(int index, FluidStack previousStack) {
-            super.onContentsChanged(index, previousStack);
-            LiquidMinecartEntity.this.syncFluidData();
-        }
-    };
+    protected final FluidStacksResourceHandler tank;
 
     public LiquidMinecartEntity(EntityType<? extends LiquidMinecartEntity> type, Level level) {
         super(type, level);
+        this.tank = new FluidStacksResourceHandler(1, this.getCapacity()) {
+            @Override
+            protected void onContentsChanged(int index, FluidStack previousStack) {
+                super.onContentsChanged(index, previousStack);
+                LiquidMinecartEntity.this.syncFluidData();
+            }
+        };
     }
 
     public LiquidMinecartEntity(Level level, double x, double y, double z) {
-        super(MiningTools.LIQUID_MINECART_ENTITY.get(), level);
+        this(MiningTools.LIQUID_MINECART_ENTITY.get(), level);
         this.setPos(x, y, z);
         this.xo = x;
         this.yo = y;
         this.zo = z;
+    }
+
+    public int getCapacity() {
+        return DEFAULT_TANK_CAPACITY;
+    }
+
+    public String getCartDisplayName() {
+        return "Liquid Minecart (Small)";
     }
 
     @Override
@@ -89,7 +98,7 @@ public class LiquidMinecartEntity extends AbstractMinecart {
     }
 
     public float getFillRatio() {
-        return (float) getFluidAmount() / (float) TANK_CAPACITY;
+        return (float) getFluidAmount() / (float) getCapacity();
     }
 
     public void syncFluidData() {
@@ -109,6 +118,9 @@ public class LiquidMinecartEntity extends AbstractMinecart {
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
         ItemStack held = player.getItemInHand(hand);
+        if (held.is(MiningTools.CROWBAR_ITEM.get())) {
+            return InteractionResult.PASS;
+        }
         if (!held.isEmpty()) {
             boolean success = FluidUtil.interactWithFluidHandler(player, hand, this.blockPosition(), this.tank, null);
             if (success) {
@@ -121,10 +133,10 @@ public class LiquidMinecartEntity extends AbstractMinecart {
         FluidStack stored = getStoredFluid();
         Component msg;
         if (stored.isEmpty()) {
-            msg = Component.literal("Liquid Cart: Empty (0 / " + TANK_CAPACITY + " mB)");
+            msg = Component.literal(getCartDisplayName() + ": Empty (0 / " + getCapacity() + " mB)");
         } else {
             String fluidDesc = stored.getHoverName().getString();
-            msg = Component.literal("Liquid Cart: " + fluidDesc + " (" + stored.getAmount() + " / " + TANK_CAPACITY + " mB)");
+            msg = Component.literal(getCartDisplayName() + ": " + fluidDesc + " (" + stored.getAmount() + " / " + getCapacity() + " mB)");
         }
         player.sendOverlayMessage(msg);
         return InteractionResult.SUCCESS;

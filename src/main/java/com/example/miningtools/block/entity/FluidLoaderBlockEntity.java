@@ -166,9 +166,9 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
         // 1. Process bucket input/output slots
         blockEntity.tickBucketSlots();
 
-        // 2. Scan for minecart on the track above
+        // 2. Scan for minecart on the track above (generous 1.2-block horizontal expansion to catch any cart size)
         BlockPos trackPos = pos.above();
-        AABB trackBox = new AABB(trackPos).inflate(0.5, 0.5, 0.5);
+        AABB trackBox = new AABB(trackPos).inflate(1.2, 0.6, 1.2);
         List<Entity> entities = level.getEntities((Entity) null, trackBox, e -> e.isAlive() && !e.isRemoved());
 
         Entity targetCart = null;

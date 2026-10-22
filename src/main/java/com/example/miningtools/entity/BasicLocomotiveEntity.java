@@ -18,6 +18,7 @@ import com.example.miningtools.Config;
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.network.LocomotiveControlPayload;
+import com.example.miningtools.util.TrainChainingUtil;
 import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
@@ -378,6 +379,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand, Vec3 location) {
+        if (player.getItemInHand(hand).is(MiningTools.CROWBAR_ITEM.get())) {
+            return InteractionResult.PASS;
+        }
+
         if (player.isShiftKeyDown()) {
             if (!this.level().isClientSide()) {
                 player.openMenu(this);
@@ -435,15 +440,15 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 double chimneyZ = this.getZ() + Math.sin(rad) * chimneyForward;
                 double chimneyY = this.getY() + 1.25;
 
-                // Black coal smoke
-                if (this.random.nextInt(2) == 0) {
-                    this.level().addParticle(ParticleTypes.CAMPFIRE_COSY_SMOKE, chimneyX, chimneyY, chimneyZ,
-                            Math.cos(rad) * 0.02, 0.08, Math.sin(rad) * 0.02);
-                }
-                // White steam puffs
+                // Transparent coal smoke
                 if (this.random.nextInt(3) == 0) {
+                    this.level().addParticle(ParticleTypes.SMOKE, chimneyX, chimneyY, chimneyZ,
+                            Math.cos(rad) * 0.02, 0.06, Math.sin(rad) * 0.02);
+                }
+                // Light steam puffs
+                if (this.random.nextInt(4) == 0) {
                     this.level().addParticle(ParticleTypes.POOF, chimneyX, chimneyY, chimneyZ,
-                            0.0, 0.04, 0.0);
+                            0.0, 0.03, 0.0);
                 }
             }
             if (this.isHeadlightActive() && this.random.nextInt(8) == 0) {
@@ -922,38 +927,13 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     private static boolean CHECKED_CHILD_UUID_METHOD = false;
 
     public static @Nullable UUID getCartParentUUID(Entity entity) {
-        if (!CHECKED_PARENT_UUID_METHOD) {
-            CHECKED_PARENT_UUID_METHOD = true;
-            try {
-                GET_PARENT_UUID_METHOD = entity.getClass().getMethod("getParentUUID");
-            } catch (Throwable ignored) {
-            }
-        }
-        if (GET_PARENT_UUID_METHOD != null) {
-            try {
-                return (UUID) GET_PARENT_UUID_METHOD.invoke(entity);
-            } catch (Throwable ignored) {
-            }
-        }
-        return null;
+        return TrainChainingUtil.getCartParentUUID(entity);
     }
 
     public static @Nullable UUID getCartChildUUID(Entity entity) {
-        if (!CHECKED_CHILD_UUID_METHOD) {
-            CHECKED_CHILD_UUID_METHOD = true;
-            try {
-                GET_CHILD_UUID_METHOD = entity.getClass().getMethod("getChildUUID");
-            } catch (Throwable ignored) {
-            }
-        }
-        if (GET_CHILD_UUID_METHOD != null) {
-            try {
-                return (UUID) GET_CHILD_UUID_METHOD.invoke(entity);
-            } catch (Throwable ignored) {
-            }
-        }
-        return null;
+        return TrainChainingUtil.getCartChildUUID(entity);
     }
+
 
     public List<AbstractMinecart> getConnectedTrainCarts() {
         List<AbstractMinecart> result = new ArrayList<>();
@@ -1171,8 +1151,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         double whistleY = this.getY() + 1.45;
 
         if (this.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, whistleX, whistleY, whistleZ, 12, 0.05, 0.25, 0.05, 0.03);
-            serverLevel.sendParticles(ParticleTypes.CLOUD, whistleX, whistleY, whistleZ, 6, 0.04, 0.12, 0.04, 0.02);
+            serverLevel.sendParticles(ParticleTypes.SMOKE, whistleX, whistleY, whistleZ, 6, 0.05, 0.15, 0.05, 0.02);
+            serverLevel.sendParticles(ParticleTypes.CLOUD, whistleX, whistleY, whistleZ, 4, 0.04, 0.08, 0.04, 0.02);
         }
 
         AABB scareBox = this.getBoundingBox().inflate(12.0, 4.0, 12.0);

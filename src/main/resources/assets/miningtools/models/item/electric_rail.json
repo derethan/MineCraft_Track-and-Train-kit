@@ -1,6 +1,3 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {
-    "layer0": "miningtools:item/electric_rail"
-  }
+  "parent": "miningtools:block/electric_rail"
 }

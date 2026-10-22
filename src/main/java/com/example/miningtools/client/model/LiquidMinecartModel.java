@@ -12,91 +12,86 @@ import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 
+/**
+ * Compact Shorty DOT-111 / DOT-117 Pressurized Tank Car (8,000 mB / 8 Buckets).
+ * ~1.5 blocks long on a 4-wheel / 2-axle frame.
+ */
 @OnlyIn(Dist.CLIENT)
 public class LiquidMinecartModel extends EntityModel<LiquidMinecartRenderState> {
-    private final ModelPart tankMain;
-    private final ModelPart tankDome;
-
     public LiquidMinecartModel(ModelPart root) {
         super(root);
-        this.tankMain = root.getChild("tank_main");
-        this.tankDome = root.getChild("tank_dome");
     }
 
     public static LayerDefinition createBodyLayer() {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
 
-        // 1. Flatbed Deck & Undercarriage Frame (Matches CargoMinecart exactly)
         root.addOrReplaceChild(
-                "chassis",
+                "body",
                 CubeListBuilder.create()
-                        // Diamond-plate flatbed deck (24 x 2 x 16)
-                        .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
-                        // Undercarriage center beam (18 x 2 x 8)
-                        .texOffs(0, 20).addBox(-9.0F, 4.0F, -4.0F, 18.0F, 2.0F, 8.0F)
-                        // Front Coupler / Hitch (2 x 2 x 4)
-                        .texOffs(0, 32).addBox(-14.0F, 3.0F, -2.0F, 2.0F, 2.0F, 4.0F)
-                        // Back Coupler / Hitch (2 x 2 x 4)
-                        .texOffs(0, 32).addBox(12.0F, 3.0F, -2.0F, 2.0F, 2.0F, 4.0F)
-                        // 4 Rail Wheels (Flanged steel wheels tucked under the deck)
-                        .texOffs(54, 20).addBox(-8.0F, 3.0F, -7.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(68, 20).addBox(4.0F, 3.0F, -7.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(82, 20).addBox(-8.0F, 3.0F, 5.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(96, 20).addBox(4.0F, 3.0F, 5.0F, 4.0F, 4.0F, 2.0F),
+                        // 1. Compact Cylindrical Tank Shell (dx=128, dz=80, dy=56)
+                        .texOffs(0, 780).addBox(-64.0F, -42.0F, -40.0F, 128.0F, 56.0F, 80.0F)
+                        // Top Curved Shell (dx=128, dz=56, dy=12)
+                        .texOffs(420, 780).addBox(-64.0F, -54.0F, -28.0F, 128.0F, 12.0F, 56.0F)
+                        // Bottom Curved Shell (dx=128, dz=56, dy=12)
+                        .texOffs(420, 852).addBox(-64.0F, 14.0F, -28.0F, 128.0F, 12.0F, 56.0F)
+                        // Upper Bevel Transition (dx=128, dz=72, dy=16)
+                        .texOffs(420, 924).addBox(-64.0F, -48.0F, -36.0F, 128.0F, 16.0F, 72.0F)
+                        // Lower Bevel Transition (dx=128, dz=72, dy=16)
+                        .texOffs(0, 920).addBox(-64.0F, 4.0F, -36.0F, 128.0F, 16.0F, 72.0F)
+
+                        // 2. Front Hemispherical End Caps (Facing X-)
+                        .texOffs(550, 0).addBox(-70.0F, -44.0F, -34.0F, 6.0F, 60.0F, 68.0F)
+                        .texOffs(550, 136).addBox(-74.0F, -37.0F, -26.0F, 4.0F, 46.0F, 52.0F)
+                        .texOffs(550, 244).addBox(-77.0F, -30.0F, -18.0F, 3.0F, 32.0F, 36.0F)
+
+                        // 3. Rear Hemispherical End Caps (Facing X+)
+                        .texOffs(720, 0).addBox(64.0F, -44.0F, -34.0F, 6.0F, 60.0F, 68.0F)
+                        .texOffs(720, 136).addBox(70.0F, -37.0F, -26.0F, 4.0F, 46.0F, 52.0F)
+                        .texOffs(720, 244).addBox(74.0F, -30.0F, -18.0F, 3.0F, 32.0F, 36.0F)
+
+                        // 4. Center Sill Underframe (152 x 8 x 20)
+                        .texOffs(500, 470).addBox(-76.0F, 26.0F, -10.0F, 152.0F, 8.0F, 20.0F)
+
+                        // 5. End Walkways / Platforms (16 x 4 x 48)
+                        .texOffs(550, 310).addBox(-80.0F, 25.0F, -24.0F, 16.0F, 4.0F, 48.0F)
+                        .texOffs(720, 310).addBox(64.0F, 25.0F, -24.0F, 16.0F, 4.0F, 48.0F)
+
+                        // 6. Coupler Knuckle Boxes (12 x 6 x 8)
+                        .texOffs(890, 0).addBox(-92.0F, 27.0F, -4.0F, 12.0F, 6.0F, 8.0F)
+                        .texOffs(890, 24).addBox(80.0F, 27.0F, -4.0F, 12.0F, 6.0F, 8.0F)
+
+                        // 7. Bolster Cradle Saddles (16 x 8 x 44)
+                        .texOffs(550, 382).addBox(-44.0F, 20.0F, -22.0F, 16.0F, 8.0F, 44.0F)
+                        .texOffs(700, 382).addBox(28.0F, 20.0F, -22.0F, 16.0F, 8.0F, 44.0F)
+
+                        // 8. Underbody Sump Valve
+                        .texOffs(850, 382).addBox(-6.0F, 26.0F, -6.0F, 12.0F, 8.0F, 12.0F)
+
+                        // 9. Top Dome, Inspection Lid, Grating Catwalk, Handrails & Side Ladder
+                        .texOffs(0, 506).addBox(-12.0F, -60.0F, -12.0F, 24.0F, 6.0F, 24.0F)
+                        .texOffs(98, 506).addBox(-7.0F, -62.0F, -7.0F, 14.0F, 2.0F, 14.0F)
+                        .texOffs(256, 506).addBox(-20.0F, -56.0F, -14.0F, 40.0F, 2.0F, 28.0F)
+                        .texOffs(0, 556).addBox(-20.0F, -68.0F, -14.0F, 40.0F, 12.0F, 2.0F)
+                        .texOffs(134, 556).addBox(-20.0F, -68.0F, 12.0F, 40.0F, 12.0F, 2.0F)
+                        .texOffs(272, 556).addBox(-4.0F, -54.0F, -42.0F, 8.0F, 64.0F, 2.0F)
+
+                        // 10. Front Wheel Axle (X = -44)
+                        .texOffs(152, 650).addBox(-56.0F, 38.0F, -43.0F, 24.0F, 8.0F, 2.0F)
+                        .texOffs(152, 672).addBox(-56.0F, 38.0F, 41.0F, 24.0F, 8.0F, 2.0F)
+                        .texOffs(272, 650).addBox(-52.0F, 38.0F, -41.0F, 16.0F, 16.0F, 4.0F)
+                        .texOffs(316, 650).addBox(-52.0F, 38.0F, 37.0F, 16.0F, 16.0F, 4.0F)
+                        .texOffs(0, 468).addBox(-45.0F, 45.0F, -37.0F, 2.0F, 2.0F, 74.0F)
+
+                        // 11. Rear Wheel Axle (X = 44)
+                        .texOffs(152, 720).addBox(32.0F, 38.0F, -43.0F, 24.0F, 8.0F, 2.0F)
+                        .texOffs(152, 742).addBox(32.0F, 38.0F, 41.0F, 24.0F, 8.0F, 2.0F)
+                        .texOffs(360, 650).addBox(36.0F, 38.0F, -41.0F, 16.0F, 16.0F, 4.0F)
+                        .texOffs(404, 650).addBox(36.0F, 38.0F, 37.0F, 16.0F, 16.0F, 4.0F)
+                        .texOffs(0, 468).addBox(43.0F, 45.0F, -37.0F, 2.0F, 2.0F, 74.0F),
                 PartPose.ZERO
         );
 
-        // 2. Heavy Saddle Cradle & Hold-Down Straps
-        root.addOrReplaceChild(
-                "cradle",
-                CubeListBuilder.create()
-                        // Front wooden/steel saddle support
-                        .texOffs(64, 40).addBox(-8.0F, 0.5F, -7.0F, 3.0F, 2.0F, 14.0F)
-                        // Back wooden/steel saddle support
-                        .texOffs(64, 40).addBox(5.0F, 0.5F, -7.0F, 3.0F, 2.0F, 14.0F)
-                        // Front strap
-                        .texOffs(80, 0).addBox(-7.5F, -9.0F, -6.2F, 2.0F, 10.0F, 0.5F)
-                        .texOffs(80, 0).addBox(-7.5F, -9.0F, 5.7F, 2.0F, 10.0F, 0.5F)
-                        .texOffs(80, 10).addBox(-7.5F, -9.2F, -6.2F, 2.0F, 0.5F, 12.4F)
-                        // Back strap
-                        .texOffs(88, 0).addBox(5.5F, -9.0F, -6.2F, 2.0F, 10.0F, 0.5F)
-                        .texOffs(88, 0).addBox(5.5F, -9.0F, 5.7F, 2.0F, 10.0F, 0.5F)
-                        .texOffs(88, 10).addBox(5.5F, -9.2F, -6.2F, 2.0F, 0.5F, 12.4F),
-                PartPose.ZERO
-        );
-
-        // 3. Main Cylindrical Tank Boiler & End Caps
-        root.addOrReplaceChild(
-                "tank_main",
-                CubeListBuilder.create()
-                        // Main boiler tank cylinder (20 x 9.5 x 12)
-                        .texOffs(0, 40).addBox(-10.0F, -8.5F, -6.0F, 20.0F, 9.5F, 12.0F)
-                        // Front rounded dome end cap (2 x 7.5 x 10)
-                        .texOffs(0, 64).addBox(-11.5F, -7.5F, -5.0F, 2.0F, 7.5F, 10.0F)
-                        // Back rounded dome end cap (2 x 7.5 x 10)
-                        .texOffs(24, 64).addBox(9.5F, -7.5F, -5.0F, 2.0F, 7.5F, 10.0F),
-                PartPose.ZERO
-        );
-
-        // 4. Tank Top Manhole Dome & Pressure Valve
-        root.addOrReplaceChild(
-                "tank_dome",
-                CubeListBuilder.create()
-                        // Manhole access dome (5 x 2 x 5)
-                        .texOffs(0, 84).addBox(-2.5F, -10.5F, -2.5F, 5.0F, 2.0F, 5.0F)
-                        // Top inspection hatch lid (4 x 0.5 x 4)
-                        .texOffs(20, 84).addBox(-2.0F, -11.0F, -2.0F, 4.0F, 0.5F, 4.0F)
-                        // Pressure relief valve / breather pipe
-                        .texOffs(36, 84).addBox(4.0F, -10.5F, -1.0F, 1.5F, 2.0F, 2.0F),
-                PartPose.ZERO
-        );
-
-        return LayerDefinition.create(mesh, 128, 128);
-    }
-
-    @Override
-    public void setupAnim(LiquidMinecartRenderState state) {
-        super.setupAnim(state);
+        return LayerDefinition.create(mesh, 1024, 1024);
     }
 }

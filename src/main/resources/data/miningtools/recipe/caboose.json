@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "E": "minecraft:ender_pearl",
+    "L": "minecraft:lantern",
+    "M": "minecraft:minecart"
+  },
+  "pattern": [
+    " L ",
+    "IEI",
+    " M "
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:caboose"
+  }
+}
