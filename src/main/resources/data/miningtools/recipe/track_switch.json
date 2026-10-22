@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "redstone",
+  "key": {
+    "R": "minecraft:redstone_torch",
+    "L": "minecraft:lever",
+    "I": "minecraft:iron_ingot"
+  },
+  "pattern": [
+    " R ",
+    "ILI",
+    " I "
+  ],
+  "result": {
+    "count": 2,
+    "id": "miningtools:track_switch"
+  }
+}

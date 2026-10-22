@@ -160,7 +160,8 @@ public class WyeRailBlock extends BaseRailBlock {
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Direction facing = context.getHorizontalDirection();
-        boolean powered = context.getLevel().hasNeighborSignal(context.getClickedPos());
+        Boolean switchState = TrackSwitchBlock.getAdjacentSwitchState(context.getLevel(), context.getClickedPos());
+        boolean powered = switchState != null ? switchState : context.getLevel().hasNeighborSignal(context.getClickedPos());
         FluidState fluid = context.getLevel().getFluidState(context.getClickedPos());
         boolean waterlogged = fluid.getType() == Fluids.WATER;
         RailShape shape = calculateShape(facing, powered);
@@ -176,7 +177,8 @@ public class WyeRailBlock extends BaseRailBlock {
         if (level.isClientSide()) {
             return;
         }
-        boolean hasSignal = level.hasNeighborSignal(pos);
+        Boolean switchState = TrackSwitchBlock.getAdjacentSwitchState(level, pos);
+        boolean hasSignal = switchState != null ? switchState : level.hasNeighborSignal(pos);
         if (hasSignal != state.getValue(POWERED)) {
             Direction facing = state.getValue(FACING);
             RailShape newShape = calculateShape(facing, hasSignal);

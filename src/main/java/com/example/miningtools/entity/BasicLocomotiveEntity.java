@@ -78,6 +78,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_COAL_COUNT =
             SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_TRAIN_NAME =
+            SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.STRING);
 
     private static final StackWalker STACK_WALKER =
             StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
@@ -107,6 +109,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 case 3 -> BasicLocomotiveEntity.this.getFacing().get2DDataValue();
                 case 4 -> BasicLocomotiveEntity.this.speedLevel;
                 case 5 -> BasicLocomotiveEntity.this.isHeadlightEnabled() ? 1 : 0;
+                case 6 -> BasicLocomotiveEntity.this.getId();
                 default -> 0;
             };
         }
@@ -125,7 +128,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         @Override
         public int getCount() {
-            return 6;
+            return 7;
         }
     };
 
@@ -151,6 +154,52 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         builder.define(DATA_SPEED_LEVEL, DEFAULT_SPEED_LEVEL);
         builder.define(DATA_FUEL_PCT, 0);
         builder.define(DATA_COAL_COUNT, 0);
+        builder.define(DATA_TRAIN_NAME, "");
+    }
+
+    public String getTrainName() {
+        String synced = this.entityData.get(DATA_TRAIN_NAME);
+        if (synced != null && !synced.isBlank()) {
+            return synced;
+        }
+        Component custom = this.getCustomName();
+        return custom != null ? custom.getString().trim() : "";
+    }
+
+    public void setTrainName(String name) {
+        String cleaned = name == null ? "" : name.trim();
+        if (cleaned.length() > 32) {
+            cleaned = cleaned.substring(0, 32);
+        }
+        this.entityData.set(DATA_TRAIN_NAME, cleaned);
+        super.setCustomName(cleaned.isEmpty() ? null : Component.literal(cleaned));
+    }
+
+    @Override
+    public void setCustomName(@Nullable Component name) {
+        super.setCustomName(name);
+        String cleaned = name != null ? name.getString().trim() : "";
+        if (cleaned.length() > 32) {
+            cleaned = cleaned.substring(0, 32);
+        }
+        if (!Objects.equals(this.entityData.get(DATA_TRAIN_NAME), cleaned)) {
+            this.entityData.set(DATA_TRAIN_NAME, cleaned);
+        }
+    }
+
+    public static String resolveTrainName(Entity entity) {
+        if (entity instanceof BasicLocomotiveEntity loco) {
+            return loco.getTrainName();
+        }
+        BasicLocomotiveEntity connectedLoco = getConnectedLocomotive(entity);
+        if (connectedLoco != null) {
+            String locoName = connectedLoco.getTrainName();
+            if (!locoName.isBlank()) {
+                return locoName;
+            }
+        }
+        Component custom = entity.getCustomName();
+        return custom != null ? custom.getString().trim() : "";
     }
 
     public Direction getFacing() {
@@ -1516,6 +1565,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         output.putString("Facing", this.getFacing().getName());
         output.putInt("SpeedLevel", this.speedLevel);
         output.putBoolean("Headlight", this.isHeadlightEnabled());
+        output.putString("TrainName", this.getTrainName());
     }
 
     @Override
@@ -1528,5 +1578,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         this.setFacing(Direction.byName(facingName) != null ? Direction.byName(facingName) : Direction.NORTH);
         this.setSpeedLevel(input.getIntOr("SpeedLevel", DEFAULT_SPEED_LEVEL));
         this.setHeadlightEnabled(input.getBooleanOr("Headlight", true));
+        String savedTrainName = input.getStringOr("TrainName", "").trim();
+        if (!savedTrainName.isEmpty()) {
+            this.setTrainName(savedTrainName);
+        } else if (this.getCustomName() != null) {
+            this.entityData.set(DATA_TRAIN_NAME, this.getCustomName().getString().trim());
+        }
     }
 }

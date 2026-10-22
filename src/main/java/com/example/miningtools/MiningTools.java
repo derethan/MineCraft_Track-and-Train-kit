@@ -4,8 +4,10 @@ import org.slf4j.Logger;
 
 import com.example.miningtools.block.ControlRailBlock;
 import com.example.miningtools.block.JunctionRailBlock;
+import com.example.miningtools.block.TrackSwitchBlock;
 import com.example.miningtools.block.TurnoutRailBlock;
 import com.example.miningtools.block.WyeRailBlock;
+import com.example.miningtools.block.entity.TrackSwitchBlockEntity;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CargoMinecartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
@@ -15,6 +17,10 @@ import com.example.miningtools.item.TunnelBoreItem;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.menu.CargoMinecartMenu;
 import com.example.miningtools.menu.TunnelBoreMenu;
+import com.example.miningtools.network.LocomotiveControlPayload;
+import com.example.miningtools.network.LocomotiveRenamePayload;
+import com.example.miningtools.network.TrackSwitchSyncPayload;
+import com.example.miningtools.network.TrackSwitchUpdatePayload;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.registries.Registries;
@@ -30,6 +36,7 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
@@ -56,6 +63,7 @@ public class MiningTools {
     // Deferred Registers
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES = DeferredRegister.create(Registries.ENTITY_TYPE, MODID);
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, MODID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
@@ -108,6 +116,21 @@ public class MiningTools {
     public static final DeferredItem<BlockItem> WYE_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
             "wye_rail",
             WYE_RAIL
+    );
+
+    // Track Switch & Signal Block, Item & BlockEntity
+    public static final DeferredBlock<TrackSwitchBlock> TRACK_SWITCH = BLOCKS.registerBlock(
+            "track_switch",
+            TrackSwitchBlock::new,
+            p -> p.strength(1.5F).sound(SoundType.METAL).noOcclusion().lightLevel(state -> 7)
+    );
+    public static final DeferredItem<BlockItem> TRACK_SWITCH_ITEM = ITEMS.registerSimpleBlockItem(
+            "track_switch",
+            TRACK_SWITCH
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TrackSwitchBlockEntity>> TRACK_SWITCH_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "track_switch",
+            () -> new BlockEntityType<>(TrackSwitchBlockEntity::new, TRACK_SWITCH.get())
     );
 
     // Tunnel Bore Entity, Item & Menu
@@ -182,6 +205,7 @@ public class MiningTools {
                         output.accept(CONTROL_RAIL_ITEM.get());
                         output.accept(TURNOUT_RAIL_ITEM.get());
                         output.accept(WYE_RAIL_ITEM.get());
+                        output.accept(TRACK_SWITCH_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
                         output.accept(CARGO_MINECART_ITEM.get());
@@ -194,6 +218,7 @@ public class MiningTools {
 
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
+        BLOCK_ENTITY_TYPES.register(modEventBus);
         ENTITY_TYPES.register(modEventBus);
         MENUS.register(modEventBus);
         CREATIVE_MODE_TABS.register(modEventBus);
@@ -213,6 +238,21 @@ public class MiningTools {
                 LocomotiveControlPayload.STREAM_CODEC,
                 LocomotiveControlPayload::handle
         );
+        registrar.playToServer(
+                LocomotiveRenamePayload.TYPE,
+                LocomotiveRenamePayload.STREAM_CODEC,
+                LocomotiveRenamePayload::handle
+        );
+        registrar.playToServer(
+                TrackSwitchUpdatePayload.TYPE,
+                TrackSwitchUpdatePayload.STREAM_CODEC,
+                TrackSwitchUpdatePayload::handle
+        );
+        registrar.playToClient(
+                TrackSwitchSyncPayload.TYPE,
+                TrackSwitchSyncPayload.STREAM_CODEC,
+                TrackSwitchSyncPayload::handle
+        );
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
@@ -225,6 +265,7 @@ public class MiningTools {
             event.accept(CONTROL_RAIL_ITEM);
             event.accept(TURNOUT_RAIL_ITEM);
             event.accept(WYE_RAIL_ITEM);
+            event.accept(TRACK_SWITCH_ITEM);
             event.accept(TUNNEL_BORE_ITEM);
             event.accept(BASIC_LOCOMOTIVE_ITEM);
         }

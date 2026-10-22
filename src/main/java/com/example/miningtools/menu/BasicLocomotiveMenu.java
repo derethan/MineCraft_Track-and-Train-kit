@@ -17,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class BasicLocomotiveMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = 3;
-    public static final int DATA_COUNT = 6;
+    public static final int DATA_COUNT = 7;
 
     private final Container container;
     private final ContainerData data;
@@ -80,6 +80,14 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
 
     public boolean isHeadlightEnabled() {
         return this.data.get(5) != 0;
+    }
+
+    public int getEntityId() {
+        return this.data.get(6);
+    }
+
+    public Container getContainer() {
+        return this.container;
     }
 
     @Override
