@@ -2,15 +2,21 @@ package com.example.miningtools;
 
 import org.slf4j.Logger;
 
+import com.example.miningtools.block.ChunkLoaderBlock;
 import com.example.miningtools.block.ControlRailBlock;
 import com.example.miningtools.block.ElectricRailBlock;
+import com.example.miningtools.block.EntityLoaderBlock;
+import com.example.miningtools.block.EntityUnloaderBlock;
 import com.example.miningtools.block.FluidLoaderBlock;
 import com.example.miningtools.block.HornRailBlock;
 import com.example.miningtools.block.JunctionRailBlock;
 import com.example.miningtools.block.TrackSwitchBlock;
 import com.example.miningtools.block.TurnoutRailBlock;
 import com.example.miningtools.block.WyeRailBlock;
+import com.example.miningtools.block.entity.ChunkLoaderBlockEntity;
 import com.example.miningtools.block.entity.ElectricRailBlockEntity;
+import com.example.miningtools.block.entity.EntityLoaderBlockEntity;
+import com.example.miningtools.block.entity.EntityUnloaderBlockEntity;
 import com.example.miningtools.block.entity.FluidLoaderBlockEntity;
 import com.example.miningtools.block.entity.TrackSwitchBlockEntity;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
@@ -40,6 +46,10 @@ import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.LocomotiveRenamePayload;
 import com.example.miningtools.network.TrackSwitchSyncPayload;
 import com.example.miningtools.network.TrackSwitchUpdatePayload;
+import com.example.miningtools.network.ChunkLoaderSyncPayload;
+import com.example.miningtools.network.ChunkLoaderUpdatePayload;
+import com.example.miningtools.network.EntityTransferSyncPayload;
+import com.example.miningtools.network.EntityTransferUpdatePayload;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.Direction;
@@ -194,6 +204,51 @@ public class MiningTools {
     public static final DeferredHolder<MenuType<?>, MenuType<FluidLoaderMenu>> FLUID_LOADER_MENU = MENUS.register(
             "fluid_loader",
             () -> new MenuType<>(FluidLoaderMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
+    // Entity Loader Block, Item & BlockEntity
+    public static final DeferredBlock<EntityLoaderBlock> ENTITY_LOADER = BLOCKS.registerBlock(
+            "entity_loader",
+            EntityLoaderBlock::new,
+            p -> p.strength(2.5F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> ENTITY_LOADER_ITEM = ITEMS.registerSimpleBlockItem(
+            "entity_loader",
+            ENTITY_LOADER
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EntityLoaderBlockEntity>> ENTITY_LOADER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "entity_loader",
+            () -> new BlockEntityType<>(EntityLoaderBlockEntity::new, ENTITY_LOADER.get())
+    );
+
+    // Entity Unloader Block, Item & BlockEntity
+    public static final DeferredBlock<EntityUnloaderBlock> ENTITY_UNLOADER = BLOCKS.registerBlock(
+            "entity_unloader",
+            EntityUnloaderBlock::new,
+            p -> p.strength(2.5F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> ENTITY_UNLOADER_ITEM = ITEMS.registerSimpleBlockItem(
+            "entity_unloader",
+            ENTITY_UNLOADER
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<EntityUnloaderBlockEntity>> ENTITY_UNLOADER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "entity_unloader",
+            () -> new BlockEntityType<>(EntityUnloaderBlockEntity::new, ENTITY_UNLOADER.get())
+    );
+
+    // Chunk Loader Block, Item & BlockEntity
+    public static final DeferredBlock<ChunkLoaderBlock> CHUNK_LOADER = BLOCKS.registerBlock(
+            "chunk_loader",
+            ChunkLoaderBlock::new,
+            p -> p.strength(3.0F).sound(SoundType.METAL).lightLevel(state -> state.getValue(ChunkLoaderBlock.ACTIVE) ? 12 : 0)
+    );
+    public static final DeferredItem<BlockItem> CHUNK_LOADER_ITEM = ITEMS.registerSimpleBlockItem(
+            "chunk_loader",
+            CHUNK_LOADER
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ChunkLoaderBlockEntity>> CHUNK_LOADER_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "chunk_loader",
+            () -> new BlockEntityType<>(ChunkLoaderBlockEntity::new, CHUNK_LOADER.get())
     );
 
     // Tunnel Bore Entity, Item & Menu
@@ -378,6 +433,9 @@ public class MiningTools {
                         output.accept(WYE_RAIL_ITEM.get());
                         output.accept(TRACK_SWITCH_ITEM.get());
                         output.accept(FLUID_LOADER_ITEM.get());
+                        output.accept(ENTITY_LOADER_ITEM.get());
+                        output.accept(ENTITY_UNLOADER_ITEM.get());
+                        output.accept(CHUNK_LOADER_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
                         output.accept(DIESEL_LOCOMOTIVE_ITEM.get());
@@ -470,7 +528,28 @@ public class MiningTools {
                 TrainLinkSyncPayload.STREAM_CODEC,
                 TrainLinkSyncPayload::handle
         );
+        registrar.playToClient(
+                EntityTransferSyncPayload.TYPE,
+                EntityTransferSyncPayload.STREAM_CODEC,
+                EntityTransferSyncPayload::handle
+        );
+        registrar.playToServer(
+                EntityTransferUpdatePayload.TYPE,
+                EntityTransferUpdatePayload.STREAM_CODEC,
+                EntityTransferUpdatePayload::handle
+        );
 
+
+        registrar.playToClient(
+                ChunkLoaderSyncPayload.TYPE,
+                ChunkLoaderSyncPayload.STREAM_CODEC,
+                ChunkLoaderSyncPayload::handle
+        );
+        registrar.playToServer(
+                ChunkLoaderUpdatePayload.TYPE,
+                ChunkLoaderUpdatePayload.STREAM_CODEC,
+                ChunkLoaderUpdatePayload::handle
+        );
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {

@@ -7,6 +7,8 @@ import java.util.Map;
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
 import com.example.miningtools.client.gui.DieselLocomotiveScreen;
+import com.example.miningtools.client.gui.ChunkLoaderScreen;
+import com.example.miningtools.client.gui.EntityTransferScreen;
 import com.example.miningtools.client.gui.ElectricLocomotiveScreen;
 import com.example.miningtools.client.gui.FluidLoaderScreen;
 import com.example.miningtools.client.gui.SpeedometerOverlay;
@@ -34,6 +36,8 @@ import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.TrackSwitchSyncPayload;
+import com.example.miningtools.network.ChunkLoaderSyncPayload;
+import com.example.miningtools.network.EntityTransferSyncPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
@@ -138,6 +142,8 @@ public class MiningToolsClient {
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
         NeoForge.EVENT_BUS.addListener(SpeedometerOverlay::onRenderGui);
         TrackSwitchSyncPayload.CLIENT_HANDLER = TrackSwitchScreen::open;
+        EntityTransferSyncPayload.CLIENT_HANDLER = EntityTransferScreen::open;
+        ChunkLoaderSyncPayload.CLIENT_HANDLER = ChunkLoaderScreen::open;
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {

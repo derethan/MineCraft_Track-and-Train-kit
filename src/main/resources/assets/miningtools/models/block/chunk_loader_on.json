@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "miningtools:block/chunk_loader_side",
+    "up": "miningtools:block/chunk_loader_top_on",
+    "down": "miningtools:block/chunk_loader_bottom",
+    "north": "miningtools:block/chunk_loader_front_on",
+    "south": "miningtools:block/chunk_loader_side",
+    "east": "miningtools:block/chunk_loader_side",
+    "west": "miningtools:block/chunk_loader_side"
+  }
+}

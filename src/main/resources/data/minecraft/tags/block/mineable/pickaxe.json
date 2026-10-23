@@ -8,6 +8,9 @@
     "miningtools:wye_rail",
     "miningtools:track_switch",
     "miningtools:fluid_loader",
-    "miningtools:electric_rail"
+    "miningtools:electric_rail",
+    "miningtools:entity_loader",
+    "miningtools:entity_unloader",
+    "miningtools:chunk_loader"
   ]
 }
