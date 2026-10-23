@@ -88,6 +88,8 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(ElectricLocomotiveEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> DATA_TRAIN_NAME =
             SynchedEntityData.defineId(ElectricLocomotiveEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> DATA_REVERSED =
+            SynchedEntityData.defineId(ElectricLocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
 
     private static @Nullable Method GET_PARENT_UUID_METHOD = null;
     private static boolean CHECKED_PARENT_UUID_METHOD = false;
@@ -134,6 +136,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 case 7 -> ElectricLocomotiveEntity.this.isHeadlightEnabled() ? 1 : 0;
                 case 8 -> ElectricLocomotiveEntity.this.poweredFromRail ? 1 : 0;
                 case 9 -> ElectricLocomotiveEntity.this.getId();
+                case 10 -> ElectricLocomotiveEntity.this.isReversed() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -145,12 +148,13 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 case 5 -> ElectricLocomotiveEntity.this.setFacing(Direction.from2DDataValue(value));
                 case 6 -> ElectricLocomotiveEntity.this.setSpeedLevel(value);
                 case 7 -> ElectricLocomotiveEntity.this.setHeadlightEnabled(value != 0);
+                case 10 -> ElectricLocomotiveEntity.this.setReversed(value != 0);
             }
         }
 
         @Override
         public int getCount() {
-            return 10;
+            return 11;
         }
     };
 
@@ -177,6 +181,19 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         builder.define(DATA_ENERGY_STORED, 0);
         builder.define(DATA_ENERGY_CAPACITY, Config.ELECTRIC_LOCOMOTIVE_BATTERY_CAPACITY.get());
         builder.define(DATA_TRAIN_NAME, "");
+        builder.define(DATA_REVERSED, false);
+    }
+
+    public boolean isReversed() {
+        return this.entityData.get(DATA_REVERSED);
+    }
+
+    public void setReversed(boolean reversed) {
+        this.entityData.set(DATA_REVERSED, reversed);
+    }
+
+    public Direction getTravelDirection() {
+        return this.isReversed() ? this.getFacing().getOpposite() : this.getFacing();
     }
 
     public EnergyHandler getEnergyHandler(@Nullable Direction side) {
@@ -499,15 +516,28 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
         if (this.running && hasPower && onRails) {
             this.setActive(true);
-            Direction facing = this.getFacing();
-            double maxSpeed = this.getLocomotiveSpeed();
+            if (TrainChainingUtil.hasActiveLeadLocomotiveAhead(this)) {
+                return;
+            }
+            TrainChainingUtil.TrainConsistStats stats = TrainChainingUtil.calculateConsistStats(this);
+            double baseSpeed = this.getLocomotiveSpeed();
+            double maxSpeed = baseSpeed * stats.speedFactor;
             double accel = Config.ELECTRIC_LOCOMOTIVE_ACCELERATION.get();
 
+            if (stats.speedFactor <= 0.0D) {
+                if (this.random.nextInt(20) == 0) {
+                    this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.7F, 0.8F);
+                    sendNotification(null, Component.literal("Train overloaded! (" + stats.totalLoad + " Carts / " + stats.totalCapacity + " Capacity) - Add more locomotives!").withStyle(net.minecraft.ChatFormatting.RED));
+                }
+                maxSpeed = 0.0D;
+            }
+
+            Direction travelDir = this.getTravelDirection();
             Vec3 currentDelta = super.getDeltaMovement();
             double currentSpeed = currentDelta.length();
             double nextSpeed = currentSpeed + (maxSpeed - currentSpeed) * accel;
-            double newVx = facing.getStepX() * nextSpeed;
-            double newVz = facing.getStepZ() * nextSpeed;
+            double newVx = travelDir.getStepX() * nextSpeed;
+            double newVz = travelDir.getStepZ() * nextSpeed;
             if (currentSpeed < 1.0E-4D) {
                 this.setDeltaMovement(newVx, currentDelta.y, newVz);
             }
@@ -532,10 +562,10 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             Vec3i exit0 = exits.getFirst();
             Vec3i exit1 = exits.getSecond();
 
-            int entryX = -facing.getStepX();
-            int entryZ = -facing.getStepZ();
+            int entryX = -travelDir.getStepX();
+            int entryZ = -travelDir.getStepZ();
             boolean entryMatches = (exit0.getX() == entryX && exit0.getZ() == entryZ) || (exit1.getX() == entryX && exit1.getZ() == entryZ);
-            boolean exitMatches = (exit0.getX() == facing.getStepX() && exit0.getZ() == facing.getStepZ()) || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
+            boolean exitMatches = (exit0.getX() == travelDir.getStepX() && exit0.getZ() == travelDir.getStepZ()) || (exit1.getX() == travelDir.getStepX() && exit1.getZ() == travelDir.getStepZ());
             if (!shape.isSlope() && !entryMatches && !exitMatches) {
                 this.setPos(initialX, initialY, initialZ);
                 this.stopLocomotiveFromRail();
@@ -561,7 +591,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
             Direction moveDir = (Math.abs(newVx) > 1.0E-4D || Math.abs(newVz) > 1.0E-4D)
                     ? Direction.getApproximateNearest(newVx, 0.0, newVz)
-                    : facing;
+                    : travelDir;
             boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(moveDir).above()));
 
             x = x0 + xD * progress;
@@ -613,9 +643,9 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
             this.setDeltaMovement(actualMovement);
 
-            double forwardProgress = actualDx * facing.getStepX() + actualDz * facing.getStepZ();
+            double forwardProgress = actualDx * travelDir.getStepX() + actualDz * travelDir.getStepZ();
             boolean hitObstacle = (this.horizontalCollision && forwardProgress < 0.005D)
-                    && BasicLocomotiveEntity.isPathBlockedByObstacle(this.level(), railPos, moveDir, this);
+                    && BasicLocomotiveEntity.isPathBlockedByObstacle(this.level(), railPos, travelDir, this);
             if (hitObstacle) {
                 this.setRunning(false);
                 this.setActive(false);
@@ -624,10 +654,11 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             } else {
                 // Update facing only if track turned around a curve (orthogonal axis change)
                 Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
-                if (currentMoveDir.getAxis().isHorizontal()
+                Direction targetFacing = this.isReversed() ? currentMoveDir.getOpposite() : currentMoveDir;
+                if (targetFacing.getAxis().isHorizontal()
                         && actualMovement.horizontalDistanceSqr() > 1.0E-4D
-                        && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
-                    this.setFacing(currentMoveDir);
+                        && targetFacing.getAxis() != this.getFacing().getAxis()) {
+                    this.setFacing(targetFacing);
                 }
             }
 
@@ -689,6 +720,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                     if (this.poweredFromRail || this.battery.getAmountAsInt() >= this.getEnergyCostPerTick()) {
                         this.setRunning(true);
                         this.setActive(true);
+                        TrainChainingUtil.syncTrainConsist(this, true, this.speedLevel, this.isReversed());
                         this.level().playSound(null, this.blockPosition(), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.PLAYERS, 1.0F, 1.5F);
                         sendNotification(player, Component.literal("Electric Bullet Train started").withStyle(net.minecraft.ChatFormatting.AQUA));
                     } else {
@@ -701,6 +733,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 if (this.running) {
                     this.setRunning(false);
                     this.setActive(false);
+                    TrainChainingUtil.syncTrainConsist(this, false, this.speedLevel, this.isReversed());
                     this.level().playSound(null, this.blockPosition(), SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.PLAYERS, 0.8F, 0.8F);
                     sendNotification(player, Component.literal("Electric Bullet Train stopped").withStyle(net.minecraft.ChatFormatting.GOLD));
                 }
@@ -708,6 +741,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             case LocomotiveControlPayload.ACTION_SPEED_DOWN -> {
                 if (this.speedLevel > MIN_SPEED_LEVEL) {
                     this.setSpeedLevel(this.speedLevel - 1);
+                    TrainChainingUtil.syncTrainConsist(this, this.running, this.speedLevel, this.isReversed());
                     this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 0.9F);
                     sendNotification(player, Component.literal("Speed: " + getSpeedName(this.speedLevel)).withStyle(net.minecraft.ChatFormatting.BLUE));
                 }
@@ -715,15 +749,17 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             case LocomotiveControlPayload.ACTION_SPEED_UP -> {
                 if (this.speedLevel < MAX_SPEED_LEVEL) {
                     this.setSpeedLevel(this.speedLevel + 1);
+                    TrainChainingUtil.syncTrainConsist(this, this.running, this.speedLevel, this.isReversed());
                     this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 1.1F);
                     sendNotification(player, Component.literal("Speed: " + getSpeedName(this.speedLevel)).withStyle(net.minecraft.ChatFormatting.BLUE));
                 }
             }
             case LocomotiveControlPayload.ACTION_REVERSE -> {
-                Direction newFacing = this.getFacing().getOpposite();
-                this.setFacing(newFacing);
+                boolean newReversed = !this.isReversed();
+                this.setReversed(newReversed);
+                TrainChainingUtil.syncTrainConsist(this, this.running, this.speedLevel, newReversed);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, 1.2F);
-                sendNotification(player, Component.literal("Direction: " + newFacing.getName().toUpperCase()).withStyle(net.minecraft.ChatFormatting.YELLOW));
+                sendNotification(player, Component.literal("Direction: " + (newReversed ? "REVERSE" : "FORWARD")).withStyle(net.minecraft.ChatFormatting.YELLOW));
             }
             case LocomotiveControlPayload.ACTION_HORN -> {
                 this.blowHorn(player);
@@ -1164,6 +1200,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         output.putInt("SpeedLevel", this.speedLevel);
         output.putInt("Facing", this.getFacing().get2DDataValue());
         output.putString("TrainName", this.getTrainName());
+        output.putBoolean("Reversed", this.isReversed());
     }
 
     @Override
@@ -1175,6 +1212,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         this.speedLevel = input.getIntOr("SpeedLevel", DEFAULT_SPEED_LEVEL);
         this.setFacing(Direction.from2DDataValue(input.getIntOr("Facing", Direction.NORTH.get2DDataValue())));
         this.setTrainName(input.getStringOr("TrainName", ""));
+        this.setReversed(input.getBooleanOr("Reversed", false));
         this.syncEnergyData();
     }
 }

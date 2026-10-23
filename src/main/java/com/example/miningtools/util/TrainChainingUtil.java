@@ -12,9 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.Nullable;
 
+import com.example.miningtools.Config;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CabooseMinecartEntity;
 import com.example.miningtools.entity.CargoMinecartEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
@@ -22,6 +24,7 @@ import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
+import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
@@ -43,6 +46,10 @@ public final class TrainChainingUtil {
         if (entity instanceof BasicLocomotiveEntity) {
             // Steam locomotive frame is 25px long (1.56m) -> 0.78m radius
             return 0.78D;
+        }
+        if (entity instanceof DieselLocomotiveEntity) {
+            // Heavy CN Road diesel locomotive frame (1.18m radius)
+            return 1.18D;
         }
         if (entity instanceof ElectricLocomotiveEntity) {
             // Bullet train rear is 14px (0.88m)
@@ -85,6 +92,9 @@ public final class TrainChainingUtil {
     public static double getTargetCouplingDistance(Entity prev, Entity next, boolean isBumperAnchor) {
         double nextRadius = getCartCouplerRadius(next);
         if (isBumperAnchor) {
+            if (prev instanceof DieselLocomotiveEntity) {
+                return 0.0D + nextRadius + COUPLER_GAP;
+            }
             // The locomotive anchor is already offset by 0.36m toward the bumper.
             // Locomotive total coupler radius is 0.78m, so remaining distance is 0.78 - 0.36 = 0.42m.
             // 0.42m + 0.88m (Cargo Cart) + 0.08m = 1.38m (the exact distance between steam locomotive and first cargo cart).
@@ -314,10 +324,16 @@ public final class TrainChainingUtil {
         boolean firstIsTail = isTailCart(first);
         boolean secondIsTail = isTailCart(second);
 
-        if (firstIsLead || secondIsTail) {
+        if (firstIsLead && !secondIsLead) {
             return Pair.of(first, second);
         }
-        if (secondIsLead || firstIsTail) {
+        if (secondIsLead && !firstIsLead) {
+            return Pair.of(second, first);
+        }
+        if (secondIsTail && !firstIsTail) {
+            return Pair.of(first, second);
+        }
+        if (firstIsTail && !secondIsTail) {
             return Pair.of(second, first);
         }
 
@@ -325,6 +341,23 @@ public final class TrainChainingUtil {
         UUID firstParent = getCartParentUUID(first);
         UUID secondChild = getCartChildUUID(second);
         UUID secondParent = getCartParentUUID(second);
+
+        if (firstIsLead && secondIsLead) {
+            if (firstChild == null && secondParent == null && secondChild == null && firstParent == null) {
+                Direction facing = (first instanceof BasicLocomotiveEntity bl) ? bl.getFacing()
+                        : (first instanceof DieselLocomotiveEntity dl) ? dl.getFacing()
+                        : (first instanceof ElectricLocomotiveEntity el) ? el.getFacing()
+                        : Direction.NORTH;
+                double dx = second.getX() - first.getX();
+                double dz = second.getZ() - first.getZ();
+                double dot = dx * facing.getStepX() + dz * facing.getStepZ();
+                if (dot < 0.0) {
+                    return Pair.of(first, second);
+                } else {
+                    return Pair.of(second, first);
+                }
+            }
+        }
 
         if (firstChild == null && secondParent == null) {
             return Pair.of(first, second);
@@ -338,6 +371,7 @@ public final class TrainChainingUtil {
 
     public static boolean isLeadCart(AbstractMinecart cart) {
         return cart instanceof BasicLocomotiveEntity
+                || cart instanceof DieselLocomotiveEntity
                 || cart instanceof ElectricLocomotiveEntity
                 || cart instanceof TunnelBoreEntity;
     }
@@ -425,5 +459,161 @@ public final class TrainChainingUtil {
         } catch (Throwable ignored) {}
 
         return hadLinks;
+    }
+
+    public static class TrainConsistStats {
+        public final int totalCapacity;
+        public final int totalLoad;
+        public final int activeLocomotives;
+        public final double speedFactor;
+
+        public TrainConsistStats(int totalCapacity, int totalLoad, int activeLocomotives, double speedFactor) {
+            this.totalCapacity = totalCapacity;
+            this.totalLoad = totalLoad;
+            this.activeLocomotives = activeLocomotives;
+            this.speedFactor = speedFactor;
+        }
+    }
+
+    public static TrainConsistStats calculateConsistStats(AbstractMinecart startCart) {
+        if (startCart == null || startCart.level() == null) {
+            return new TrainConsistStats(10, 0, 1, 1.0D);
+        }
+        Level level = startCart.level();
+        AbstractMinecart head = startCart;
+        Set<UUID> visited = new HashSet<>();
+        visited.add(head.getUUID());
+
+        while (true) {
+            UUID parentUUID = getCartParentUUID(head);
+            if (parentUUID == null || !visited.add(parentUUID)) break;
+            Entity parentEntity = level.getEntity(parentUUID);
+            if (parentEntity instanceof AbstractMinecart parentCart) {
+                head = parentCart;
+            } else {
+                break;
+            }
+        }
+
+        int capacity = 0;
+        int load = 0;
+        int activeLocos = 0;
+        visited.clear();
+
+        AbstractMinecart current = head;
+        while (current != null && visited.add(current.getUUID())) {
+            if (current instanceof BasicLocomotiveEntity loco) {
+                if (loco.isRunning() && loco.hasFuel()) {
+                    capacity += Config.STEAM_LOCOMOTIVE_PULL_CAPACITY.get();
+                    activeLocos++;
+                } else {
+                    load++;
+                }
+            } else if (current instanceof DieselLocomotiveEntity loco) {
+                if (loco.isRunning() && loco.hasFuel()) {
+                    capacity += Config.DIESEL_LOCOMOTIVE_PULL_CAPACITY.get();
+                    activeLocos++;
+                } else {
+                    load++;
+                }
+            } else if (current instanceof ElectricLocomotiveEntity loco) {
+                if (loco.isRunning()) {
+                    capacity += Config.ELECTRIC_LOCOMOTIVE_PULL_CAPACITY.get();
+                    activeLocos++;
+                } else {
+                    load++;
+                }
+            } else {
+                load++;
+            }
+
+            UUID childUUID = getCartChildUUID(current);
+            if (childUUID == null || visited.contains(childUUID)) break;
+            Entity childEntity = level.getEntity(childUUID);
+            if (childEntity instanceof AbstractMinecart childCart) {
+                current = childCart;
+            } else {
+                break;
+            }
+        }
+
+        double speedFactor;
+        if (load <= capacity) {
+            speedFactor = 1.0D;
+        } else if (capacity <= 0) {
+            speedFactor = 0.0D;
+        } else {
+            double ratio = (double) capacity / (double) load;
+            if (ratio < 0.25D) {
+                speedFactor = 0.0D; // Overload stall
+            } else {
+                speedFactor = ratio;
+            }
+        }
+
+        return new TrainConsistStats(capacity, load, activeLocos, speedFactor);
+    }
+
+    public static void syncTrainConsist(AbstractMinecart sourceLoco, boolean running, int speedLevel, boolean reversed) {
+        if (sourceLoco == null || sourceLoco.level() == null || sourceLoco.level().isClientSide()) return;
+        Level level = sourceLoco.level();
+
+        Set<UUID> visited = new HashSet<>();
+        Deque<UUID> queue = new ArrayDeque<>();
+        queue.add(sourceLoco.getUUID());
+        visited.add(sourceLoco.getUUID());
+
+        while (!queue.isEmpty() && visited.size() < 100) {
+            UUID next = queue.poll();
+            Entity ent = level.getEntity(next);
+            if (ent instanceof AbstractMinecart cart) {
+                if (cart != sourceLoco) {
+                    if (cart instanceof BasicLocomotiveEntity loco) {
+                        loco.setRunning(running);
+                        loco.setSpeedLevel(speedLevel);
+                        loco.setReversed(reversed);
+                    } else if (cart instanceof DieselLocomotiveEntity loco) {
+                        loco.setRunning(running);
+                        loco.setSpeedLevel(speedLevel);
+                        loco.setReversed(reversed);
+                    } else if (cart instanceof ElectricLocomotiveEntity loco) {
+                        loco.setRunning(running);
+                        loco.setSpeedLevel(speedLevel);
+                        loco.setReversed(reversed);
+                    }
+                }
+
+                UUID p = getCartParentUUID(cart);
+                if (p != null && visited.add(p)) queue.add(p);
+                UUID c = getCartChildUUID(cart);
+                if (c != null && visited.add(c)) queue.add(c);
+            }
+        }
+    }
+
+    public static boolean hasActiveLeadLocomotiveAhead(AbstractMinecart startCart) {
+        if (startCart == null || startCart.level() == null) return false;
+        Level level = startCart.level();
+        Set<UUID> visited = new HashSet<>();
+        visited.add(startCart.getUUID());
+        UUID p = getCartParentUUID(startCart);
+        while (p != null && visited.add(p)) {
+            Entity ent = level.getEntity(p);
+            if (ent instanceof BasicLocomotiveEntity loco && loco.isRunning() && loco.hasFuel()) {
+                return true;
+            }
+            if (ent instanceof DieselLocomotiveEntity loco && loco.isRunning() && loco.hasFuel()) {
+                return true;
+            }
+            if (ent instanceof ElectricLocomotiveEntity loco && loco.isRunning()) {
+                return true;
+            }
+            if (ent instanceof AbstractMinecart cart) {
+                p = getCartParentUUID(cart);
+            } else {
+                break;
+            }
+        }
+        return false;
     }
 }

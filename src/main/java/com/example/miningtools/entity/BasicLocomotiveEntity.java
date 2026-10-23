@@ -81,6 +81,8 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<String> DATA_TRAIN_NAME =
             SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> DATA_REVERSED =
+            SynchedEntityData.defineId(BasicLocomotiveEntity.class, EntityDataSerializers.BOOLEAN);
 
     private static final StackWalker STACK_WALKER =
             StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
@@ -113,6 +115,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 case 4 -> BasicLocomotiveEntity.this.speedLevel;
                 case 5 -> BasicLocomotiveEntity.this.isHeadlightEnabled() ? 1 : 0;
                 case 6 -> BasicLocomotiveEntity.this.getId();
+                case 7 -> BasicLocomotiveEntity.this.isReversed() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -126,12 +129,13 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 case 3 -> BasicLocomotiveEntity.this.setFacing(Direction.from2DDataValue(value));
                 case 4 -> BasicLocomotiveEntity.this.setSpeedLevel(value);
                 case 5 -> BasicLocomotiveEntity.this.setHeadlightEnabled(value != 0);
+                case 7 -> BasicLocomotiveEntity.this.setReversed(value != 0);
             }
         }
 
         @Override
         public int getCount() {
-            return 7;
+            return 8;
         }
     };
 
@@ -158,6 +162,19 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         builder.define(DATA_FUEL_PCT, 0);
         builder.define(DATA_COAL_COUNT, 0);
         builder.define(DATA_TRAIN_NAME, "");
+        builder.define(DATA_REVERSED, false);
+    }
+
+    public boolean isReversed() {
+        return this.entityData.get(DATA_REVERSED);
+    }
+
+    public void setReversed(boolean reversed) {
+        this.entityData.set(DATA_REVERSED, reversed);
+    }
+
+    public Direction getTravelDirection() {
+        return this.isReversed() ? this.getFacing().getOpposite() : this.getFacing();
     }
 
     public String getTrainName() {
@@ -217,6 +234,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     public Direction getFacing() {
         return this.entityData.get(DATA_FACING);
+    }
+
+    public boolean hasFuel() {
+        return this.fuel > 0;
     }
 
     public void setFacing(Direction facing) {
@@ -584,15 +605,28 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         if (this.running && hasFuel && onRails) {
             this.setActive(true);
-            Direction facing = this.getFacing();
-            double maxSpeed = this.getLocomotiveSpeed();
+            if (TrainChainingUtil.hasActiveLeadLocomotiveAhead(this)) {
+                return;
+            }
+            TrainChainingUtil.TrainConsistStats stats = TrainChainingUtil.calculateConsistStats(this);
+            double baseSpeed = this.getLocomotiveSpeed();
+            double maxSpeed = baseSpeed * stats.speedFactor;
             double accel = Config.LOCOMOTIVE_ACCELERATION.get();
 
+            if (stats.speedFactor <= 0.0D) {
+                if (this.random.nextInt(20) == 0) {
+                    this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.7F, 0.8F);
+                    sendNotification(null, Component.literal("Train overloaded! (" + stats.totalLoad + " Carts / " + stats.totalCapacity + " Capacity) - Add more locomotives!").withStyle(net.minecraft.ChatFormatting.RED));
+                }
+                maxSpeed = 0.0D;
+            }
+
+            Direction travelDir = this.getTravelDirection();
             Vec3 currentDelta = super.getDeltaMovement();
             double currentSpeed = currentDelta.length();
             double nextSpeed = currentSpeed + (maxSpeed - currentSpeed) * accel;
-            double newVx = facing.getStepX() * nextSpeed;
-            double newVz = facing.getStepZ() * nextSpeed;
+            double newVx = travelDir.getStepX() * nextSpeed;
+            double newVz = travelDir.getStepZ() * nextSpeed;
             if (currentSpeed < 1.0E-4D) {
                 this.setDeltaMovement(newVx, currentDelta.y, newVz);
             }
@@ -617,10 +651,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             Vec3i exit0 = exits.getFirst();
             Vec3i exit1 = exits.getSecond();
 
-            int entryX = -facing.getStepX();
-            int entryZ = -facing.getStepZ();
+            int entryX = -travelDir.getStepX();
+            int entryZ = -travelDir.getStepZ();
             boolean entryMatches = (exit0.getX() == entryX && exit0.getZ() == entryZ) || (exit1.getX() == entryX && exit1.getZ() == entryZ);
-            boolean exitMatches = (exit0.getX() == facing.getStepX() && exit0.getZ() == facing.getStepZ()) || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
+            boolean exitMatches = (exit0.getX() == travelDir.getStepX() && exit0.getZ() == travelDir.getStepZ()) || (exit1.getX() == travelDir.getStepX() && exit1.getZ() == travelDir.getStepZ());
             if (!shape.isSlope() && !entryMatches && !exitMatches) {
                 this.setPos(initialX, initialY, initialZ);
                 this.stopLocomotiveFromRail();
@@ -647,7 +681,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
             Direction moveDir = (Math.abs(newVx) > 1.0E-4D || Math.abs(newVz) > 1.0E-4D)
                     ? Direction.getApproximateNearest(newVx, 0.0, newVz)
-                    : facing;
+                    : travelDir;
             boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(moveDir).above()));
 
             x = x0 + xD * progress;
@@ -707,9 +741,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             this.setDeltaMovement(actualMovement);
 
             // Check if locomotive collided with a solid block/obstacle in its path
-            double forwardProgress = actualDx * facing.getStepX() + actualDz * facing.getStepZ();
+            double forwardProgress = actualDx * travelDir.getStepX() + actualDz * travelDir.getStepZ();
             boolean hitObstacle = (this.horizontalCollision && forwardProgress < 0.005D)
-                    && isPathBlockedByObstacle(this.level(), railPos, moveDir, this);
+                    && isPathBlockedByObstacle(this.level(), railPos, travelDir, this);
             if (hitObstacle) {
                 // Stopped by hitting an obstacle (block/buffer) - stop engine and halt without reversing
                 this.setRunning(false);
@@ -719,10 +753,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             } else {
                 // Update facing only if track turned around a curve (orthogonal axis change)
                 Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
-                if (currentMoveDir.getAxis().isHorizontal()
+                Direction targetFacing = this.isReversed() ? currentMoveDir.getOpposite() : currentMoveDir;
+                if (targetFacing.getAxis().isHorizontal()
                         && actualMovement.horizontalDistanceSqr() > 1.0E-4D
-                        && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
-                    this.setFacing(currentMoveDir);
+                        && targetFacing.getAxis() != this.getFacing().getAxis()) {
+                    this.setFacing(targetFacing);
                 }
             }
 
@@ -1106,6 +1141,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                     if (this.fuel > 0) {
                         this.setRunning(true);
                         this.setActive(true);
+                        TrainChainingUtil.syncTrainConsist(this, true, this.speedLevel, this.isReversed());
                         this.level().playSound(null, this.blockPosition(), SoundEvents.FLINTANDSTEEL_USE, SoundSource.PLAYERS, 1.0F, 1.0F);
                         sendNotification(player, Component.translatable("message.miningtools.locomotive.started"));
                     } else {
@@ -1118,6 +1154,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 if (this.running) {
                     this.setRunning(false);
                     this.setActive(false);
+                    TrainChainingUtil.syncTrainConsist(this, false, this.speedLevel, this.isReversed());
                     this.level().playSound(null, this.blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.PLAYERS, 0.6F, 1.2F);
                     sendNotification(player, Component.translatable("message.miningtools.locomotive.stopped"));
                 }
@@ -1125,6 +1162,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             case LocomotiveControlPayload.ACTION_SPEED_DOWN -> {
                 if (this.speedLevel > MIN_SPEED_LEVEL) {
                     this.setSpeedLevel(this.speedLevel - 1);
+                    TrainChainingUtil.syncTrainConsist(this, this.running, this.speedLevel, this.isReversed());
                     this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 0.9F);
                     sendNotification(player, Component.translatable("message.miningtools.locomotive.speed", getSpeedName(this.speedLevel)));
                 } else {
@@ -1134,6 +1172,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             case LocomotiveControlPayload.ACTION_SPEED_UP -> {
                 if (this.speedLevel < MAX_SPEED_LEVEL) {
                     this.setSpeedLevel(this.speedLevel + 1);
+                    TrainChainingUtil.syncTrainConsist(this, this.running, this.speedLevel, this.isReversed());
                     this.level().playSound(null, this.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.PLAYERS, 0.6F, 1.1F);
                     sendNotification(player, Component.translatable("message.miningtools.locomotive.speed", getSpeedName(this.speedLevel)));
                 } else {
@@ -1141,10 +1180,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 }
             }
             case LocomotiveControlPayload.ACTION_REVERSE -> {
-                Direction newFacing = this.getFacing().getOpposite();
-                this.setFacing(newFacing);
+                boolean newReversed = !this.isReversed();
+                this.setReversed(newReversed);
+                TrainChainingUtil.syncTrainConsist(this, this.running, this.speedLevel, newReversed);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.LEVER_CLICK, SoundSource.PLAYERS, 0.8F, 1.2F);
-                sendNotification(player, Component.translatable("message.miningtools.locomotive.direction", newFacing.getName().toUpperCase()));
+                sendNotification(player, Component.literal("Direction: " + (newReversed ? "REVERSE" : "FORWARD")));
             }
             case LocomotiveControlPayload.ACTION_HORN -> {
                 this.blowHorn(player);
@@ -1616,6 +1656,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         output.putInt("SpeedLevel", this.speedLevel);
         output.putBoolean("Headlight", this.isHeadlightEnabled());
         output.putString("TrainName", this.getTrainName());
+        output.putBoolean("Reversed", this.isReversed());
     }
 
     @Override
@@ -1628,6 +1669,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         this.setFacing(Direction.byName(facingName) != null ? Direction.byName(facingName) : Direction.NORTH);
         this.setSpeedLevel(input.getIntOr("SpeedLevel", DEFAULT_SPEED_LEVEL));
         this.setHeadlightEnabled(input.getBooleanOr("Headlight", true));
+        this.setReversed(input.getBooleanOr("Reversed", false));
         String savedTrainName = input.getStringOr("TrainName", "").trim();
         if (!savedTrainName.isEmpty()) {
             this.setTrainName(savedTrainName);

@@ -2,6 +2,7 @@ package com.example.miningtools.menu;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
@@ -16,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class ElectricLocomotiveMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = 1;
-    public static final int DATA_COUNT = 10;
+    public static final int DATA_COUNT = 11;
 
     private final Container container;
     private final ContainerData data;
@@ -79,6 +80,10 @@ public class ElectricLocomotiveMenu extends AbstractContainerMenu {
         return this.data.get(7) != 0;
     }
 
+    public boolean isReversed() {
+        return this.data.get(10) != 0;
+    }
+
     public boolean isPoweredFromRail() {
         return this.data.get(8) != 0;
     }
@@ -97,24 +102,38 @@ public class ElectricLocomotiveMenu extends AbstractContainerMenu {
             // Toggle Start / Stop
             boolean next = !this.isRunning();
             this.data.set(4, next ? 1 : 0);
+            if (this.container instanceof ElectricLocomotiveEntity loco) {
+                TrainChainingUtil.syncTrainConsist(loco, next, loco.getSpeedLevel(), loco.isReversed());
+            }
             return true;
         } else if (id == 1) {
-            // Reverse Direction
-            net.minecraft.core.Direction current = net.minecraft.core.Direction.from2DDataValue(this.getFacingIndex());
-            this.data.set(5, current.getOpposite().get2DDataValue());
+            // Reverse Direction without model rotation
+            boolean nextReversed = !this.isReversed();
+            this.data.set(10, nextReversed ? 1 : 0);
+            if (this.container instanceof ElectricLocomotiveEntity loco) {
+                TrainChainingUtil.syncTrainConsist(loco, loco.isRunning(), loco.getSpeedLevel(), nextReversed);
+            }
             return true;
         } else if (id == 2) {
             // Speed down
             int current = this.getSpeedLevel();
             if (current > 1) {
-                this.data.set(6, current - 1);
+                int next = current - 1;
+                this.data.set(6, next);
+                if (this.container instanceof ElectricLocomotiveEntity loco) {
+                    TrainChainingUtil.syncTrainConsist(loco, loco.isRunning(), next, loco.isReversed());
+                }
             }
             return true;
         } else if (id == 3) {
             // Speed up
             int current = this.getSpeedLevel();
             if (current < 5) {
-                this.data.set(6, current + 1);
+                int next = current + 1;
+                this.data.set(6, next);
+                if (this.container instanceof ElectricLocomotiveEntity loco) {
+                    TrainChainingUtil.syncTrainConsist(loco, loco.isRunning(), next, loco.isReversed());
+                }
             }
             return true;
         } else if (id == 4) {

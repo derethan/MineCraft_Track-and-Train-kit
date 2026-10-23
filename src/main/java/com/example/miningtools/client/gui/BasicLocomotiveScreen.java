@@ -220,7 +220,8 @@ public class BasicLocomotiveScreen extends AbstractContainerScreen<BasicLocomoti
 
         // Direction & engine status
         Direction facing = Direction.from2DDataValue(this.menu.getFacingIndex());
-        Component facingText = Component.literal("Facing: " + facing.getName().toUpperCase());
+        String dirMode = this.menu.isReversed() ? "REV" : "FWD";
+        Component facingText = Component.literal(facing.getName().toUpperCase() + " [" + dirMode + "]");
         graphics.text(this.font, facingText, 8, 17, 0x404040, false);
 
         Component statusText = this.menu.isRunning()

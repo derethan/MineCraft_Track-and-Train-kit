@@ -2,6 +2,7 @@ package com.example.miningtools.network;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 
 import io.netty.buffer.ByteBuf;
@@ -55,6 +56,11 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
                         player.openMenu(elecLoco);
                         return;
                     }
+                    DieselLocomotiveEntity dieselLoco = DieselLocomotiveEntity.getConnectedLocomotive(vehicle);
+                    if (dieselLoco != null && !dieselLoco.isRemoved()) {
+                        player.openMenu(dieselLoco);
+                        return;
+                    }
                     com.example.miningtools.entity.TunnelBoreEntity bore = com.example.miningtools.entity.TunnelBoreEntity.getConnectedBore(vehicle);
                     if (bore != null && !bore.isRemoved()) {
                         player.openMenu(bore);
@@ -76,6 +82,11 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
                 ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
                 if (elecLoco != null && !elecLoco.isRemoved()) {
                     elecLoco.handleHotkeyAction(player, payload.action());
+                    return;
+                }
+                DieselLocomotiveEntity dieselLoco = DieselLocomotiveEntity.getConnectedLocomotive(vehicle);
+                if (dieselLoco != null && !dieselLoco.isRemoved()) {
+                    dieselLoco.handleHotkeyAction(player, payload.action());
                 }
             }
         });

@@ -17,6 +17,7 @@ import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CabooseMinecartEntity;
 import com.example.miningtools.entity.CargoMinecartEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
@@ -24,12 +25,14 @@ import com.example.miningtools.item.BasicLocomotiveItem;
 import com.example.miningtools.item.CabooseItem;
 import com.example.miningtools.item.CargoMinecartItem;
 import com.example.miningtools.item.CrowbarItem;
+import com.example.miningtools.item.DieselLocomotiveItem;
 import com.example.miningtools.item.ElectricLocomotiveItem;
 import com.example.miningtools.item.LargeLiquidMinecartItem;
 import com.example.miningtools.item.LiquidMinecartItem;
 import com.example.miningtools.item.TunnelBoreItem;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.menu.CargoMinecartMenu;
+import com.example.miningtools.menu.DieselLocomotiveMenu;
 import com.example.miningtools.menu.ElectricLocomotiveMenu;
 import com.example.miningtools.menu.FluidLoaderMenu;
 import com.example.miningtools.menu.TunnelBoreMenu;
@@ -233,6 +236,26 @@ public class MiningTools {
             () -> new MenuType<>(BasicLocomotiveMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
 
+    // Diesel Locomotive Entity, Item & Menu (Canadian National #3087)
+    public static final DeferredHolder<EntityType<?>, EntityType<DieselLocomotiveEntity>> DIESEL_LOCOMOTIVE_ENTITY = ENTITY_TYPES.register(
+            "diesel_locomotive",
+            key -> EntityType.Builder.<DieselLocomotiveEntity>of(DieselLocomotiveEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 1.35F)
+                    .passengerAttachments(0.25F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<DieselLocomotiveItem> DIESEL_LOCOMOTIVE_ITEM = ITEMS.registerItem(
+            "diesel_locomotive",
+            DieselLocomotiveItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredHolder<MenuType<?>, MenuType<DieselLocomotiveMenu>> DIESEL_LOCOMOTIVE_MENU = MENUS.register(
+            "diesel_locomotive",
+            () -> new MenuType<>(DieselLocomotiveMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Cargo Minecart Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<CargoMinecartEntity>> CARGO_MINECART_ENTITY = ENTITY_TYPES.register(
             "cargo_minecart",
@@ -357,6 +380,7 @@ public class MiningTools {
                         output.accept(FLUID_LOADER_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
+                        output.accept(DIESEL_LOCOMOTIVE_ITEM.get());
                         output.accept(ELECTRIC_LOCOMOTIVE_ITEM.get());
                         output.accept(CARGO_MINECART_ITEM.get());
                         output.accept(LIQUID_MINECART_ITEM.get());
@@ -400,6 +424,11 @@ public class MiningTools {
         event.registerEntity(
                 Capabilities.Fluid.ENTITY,
                 LARGE_LIQUID_MINECART_ENTITY.get(),
+                (entity, side) -> entity.getFluidHandler()
+        );
+        event.registerEntity(
+                Capabilities.Fluid.ENTITY,
+                DIESEL_LOCOMOTIVE_ENTITY.get(),
                 (entity, side) -> entity.getFluidHandler()
         );
         event.registerBlockEntity(

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:bucket",
+    "G": "minecraft:glass",
+    "I": "minecraft:iron_block",
+    "M": "minecraft:minecart",
+    "R": "minecraft:redstone_block"
+  },
+  "pattern": [
+    " G ",
+    "IRB",
+    " M "
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:diesel_locomotive"
+  }
+}

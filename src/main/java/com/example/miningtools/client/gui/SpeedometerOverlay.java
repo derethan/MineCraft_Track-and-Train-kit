@@ -4,6 +4,7 @@ import java.util.Locale;
 
 import com.example.miningtools.Config;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -82,7 +83,8 @@ public class SpeedometerOverlay {
         }
 
         BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
-        if (loco != null && !loco.isActive() && windowBps < 0.08F) {
+        DieselLocomotiveEntity dieselLoco = DieselLocomotiveEntity.getConnectedLocomotive(vehicle);
+        if (((loco != null && !loco.isActive()) || (dieselLoco != null && !dieselLoco.isActive())) && windowBps < 0.08F) {
             targetBps = 0.0F;
         }
 
@@ -242,6 +244,15 @@ public class SpeedometerOverlay {
             double cfgMax = 0.35D;
             try {
                 cfgMax = Config.LOCOMOTIVE_MAX_SPEED.get();
+            } catch (Throwable ignored) {
+            }
+            return (float) (cfgMax * 20.0D);
+        }
+        DieselLocomotiveEntity diesel = DieselLocomotiveEntity.getConnectedLocomotive(vehicle);
+        if (diesel != null) {
+            double cfgMax = 0.70D;
+            try {
+                cfgMax = Config.DIESEL_LOCOMOTIVE_MAX_SPEED.get();
             } catch (Throwable ignored) {
             }
             return (float) (cfgMax * 20.0D);
