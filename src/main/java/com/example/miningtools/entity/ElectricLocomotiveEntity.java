@@ -774,6 +774,9 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
         Direction facing = this.getFacing();
         BlockPos headPos = this.blockPosition().relative(facing, 2).above();
+        if (!this.level().hasChunkAt(headPos)) {
+            return;
+        }
         if (headPos.equals(this.currentLightPos)) {
             return;
         }
@@ -787,10 +790,12 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     private void removeDynamicLight() {
-        if (this.currentLightPos != null) {
-            BlockState state = this.level().getBlockState(this.currentLightPos);
-            if (state.is(Blocks.LIGHT)) {
-                this.level().setBlock(this.currentLightPos, Blocks.AIR.defaultBlockState(), 3);
+        if (this.currentLightPos != null && !this.level().isClientSide()) {
+            if (this.level().hasChunkAt(this.currentLightPos)) {
+                BlockState state = this.level().getBlockState(this.currentLightPos);
+                if (state.is(Blocks.LIGHT)) {
+                    this.level().setBlock(this.currentLightPos, Blocks.AIR.defaultBlockState(), 3);
+                }
             }
             this.currentLightPos = null;
         }
@@ -798,7 +803,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public void remove(Entity.RemovalReason reason) {
-        if (!this.level().isClientSide()) {
+        if (reason.shouldDestroy() && !this.level().isClientSide()) {
             this.removeDynamicLight();
         }
         super.remove(reason);

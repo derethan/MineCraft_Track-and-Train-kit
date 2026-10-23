@@ -1,11 +1,13 @@
 package com.example.miningtools.entity;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
 import com.example.miningtools.MiningTools;
+import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -27,6 +29,8 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -100,9 +104,9 @@ public class CabooseMinecartEntity extends AbstractMinecart {
             return;
         }
 
-        // Server-side Chunk Anchor Maintenance
+        // Server-side Chunk Anchor Maintenance (once per second)
         this.tickCounter++;
-        if (this.tickCounter % 5 == 0 && this.isAnchorActive() && !this.isRemoved()) {
+        if (this.tickCounter % 20 == 0 && this.isAnchorActive() && !this.isRemoved()) {
             this.updateForcedChunks();
         }
     }
@@ -119,12 +123,19 @@ public class CabooseMinecartEntity extends AbstractMinecart {
         // 1. Force a 3x3 chunk grid surrounding the Caboose
         this.addChunkGrid(desiredChunks, cabooseChunk.x(), cabooseChunk.z(), 1);
 
-        // 2. Locate any connected locomotive pulling or towing this train
+        // 2. Locate any connected locomotive pulling or towing this train and cover all chained carts
         BasicLocomotiveEntity steamLoco = BasicLocomotiveEntity.getConnectedLocomotive(this);
         if (steamLoco != null && !steamLoco.isRemoved()) {
             BlockPos lp = steamLoco.blockPosition();
             ChunkPos locoChunk = new ChunkPos(lp.getX() >> 4, lp.getZ() >> 4);
             this.addChunkGrid(desiredChunks, locoChunk.x(), locoChunk.z(), 1);
+            for (Pair<Entity, AbstractMinecart> link : steamLoco.getOrderedTrainLinks()) {
+                AbstractMinecart cart = link.getSecond();
+                if (cart != null && !cart.isRemoved()) {
+                    BlockPos cpPos = cart.blockPosition();
+                    desiredChunks.add(new ChunkPos(cpPos.getX() >> 4, cpPos.getZ() >> 4));
+                }
+            }
         }
 
         ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(this);
@@ -132,19 +143,32 @@ public class CabooseMinecartEntity extends AbstractMinecart {
             BlockPos ep = elecLoco.blockPosition();
             ChunkPos elecChunk = new ChunkPos(ep.getX() >> 4, ep.getZ() >> 4);
             this.addChunkGrid(desiredChunks, elecChunk.x(), elecChunk.z(), 1);
+            for (Pair<Entity, AbstractMinecart> link : elecLoco.getOrderedTrainLinks()) {
+                AbstractMinecart cart = link.getSecond();
+                if (cart != null && !cart.isRemoved()) {
+                    BlockPos cpPos = cart.blockPosition();
+                    desiredChunks.add(new ChunkPos(cpPos.getX() >> 4, cpPos.getZ() >> 4));
+                }
+            }
         }
 
         // 3. Reconcile chunks: unforce obsolete chunks, force newly entered chunks
         for (ChunkPos held : new HashSet<>(this.currentlyForced)) {
             if (!desiredChunks.contains(held)) {
-                serverLevel.setChunkForced(held.x(), held.z(), false);
+                try {
+                    serverLevel.setChunkForced(held.x(), held.z(), false);
+                } catch (Throwable ignored) {
+                }
                 this.currentlyForced.remove(held);
             }
         }
 
         for (ChunkPos desired : desiredChunks) {
             if (!this.currentlyForced.contains(desired)) {
-                serverLevel.setChunkForced(desired.x(), desired.z(), true);
+                try {
+                    serverLevel.setChunkForced(desired.x(), desired.z(), true);
+                } catch (Throwable ignored) {
+                }
                 this.currentlyForced.add(desired);
             }
         }
@@ -173,18 +197,22 @@ public class CabooseMinecartEntity extends AbstractMinecart {
 
     @Override
     public void remove(RemovalReason reason) {
-        if (this.level() instanceof ServerLevel serverLevel) {
+        if (reason.shouldDestroy() && this.level() instanceof ServerLevel serverLevel) {
             this.releaseAllForcedChunks(serverLevel);
         }
         super.remove(reason);
     }
 
     @Override
-    public void onRemovedFromLevel() {
-        if (this.level() instanceof ServerLevel serverLevel) {
-            this.releaseAllForcedChunks(serverLevel);
-        }
-        super.onRemovedFromLevel();
+    protected void addAdditionalSaveData(ValueOutput output) {
+        super.addAdditionalSaveData(output);
+        output.putBoolean("AnchorActive", this.isAnchorActive());
+    }
+
+    @Override
+    protected void readAdditionalSaveData(ValueInput input) {
+        super.readAdditionalSaveData(input);
+        this.setAnchorActive(input.getBooleanOr("AnchorActive", true));
     }
 
     @Override

@@ -1217,12 +1217,21 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         );
 
         BlockPos targetPos = frontPos;
+        if (!this.level().hasChunkAt(targetPos)) {
+            return;
+        }
         BlockState targetState = this.level().getBlockState(targetPos);
         if (!targetState.isAir() && !targetState.is(Blocks.LIGHT)) {
             targetPos = this.blockPosition().above();
+            if (!this.level().hasChunkAt(targetPos)) {
+                return;
+            }
             targetState = this.level().getBlockState(targetPos);
             if (!targetState.isAir() && !targetState.is(Blocks.LIGHT)) {
                 targetPos = this.blockPosition();
+                if (!this.level().hasChunkAt(targetPos)) {
+                    return;
+                }
                 targetState = this.level().getBlockState(targetPos);
             }
         }
@@ -1240,9 +1249,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     public void clearDynamicLight() {
         if (this.currentLightPos != null && !this.level().isClientSide()) {
-            BlockState state = this.level().getBlockState(this.currentLightPos);
-            if (state.is(Blocks.LIGHT)) {
-                this.level().setBlock(this.currentLightPos, Blocks.AIR.defaultBlockState(), 3);
+            if (this.level().hasChunkAt(this.currentLightPos)) {
+                BlockState state = this.level().getBlockState(this.currentLightPos);
+                if (state.is(Blocks.LIGHT)) {
+                    this.level().setBlock(this.currentLightPos, Blocks.AIR.defaultBlockState(), 3);
+                }
             }
             this.currentLightPos = null;
         }
@@ -1257,14 +1268,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public void remove(Entity.RemovalReason reason) {
-        this.clearDynamicLight();
+        if (reason.shouldDestroy() && !this.level().isClientSide()) {
+            this.clearDynamicLight();
+        }
         super.remove(reason);
-    }
-
-    @Override
-    public void onRemovedFromLevel() {
-        this.clearDynamicLight();
-        super.onRemovedFromLevel();
     }
 
     @Override
