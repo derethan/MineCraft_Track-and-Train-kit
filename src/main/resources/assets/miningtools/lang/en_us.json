@@ -26,6 +26,8 @@
   "block.miningtools.chunk_loader": "Industrial Chunk Anchor",
   "item.miningtools.chunk_loader": "Industrial Chunk Anchor",
   "gui.miningtools.chunk_loader.title": "Industrial Chunk Anchor",
+  "block.miningtools.buffer_stop": "Railway Buffer Stop",
+  "item.miningtools.buffer_stop": "Railway Buffer Stop",
   "item.miningtools.liquid_minecart": "Liquid Minecart (Small)",
   "entity.miningtools.liquid_minecart": "Liquid Minecart (Small)",
   "item.miningtools.large_liquid_minecart": "Large Liquid Minecart",

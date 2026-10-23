@@ -124,6 +124,15 @@ A stationary, heavy-duty chunk loader block for mines, quarries, mob farms, and 
 * **Redstone Modes**: Toggle between **Always Active** and **Redstone Required**.
 * **Visual Status**: Glowing cyan energy core, green status LED, light level 12, and portal particles.
 
+### Railway Buffer Stop (Stop Block)
+A heavy-duty end-of-track railway barrier modeled after authentic industrial buffer stops:
+* **True Rail Clamping**: Dual A-frame structural steel legs clamp onto incoming tracks at standard rail gauge.
+* **Heavy Timber Bumper & Pads**: Massive rustic creosote beam with metal end straps, dual vulcanized rubber impact bumper pads, and a red/white reflective center warning plate.
+* **Safe Physical Halting**: Stops incoming minecarts, freight cars, and locomotives immediately on contact with zero clipping and zero bouncy derailing.
+* **Engine Auto-Shutdown**: When struck by a running locomotive or tunnel bore, it safely cuts throttle and stops the engine while emitting an authentic impact clatter and spark particles.
+* **Terminal Redstone Detection**: Emits a continuous redstone signal (strength 15) while a train or cart is resting against the buffer, perfect for terminal station automation and signaling.
+* **Crowbar Reorient**: Right-click or Sneak+Right-Click with the Railroad Crowbar to quickly rotate facing direction.
+
 ---
 
 ## 🛤️ Specialty Switch & Power Rails
@@ -167,6 +176,7 @@ When seated inside a locomotive or coupled cart:
 | **Liquid Minecart** | Iron Ingots + Minecart + Glass |
 | **Anchor Caboose** | Ender Pearl + Obsidian + Minecart + Redstone |
 | **Industrial Chunk Anchor** | Ender Pearl + Obsidian + Gold + Redstone Block + Iron |
+| **Railway Buffer Stop** | Iron Ingots + Log/Planks + Redstone + Iron Bars (Yields 2) |
 | **Entity Loader** | Lead + Hopper + Copper + Iron + Redstone |
 | **Entity Unloader** | Activator Rail + Hopper + Copper + Iron + Redstone |
 | **Trackside Fluid Station** | Piston + Hopper + Copper + Iron + Redstone |

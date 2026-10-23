@@ -11,6 +11,7 @@
     "miningtools:electric_rail",
     "miningtools:entity_loader",
     "miningtools:entity_unloader",
-    "miningtools:chunk_loader"
+    "miningtools:chunk_loader",
+    "miningtools:buffer_stop"
   ]
 }

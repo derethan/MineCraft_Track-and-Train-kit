@@ -2,6 +2,7 @@ package com.example.miningtools;
 
 import org.slf4j.Logger;
 
+import com.example.miningtools.block.BufferStopBlock;
 import com.example.miningtools.block.ChunkLoaderBlock;
 import com.example.miningtools.block.ControlRailBlock;
 import com.example.miningtools.block.ElectricRailBlock;
@@ -251,6 +252,17 @@ public class MiningTools {
             () -> new BlockEntityType<>(ChunkLoaderBlockEntity::new, CHUNK_LOADER.get())
     );
 
+    // Buffer Stop (Stop Block) Block & Item
+    public static final DeferredBlock<BufferStopBlock> BUFFER_STOP = BLOCKS.registerBlock(
+            "buffer_stop",
+            BufferStopBlock::new,
+            p -> p.strength(3.5F).sound(SoundType.NETHERITE_BLOCK).noOcclusion()
+    );
+    public static final DeferredItem<BlockItem> BUFFER_STOP_ITEM = ITEMS.registerSimpleBlockItem(
+            "buffer_stop",
+            BUFFER_STOP
+    );
+
     // Tunnel Bore Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<TunnelBoreEntity>> TUNNEL_BORE_ENTITY = ENTITY_TYPES.register(
             "tunnel_bore",
@@ -436,6 +448,7 @@ public class MiningTools {
                         output.accept(ENTITY_LOADER_ITEM.get());
                         output.accept(ENTITY_UNLOADER_ITEM.get());
                         output.accept(CHUNK_LOADER_ITEM.get());
+                        output.accept(BUFFER_STOP_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
                         output.accept(DIESEL_LOCOMOTIVE_ITEM.get());
@@ -566,6 +579,10 @@ public class MiningTools {
             event.accept(WYE_RAIL_ITEM);
             event.accept(TRACK_SWITCH_ITEM);
             event.accept(FLUID_LOADER_ITEM);
+            event.accept(ENTITY_LOADER_ITEM);
+            event.accept(ENTITY_UNLOADER_ITEM);
+            event.accept(CHUNK_LOADER_ITEM);
+            event.accept(BUFFER_STOP_ITEM);
             event.accept(TUNNEL_BORE_ITEM);
             event.accept(BASIC_LOCOMOTIVE_ITEM);
             event.accept(ELECTRIC_LOCOMOTIVE_ITEM);
