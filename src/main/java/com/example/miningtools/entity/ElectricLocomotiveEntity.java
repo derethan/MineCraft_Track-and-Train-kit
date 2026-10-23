@@ -622,28 +622,12 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.6F, 1.4F);
             } else {
-                boolean isCurveShape = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
-                if (isCurveShape) {
-                    Vec3i targetExit = (exit0.getX() != -facing.getStepX() || exit0.getZ() != -facing.getStepZ()) ? exit0 : exit1;
-                    Direction targetDir = Direction.getApproximateNearest(targetExit.getX(), 0.0, targetExit.getZ());
-                    if (targetDir.getAxis().isHorizontal() && targetDir.getAxis() != facing.getAxis()) {
-                        double entryEdgeX = railPos.getX() + 0.5 - facing.getStepX() * 0.5;
-                        double entryEdgeZ = railPos.getZ() + 0.5 - facing.getStepZ() * 0.5;
-                        double targetEdgeX = railPos.getX() + 0.5 + targetExit.getX() * 0.5;
-                        double targetEdgeZ = railPos.getZ() + 0.5 + targetExit.getZ() * 0.5;
-                        double distToEntrySqr = (this.getX() - entryEdgeX) * (this.getX() - entryEdgeX) + (this.getZ() - entryEdgeZ) * (this.getZ() - entryEdgeZ);
-                        double distToTargetSqr = (this.getX() - targetEdgeX) * (this.getX() - targetEdgeX) + (this.getZ() - targetEdgeZ) * (this.getZ() - targetEdgeZ);
-                        if (distToTargetSqr <= distToEntrySqr) {
-                            this.setFacing(targetDir);
-                        }
-                    }
-                } else {
-                    Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
-                    if (currentMoveDir.getAxis().isHorizontal()
-                            && actualMovement.horizontalDistanceSqr() > 1.0E-4D
-                            && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
-                        this.setFacing(currentMoveDir);
-                    }
+                // Update facing only if track turned around a curve (orthogonal axis change)
+                Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
+                if (currentMoveDir.getAxis().isHorizontal()
+                        && actualMovement.horizontalDistanceSqr() > 1.0E-4D
+                        && currentMoveDir.getAxis() != this.getFacing().getAxis()) {
+                    this.setFacing(currentMoveDir);
                 }
             }
 
