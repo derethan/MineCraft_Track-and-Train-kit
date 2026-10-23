@@ -318,32 +318,98 @@ public final class TrainChainingUtil {
         return false;
     }
 
-    public static Pair<AbstractMinecart, AbstractMinecart> determineRoles(AbstractMinecart first, AbstractMinecart second) {
-        boolean firstIsLead = isLeadCart(first);
-        boolean secondIsLead = isLeadCart(second);
+    public static @Nullable AbstractMinecart getTrainTail(AbstractMinecart cart) {
+        if (cart == null) return null;
+        AbstractMinecart current = cart;
+        Set<UUID> visited = new HashSet<>();
+        visited.add(current.getUUID());
+        Level level = current.level();
+
+        while (true) {
+            UUID childUUID = getCartChildUUID(current);
+            if (childUUID == null || !visited.add(childUUID)) break;
+            Entity childEntity = level.getEntity(childUUID);
+            if (childEntity instanceof AbstractMinecart childCart && !childCart.isRemoved()) {
+                current = childCart;
+            } else {
+                break;
+            }
+        }
+        return current;
+    }
+
+    public static @Nullable AbstractMinecart getTrainHead(AbstractMinecart cart) {
+        if (cart == null) return null;
+        AbstractMinecart current = cart;
+        Set<UUID> visited = new HashSet<>();
+        visited.add(current.getUUID());
+        Level level = current.level();
+
+        while (true) {
+            UUID parentUUID = getCartParentUUID(current);
+            if (parentUUID == null || !visited.add(parentUUID)) break;
+            Entity parentEntity = level.getEntity(parentUUID);
+            if (parentEntity instanceof AbstractMinecart parentCart && !parentCart.isRemoved()) {
+                current = parentCart;
+            } else {
+                break;
+            }
+        }
+        return current;
+    }
+
+    public static @Nullable Pair<AbstractMinecart, AbstractMinecart> determineRoles(AbstractMinecart first, AbstractMinecart second) {
         boolean firstIsTail = isTailCart(first);
         boolean secondIsTail = isTailCart(second);
 
-        if (firstIsLead && !secondIsLead) {
-            return Pair.of(first, second);
-        }
-        if (secondIsLead && !firstIsLead) {
-            return Pair.of(second, first);
+        // Caboose rules:
+        // A Caboose can NEVER have carts coupled behind it! It must remain the end of the train.
+        if (firstIsTail && !secondIsTail) {
+            // Player clicked Caboose then another cart -> invalid (cannot attach to the back of a Caboose)
+            return null;
         }
         if (secondIsTail && !firstIsTail) {
-            return Pair.of(first, second);
+            // Player clicked train cart then Caboose -> append Caboose to the end of first's train
+            AbstractMinecart tail = getTrainTail(first);
+            return Pair.of(tail != null ? tail : first, second);
         }
-        if (firstIsTail && !secondIsTail) {
-            return Pair.of(second, first);
-        }
+
+        boolean firstIsLead = isLeadCart(first);
+        boolean secondIsLead = isLeadCart(second);
 
         UUID firstChild = getCartChildUUID(first);
         UUID firstParent = getCartParentUUID(first);
         UUID secondChild = getCartChildUUID(second);
         UUID secondParent = getCartParentUUID(second);
 
-        if (firstIsLead && secondIsLead) {
-            if (firstChild == null && secondParent == null && secondChild == null && firstParent == null) {
+        // If first cart is in a train and has no child (tail of its consist), attach second behind it,
+        // even if second is a locomotive (mid-train helper or rear pusher locomotive).
+        if (firstParent != null && firstChild == null) {
+            return Pair.of(first, second);
+        }
+
+        // If second cart is in a train and has no child, but first has no parent:
+        if (secondParent != null && secondChild == null && firstParent == null) {
+            return Pair.of(second, first);
+        }
+
+        // If first cart has a child and second is unlinked, append second to the end of first's train
+        if (firstChild != null && secondParent == null && secondChild == null) {
+            AbstractMinecart tail = getTrainTail(first);
+            if (tail != null && !tail.getUUID().equals(second.getUUID())) {
+                return Pair.of(tail, second);
+            }
+        }
+
+        // Two standalone carts where one is a lead locomotive
+        if (firstParent == null && firstChild == null && secondParent == null && secondChild == null) {
+            if (firstIsLead && !secondIsLead) {
+                return Pair.of(first, second);
+            }
+            if (secondIsLead && !firstIsLead) {
+                return Pair.of(second, first);
+            }
+            if (firstIsLead && secondIsLead) {
                 Direction facing = (first instanceof BasicLocomotiveEntity bl) ? bl.getFacing()
                         : (first instanceof DieselLocomotiveEntity dl) ? dl.getFacing()
                         : (first instanceof ElectricLocomotiveEntity el) ? el.getFacing()
@@ -359,13 +425,7 @@ public final class TrainChainingUtil {
             }
         }
 
-        if (firstChild == null && secondParent == null) {
-            return Pair.of(first, second);
-        }
-        if (secondChild == null && firstParent == null) {
-            return Pair.of(second, first);
-        }
-
+        // Default: respect the player's coupling selection order
         return Pair.of(first, second);
     }
 

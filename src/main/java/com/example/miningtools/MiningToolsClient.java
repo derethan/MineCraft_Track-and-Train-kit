@@ -1,5 +1,9 @@
 package com.example.miningtools;
 
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
 import com.example.miningtools.client.gui.DieselLocomotiveScreen;
@@ -35,8 +39,13 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.renderer.block.FluidModel;
+import net.minecraft.client.renderer.block.FluidStateModelSet;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -44,6 +53,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.ModelEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
@@ -123,6 +133,7 @@ public class MiningToolsClient {
         modEventBus.addListener(this::registerEntityRenderers);
         modEventBus.addListener(this::registerMenuScreens);
         modEventBus.addListener(this::registerKeyMappings);
+        modEventBus.addListener(this::onModelBakingCompleted);
 
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
         NeoForge.EVENT_BUS.addListener(SpeedometerOverlay::onRenderGui);
@@ -175,6 +186,11 @@ public class MiningToolsClient {
         Minecraft mc = Minecraft.getInstance();
         SpeedometerOverlay.onClientTick(mc);
         if (mc.player == null || mc.level == null) return;
+
+        if (++fluidPatchCooldown > 100) {
+            fluidPatchCooldown = 0;
+            patchFluidModels();
+        }
 
         if (mc.gui.screen() != null) {
             wasUpPressed = false;
@@ -273,5 +289,59 @@ public class MiningToolsClient {
         wasReversePressed = isReverse;
         wasHornPressed = isHorn;
         wasLightPressed = isLight;
+    }
+
+    private static int fluidPatchCooldown = 0;
+
+    private void onModelBakingCompleted(ModelEvent.BakingCompleted event) {
+        patchFluidModels();
+    }
+
+    public static void patchFluidModels() {
+        try {
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.getModelManager() == null) return;
+            FluidStateModelSet modelSet = mc.getModelManager().getFluidStateModelSet();
+            if (modelSet == null) return;
+
+            Field modelByFluidField = FluidStateModelSet.class.getDeclaredField("modelByFluid");
+            modelByFluidField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<Fluid, FluidModel> map = (Map<Fluid, FluidModel>) modelByFluidField.get(modelSet);
+
+            FluidModel waterModel = modelSet.get(Fluids.WATER.defaultFluidState());
+            if (waterModel == null) return;
+
+            Map<Fluid, FluidModel> newMap = (map != null) ? new HashMap<>(map) : new HashMap<>();
+            FluidModel dieselModel = new FluidModel(
+                    waterModel.layer(),
+                    waterModel.stillMaterial(),
+                    waterModel.flowingMaterial(),
+                    waterModel.overlayMaterial(),
+                    state -> 0xFFEAB308 // Golden yellow amber
+            );
+
+            for (Fluid fluid : BuiltInRegistries.FLUID) {
+                if (!newMap.containsKey(fluid)) {
+                    Identifier id = BuiltInRegistries.FLUID.getKey(fluid);
+                    if (id != null) {
+                        String path = id.getPath().toLowerCase();
+                        String ns = id.getNamespace().toLowerCase();
+                        if (path.contains("diesel") || path.contains("fuel") || path.contains("bio") || path.contains("oil")
+                                || ns.contains("refinery") || ns.contains("car") || ns.contains("logistics")) {
+                            newMap.put(fluid, dieselModel);
+                        }
+                    }
+                }
+            }
+
+            modelByFluidField.set(modelSet, newMap);
+
+            Field missingModelField = FluidStateModelSet.class.getDeclaredField("missingModel");
+            missingModelField.setAccessible(true);
+            missingModelField.set(modelSet, dieselModel);
+        } catch (Throwable t) {
+            MiningTools.LOGGER.debug("Could not patch fluid models: {}", t.getMessage());
+        }
     }
 }

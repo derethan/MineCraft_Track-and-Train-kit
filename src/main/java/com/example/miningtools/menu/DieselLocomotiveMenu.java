@@ -37,9 +37,9 @@ public class DieselLocomotiveMenu extends AbstractContainerMenu {
         container.startOpen(playerInventory.player);
 
         // Slot 0: Diesel Fuel Container Input (canister/bucket)
-        this.addSlot(new Slot(container, 0, 75, 53));
+        this.addSlot(new Slot(container, 0, 67, 50));
         // Slot 1: Empty Container Output
-        this.addSlot(new Slot(container, 1, 95, 53) {
+        this.addSlot(new Slot(container, 1, 95, 50) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;

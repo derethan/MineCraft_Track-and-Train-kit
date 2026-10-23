@@ -116,6 +116,15 @@ public class CrowbarItem extends Item {
 
         // Determine parent/child roles and link them
         Pair<AbstractMinecart, AbstractMinecart> roles = TrainChainingUtil.determineRoles(firstCart, cart);
+        if (roles == null) {
+            clearSelectedCart(stack);
+            serverLevel.playSound(null, cart.blockPosition(), SoundEvents.DISPENSER_FAIL, SoundSource.PLAYERS, 0.7F, 1.2F);
+            player.sendOverlayMessage(
+                    Component.literal("Cannot attach carts to the back of a Caboose! It must remain the end of the train.")
+                            .withStyle(ChatFormatting.RED)
+            );
+            return InteractionResult.SUCCESS;
+        }
         AbstractMinecart parent = roles.getFirst();
         AbstractMinecart child = roles.getSecond();
 

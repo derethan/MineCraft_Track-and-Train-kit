@@ -39,9 +39,11 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
     private final ModelPart ingot5;
 
     private final ModelPart shippingContainer;
+    private final ModelPart stakes;
 
     public LoggingCartModel(ModelPart root) {
         super(root);
+        this.stakes = root.getChild("stakes");
         this.log1 = root.getChild("log1");
         this.log2 = root.getChild("log2");
         this.log3 = root.getChild("log3");
@@ -280,6 +282,7 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         boolean isUnfilteredWithItems = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.NONE && count > 0;
 
         this.shippingContainer.visible = isUnfilteredWithItems;
+        this.stakes.visible = isLog;
 
         this.log1.visible = isLog && count >= 1;
         this.log2.visible = isLog && count >= 128;

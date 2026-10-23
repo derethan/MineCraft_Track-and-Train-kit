@@ -129,7 +129,7 @@ public class DieselLocomotiveScreen extends AbstractContainerScreen<DieselLocomo
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 2);
                     }
-                }).bounds(this.leftPos + 8, this.topPos + 48, 18, 18).build()
+                }).bounds(this.leftPos + 8, this.topPos + 60, 16, 16).build()
         );
 
         // Speed increment button [+]
@@ -138,7 +138,7 @@ public class DieselLocomotiveScreen extends AbstractContainerScreen<DieselLocomo
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 3);
                     }
-                }).bounds(this.leftPos + 30, this.topPos + 48, 18, 18).build()
+                }).bounds(this.leftPos + 26, this.topPos + 60, 16, 16).build()
         );
     }
 
@@ -183,39 +183,41 @@ public class DieselLocomotiveScreen extends AbstractContainerScreen<DieselLocomo
         graphics.text(this.font, this.title, this.titleLabelX, this.titleLabelY, 0x203040, false);
         graphics.text(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, 0x404040, false);
 
-        // Direction & engine status
-        Direction facing = Direction.from2DDataValue(this.menu.getFacingIndex());
-        String dirMode = this.menu.isReversed() ? "REV" : "FWD";
-        Component facingText = Component.literal(facing.getName().toUpperCase() + " [" + dirMode + "]");
-        graphics.text(this.font, facingText, 8, 17, 0x404040, false);
-
-        Component statusText = this.menu.isRunning()
-                ? Component.literal("[Running]").withStyle(ChatFormatting.DARK_GREEN)
-                : Component.literal("[Stopped]").withStyle(ChatFormatting.DARK_RED);
-        int statusColor = this.menu.isRunning() ? 0xFF1E7A1E : 0xFF9E2020;
-        graphics.text(this.font, statusText, 72, 17, statusColor, false);
-
-        // Speed header and current value
-        graphics.text(this.font, Component.literal("Speed:"), 8, 27, 0x505050, false);
-
-        int speedLevel = this.menu.getSpeedLevel();
-        String speedName = DieselLocomotiveEntity.getSpeedName(speedLevel);
-        Component speedText = Component.literal(speedName).withStyle(ChatFormatting.RED);
-        int textWidth = this.font.width(speedText);
-        int textX = 8 + (40 - textWidth) / 2;
-        graphics.text(this.font, speedText, textX, 38, 0xFFD3202A, false);
-
-        // Diesel fuel status badge
+        // Top Left: Diesel Fuel warning badge
         Component fuelBadge;
         int badgeColor;
         if (this.menu.getFluidAmount() > 0) {
-            fuelBadge = Component.literal("⛽ DIESEL FUEL").withStyle(ChatFormatting.GOLD);
+            fuelBadge = Component.literal("⛽ DIESEL").withStyle(ChatFormatting.GOLD);
             badgeColor = 0xFFD97706;
         } else {
             fuelBadge = Component.literal("⚠ EMPTY TANK").withStyle(ChatFormatting.RED);
             badgeColor = 0xFFDC2626;
         }
-        graphics.text(this.font, fuelBadge, 58, 28, badgeColor, false);
+        graphics.text(this.font, fuelBadge, 8, 17, badgeColor, false);
+
+        // Center: Engine status and Heading
+        Component statusText = this.menu.isRunning()
+                ? Component.literal("[Running]").withStyle(ChatFormatting.DARK_GREEN)
+                : Component.literal("[Stopped]").withStyle(ChatFormatting.DARK_RED);
+        int statusColor = this.menu.isRunning() ? 0xFF1E7A1E : 0xFF9E2020;
+        graphics.text(this.font, statusText, 62, 17, statusColor, false);
+
+        Direction facing = Direction.from2DDataValue(this.menu.getFacingIndex());
+        String dirMode = this.menu.isReversed() ? "REV" : "FWD";
+        Component facingText = Component.literal(facing.getName().toUpperCase() + " [" + dirMode + "]");
+        graphics.text(this.font, facingText, 62, 28, 0x404040, false);
+
+        // Slot Labels above the two fuel slots
+        graphics.text(this.font, Component.literal("Fuel In"), 63, 39, 0x606060, false);
+        graphics.text(this.font, Component.literal("Empty"), 94, 39, 0x606060, false);
+
+        // Speed header and current value on the left
+        graphics.text(this.font, Component.literal("Speed:"), 8, 40, 0x505050, false);
+
+        int speedLevel = this.menu.getSpeedLevel();
+        String speedName = DieselLocomotiveEntity.getSpeedName(speedLevel);
+        Component speedText = Component.literal(speedName).withStyle(ChatFormatting.RED);
+        graphics.text(this.font, speedText, 8, 49, 0xFFD3202A, false);
     }
 
     @Override
@@ -232,11 +234,11 @@ public class DieselLocomotiveScreen extends AbstractContainerScreen<DieselLocomo
         // Main GUI texture
         graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, xo, yo, 0.0F, 0.0F, this.imageWidth, this.imageHeight, 256, 256);
 
-        // Diesel fuel tank level bar (width 54, height 12 at xo + 58, yo + 38)
-        int barX = xo + 58;
-        int barY = yo + 38;
-        int barW = 54;
-        int barH = 12;
+        // Diesel fuel tank level bar: Top Left of GUI, shrunk (width 44, height 9 at xo + 8, yo + 28)
+        int barX = xo + 8;
+        int barY = yo + 28;
+        int barW = 44;
+        int barH = 9;
 
         graphics.fill(barX, barY, barX + barW, barY + barH, 0xFF18181B); // Dark background
         float pct = this.menu.getFluidPercent();
@@ -246,16 +248,23 @@ public class DieselLocomotiveScreen extends AbstractContainerScreen<DieselLocomo
         }
         graphics.outline(barX, barY, barW, barH, 0xFF52525B);
 
-        // Fuel percentage / amount text inside bar
+        // Fuel percentage text inside bar
         String pctStr = Math.round(pct * 100.0F) + "%";
         int pctW = this.font.width(pctStr);
-        graphics.text(this.font, Component.literal(pctStr), barX + (barW - pctW) / 2, barY + 2, 0xFFFFFFFF, true);
+        graphics.text(this.font, Component.literal(pctStr), barX + (barW - pctW) / 2, barY + 1, 0xFFFFFFFF, true);
 
         // Tooltip over fuel bar
         if (mouseX >= barX && mouseX <= barX + barW && mouseY >= barY && mouseY <= barY + barH) {
             int stored = this.menu.getFluidAmount();
             int cap = this.menu.getFluidCapacity();
             graphics.setTooltipForNextFrame(Component.literal("Diesel Fuel Tank: " + stored + " / " + cap + " mB"), mouseX, mouseY);
+        }
+
+        // Tooltips over fuel container slots
+        if (mouseX >= xo + 66 && mouseX <= xo + 84 && mouseY >= yo + 49 && mouseY <= yo + 67) {
+            graphics.setTooltipForNextFrame(Component.literal("Fuel Container Input (Bucket / Canister)"), mouseX, mouseY);
+        } else if (mouseX >= xo + 94 && mouseX <= xo + 112 && mouseY >= yo + 49 && mouseY <= yo + 67) {
+            graphics.setTooltipForNextFrame(Component.literal("Empty Container Return"), mouseX, mouseY);
         }
     }
 }

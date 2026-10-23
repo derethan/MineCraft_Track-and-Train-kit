@@ -1,6 +1,8 @@
 package com.example.miningtools.entity;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -144,6 +146,11 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         super(type, level);
         this.tank = new FluidStacksResourceHandler(1, Config.DIESEL_LOCOMOTIVE_TANK_CAPACITY.get()) {
             @Override
+            public boolean isValid(int slot, FluidResource resource) {
+                return isDieselFuel(resource.toStack(1));
+            }
+
+            @Override
             protected void onContentsChanged(int index, FluidStack previousStack) {
                 super.onContentsChanged(index, previousStack);
                 DieselLocomotiveEntity.this.syncFluidData();
@@ -158,6 +165,11 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         this.yo = y;
         this.zo = z;
         this.tank = new FluidStacksResourceHandler(1, Config.DIESEL_LOCOMOTIVE_TANK_CAPACITY.get()) {
+            @Override
+            public boolean isValid(int slot, FluidResource resource) {
+                return isDieselFuel(resource.toStack(1));
+            }
+
             @Override
             protected void onContentsChanged(int index, FluidStack previousStack) {
                 super.onContentsChanged(index, previousStack);
@@ -237,11 +249,18 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             String path = id.getPath().toLowerCase();
             String namespace = id.getNamespace().toLowerCase();
             if (path.contains("diesel") || path.contains("fuel") || path.contains("oil")
-                    || path.contains("bio_diesel") || path.contains("biodiesel") || path.contains("petrol")
-                    || path.contains("kerosene") || path.contains("gasoline")) {
+                    || path.contains("bio") || path.contains("petrol") || path.contains("gasoline")
+                    || path.contains("kerosene") || path.contains("methanol") || path.contains("ethanol")
+                    || namespace.contains("refinery") || namespace.contains("car")) {
                 return true;
             }
         }
+        try {
+            return fluid.builtInRegistryHolder().tags().anyMatch(tag -> {
+                String tagPath = tag.location().getPath().toLowerCase();
+                return tagPath.contains("diesel") || tagPath.contains("fuel") || tagPath.contains("bio") || tagPath.contains("oil");
+            });
+        } catch (Throwable ignored) {}
         return false;
     }
 
@@ -459,6 +478,12 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         if (input.isEmpty()) return;
 
         FluidStack contained = FluidUtil.getFirstStackContained(input);
+        if ((contained == null || contained.isEmpty()) && input.getItem() instanceof net.minecraft.world.item.BucketItem bucket) {
+            Fluid bucketFluid = bucket.getContent();
+            if (bucketFluid != Fluids.EMPTY) {
+                contained = new FluidStack(bucketFluid, 1000);
+            }
+        }
         if (contained != null && !contained.isEmpty() && isDieselFuel(contained) && this.getFluidAmount() < this.getCapacity()) {
             int toInsert = Math.min(contained.getAmount(), this.getCapacity() - this.getFluidAmount());
             try (net.neoforged.neoforge.transfer.transaction.Transaction tx = net.neoforged.neoforge.transfer.transaction.Transaction.open(null)) {
@@ -821,26 +846,88 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     public List<Pair<Entity, AbstractMinecart>> getOrderedTrainLinks() {
-        List<Pair<Entity, AbstractMinecart>> links = new ArrayList<>();
+        List<Pair<Entity, AbstractMinecart>> result = new ArrayList<>();
         Set<UUID> visited = new HashSet<>();
         visited.add(this.getUUID());
 
-        Entity current = this;
-        while (current != null) {
-            UUID childUUID = TrainChainingUtil.getCartChildUUID(current);
-            if (childUUID == null || visited.contains(childUUID)) {
-                break;
-            }
-            visited.add(childUUID);
-            Entity childEntity = this.level().getEntity(childUUID);
-            if (childEntity instanceof AbstractMinecart childCart) {
-                links.add(Pair.of(current, childCart));
-                current = childCart;
-            } else {
-                break;
+        Deque<Pair<Entity, UUID>> toCheck = new ArrayDeque<>();
+        UUID p = TrainChainingUtil.getCartParentUUID(this);
+        if (p != null) toCheck.add(Pair.of(this, p));
+        UUID c = TrainChainingUtil.getCartChildUUID(this);
+        if (c != null) toCheck.add(Pair.of(this, c));
+
+        while (!toCheck.isEmpty()) {
+            Pair<Entity, UUID> next = toCheck.poll();
+            UUID nextId = next.getSecond();
+            if (nextId != null && visited.add(nextId)) {
+                Entity ent = this.level().getEntity(nextId);
+                if (ent instanceof AbstractMinecart cart && !cart.isRemoved()) {
+                    result.add(Pair.of(next.getFirst(), cart));
+                    UUID cp = TrainChainingUtil.getCartParentUUID(cart);
+                    if (cp != null && !visited.contains(cp)) toCheck.add(Pair.of(cart, cp));
+                    UUID cc = TrainChainingUtil.getCartChildUUID(cart);
+                    if (cc != null && !visited.contains(cc)) toCheck.add(Pair.of(cart, cc));
+                }
             }
         }
-        return links;
+        return result;
+    }
+
+    public boolean isChainedTo(Entity entity) {
+        if (entity instanceof AbstractMinecart cart) {
+            UUID id = cart.getUUID();
+            UUID p = TrainChainingUtil.getCartParentUUID(this);
+            UUID c = TrainChainingUtil.getCartChildUUID(this);
+            if (id.equals(p) || id.equals(c)) return true;
+            UUID ep = TrainChainingUtil.getCartParentUUID(cart);
+            UUID ec = TrainChainingUtil.getCartChildUUID(cart);
+            if (this.getUUID().equals(ep) || this.getUUID().equals(ec)) return true;
+            for (AbstractMinecart tc : this.getConnectedTrainCarts()) {
+                if (tc.getUUID().equals(id)) return true;
+            }
+        }
+        return false;
+    }
+
+    public List<AbstractMinecart> getConnectedTrainCarts() {
+        List<AbstractMinecart> carts = new ArrayList<>();
+        for (Pair<Entity, AbstractMinecart> link : this.getOrderedTrainLinks()) {
+            carts.add(link.getSecond());
+        }
+        return carts;
+    }
+
+    @Override
+    public void push(Entity entity) {
+        if (!this.level().isClientSide() && !entity.noPhysics && !this.hasPassenger(entity)) {
+            if (this.isChainedTo(entity)) {
+                return;
+            }
+            if (entity instanceof LivingEntity) {
+                Direction facing = this.getFacing();
+                Direction lateral = facing.getClockWise();
+                double lateralDist = (entity.getX() - this.getX()) * lateral.getStepX() + (entity.getZ() - this.getZ()) * lateral.getStepZ();
+                double lateralSign = lateralDist >= 0 ? 1.0 : -1.0;
+                double speed = this.isActive() ? this.getLocomotiveSpeed() : Math.max(super.getDeltaMovement().horizontalDistance(), 0.1D);
+                double pushStrength = Math.max(speed * 2.2D, 0.5D);
+                double pushX = facing.getStepX() * pushStrength + lateral.getStepX() * 0.4D * lateralSign;
+                double pushZ = facing.getStepZ() * pushStrength + lateral.getStepZ() * 0.4D * lateralSign;
+                double pushY = 0.25D;
+                entity.setDeltaMovement(pushX, pushY, pushZ);
+                entity.needsSync = true;
+                return;
+            }
+            if (this.running) {
+                if (entity.isPushable()) {
+                    Direction facing = this.getFacing();
+                    double pushStrength = Math.max(this.getLocomotiveSpeed(), 0.3D);
+                    entity.setDeltaMovement(facing.getStepX() * pushStrength, entity.getDeltaMovement().y, facing.getStepZ() * pushStrength);
+                    entity.needsSync = true;
+                }
+                return;
+            }
+            super.push(entity);
+        }
     }
 
     public Vec3 getAnchorPosFor(Vec3 otherPos) {
@@ -906,7 +993,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 double needed = Math.min(targetDist - trackDist, maxStep);
                 this.moveCartAlongRails(cart, dirX, dirZ, needed);
             } else {
-                Vec3 snapped = this.getRailPos(cart.getX(), cart.getY(), cart.getZ());
+                Vec3 snapped = this.getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
                 if (snapped != null) {
                     cart.setPos(snapped.x, snapped.y, snapped.z);
                 }
@@ -975,7 +1062,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         cart.setDeltaMovement(alignedVx, 0.0, alignedVz);
         cart.move(MoverType.SELF, new Vec3(alignedVx, 0.0, alignedVz));
 
-        Vec3 newRailPos = this.getRailPos(cart.getX(), cart.getY(), cart.getZ());
+        Vec3 newRailPos = this.getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
         if (newRailPos != null) {
             cart.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
         }
