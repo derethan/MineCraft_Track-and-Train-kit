@@ -25,7 +25,7 @@ public class TunnelBoreScreen extends AbstractContainerScreen<TunnelBoreMenu> {
     private @Nullable Button reverseButton;
 
     public TunnelBoreScreen(TunnelBoreMenu menu, Inventory inventory, Component title) {
-        super(menu, inventory, title, 176, 166);
+        super(menu, inventory, title, 176, 184);
         this.inventoryLabelY = this.imageHeight - 94;
     }
 
@@ -88,6 +88,7 @@ public class TunnelBoreScreen extends AbstractContainerScreen<TunnelBoreMenu> {
             statusColor = 0xFF9E2020;
         }
         graphics.text(this.font, statusText, 8, 22, statusColor, false);
+        graphics.text(this.font, Component.literal("Tracks & Ballast"), 8, 43, 0x404040, false);
     }
 
     @Override

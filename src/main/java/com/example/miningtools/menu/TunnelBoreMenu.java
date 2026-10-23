@@ -1,6 +1,7 @@
 package com.example.miningtools.menu;
 
 import com.example.miningtools.MiningTools;
+import com.example.miningtools.entity.TunnelBoreEntity;
 
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
@@ -17,11 +18,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.BaseRailBlock;
 
 public class TunnelBoreMenu extends AbstractContainerMenu {
-    public static final int CONTAINER_SIZE = 10;
+    public static final int CONTAINER_SIZE = 19;
     public static final int DATA_COUNT = 3;
     public static final int FUEL_SLOT = 0;
     public static final int RAIL_SLOTS_START = 1;
     public static final int RAIL_SLOTS_COUNT = 9;
+    public static final int BALLAST_SLOTS_START = 10;
+    public static final int BALLAST_SLOTS_COUNT = 9;
 
     private final Container container;
     private final ContainerData data;
@@ -58,8 +61,18 @@ public class TunnelBoreMenu extends AbstractContainerMenu {
             });
         }
 
+        // Slots 10..18: Ballast Slots (Gravel, Sand, Solid blocks)
+        for (int i = 0; i < BALLAST_SLOTS_COUNT; i++) {
+            this.addSlot(new Slot(container, BALLAST_SLOTS_START + i, 8 + i * 18, 72) {
+                @Override
+                public boolean mayPlace(ItemStack stack) {
+                    return TunnelBoreEntity.isBallastItem(stack);
+                }
+            });
+        }
+
         // Player Inventory
-        this.addStandardInventorySlots(playerInventory, 8, 84);
+        this.addStandardInventorySlots(playerInventory, 8, 102);
 
         // Synchronize burnTime (0), burnTimeTotal (1), and running (2)
         this.addDataSlots(data);
@@ -135,6 +148,11 @@ public class TunnelBoreMenu extends AbstractContainerMenu {
                 } else if (stack.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BaseRailBlock) {
                     // Try track slots
                     if (!this.moveItemStackTo(stack, RAIL_SLOTS_START, RAIL_SLOTS_START + RAIL_SLOTS_COUNT, false)) {
+                        return ItemStack.EMPTY;
+                    }
+                } else if (TunnelBoreEntity.isBallastItem(stack)) {
+                    // Try ballast slots (gravel, sand, stone)
+                    if (!this.moveItemStackTo(stack, BALLAST_SLOTS_START, BALLAST_SLOTS_START + BALLAST_SLOTS_COUNT, false)) {
                         return ItemStack.EMPTY;
                     }
                 } else {

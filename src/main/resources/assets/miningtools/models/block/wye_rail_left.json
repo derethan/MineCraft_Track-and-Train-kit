@@ -1,10 +1,11 @@
-﻿{
+{
     "credit":  "Made for MiningTools",
     "textures":  {
                      "0":  "miningtools:block/cmodels/rail",
                      "1":  "miningtools:block/cmodels/wire_off",
                      "3":  "miningtools:block/cmodels/rail_curve",
-                     "particle":  "miningtools:block/cmodels/rail"
+                     "particle":  "miningtools:block/cmodels/rail",
+                     "4":  "miningtools:block/cmodels/rail_curve_open"
                  },
     "elements":  [
                      {
@@ -262,7 +263,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -272,7 +273,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -295,7 +296,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -305,7 +306,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -328,7 +329,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -338,7 +339,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -361,7 +362,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -371,7 +372,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -394,7 +395,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -404,7 +405,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -427,7 +428,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -437,7 +438,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -460,7 +461,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -470,7 +471,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -493,7 +494,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -503,7 +504,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -526,7 +527,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -536,7 +537,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -559,7 +560,7 @@
                                                              7.991,
                                                              7.981
                                                          ],
-                                                  "texture":  "#3"
+                                                  "texture":  "#4"
                                               },
                                        "down":  {
                                                     "uv":  [
@@ -569,7 +570,7 @@
                                                                7.981
                                                            ],
                                                     "rotation":  270,
-                                                    "texture":  "#3"
+                                                    "texture":  "#4"
                                                 }
                                    }
                      },
@@ -1040,7 +1041,7 @@
                                                                 0.7,
                                                                 0.4
                                                             ],
-                                                     "texture":  "#0"
+                                                     "texture":  "#1"
                                                  },
                                        "south":  {
                                                      "uv":  [
@@ -1049,7 +1050,7 @@
                                                                 0.7,
                                                                 0.4
                                                             ],
-                                                     "texture":  "#0"
+                                                     "texture":  "#1"
                                                  },
                                        "east":  {
                                                     "uv":  [
@@ -1058,7 +1059,7 @@
                                                                0.8,
                                                                0.4
                                                            ],
-                                                    "texture":  "#0"
+                                                    "texture":  "#1"
                                                 },
                                        "west":  {
                                                     "uv":  [
@@ -1067,7 +1068,7 @@
                                                                0.8,
                                                                0.4
                                                            ],
-                                                    "texture":  "#0"
+                                                    "texture":  "#1"
                                                 },
                                        "up":  {
                                                   "uv":  [
@@ -1076,7 +1077,7 @@
                                                              0.7,
                                                              0.8
                                                          ],
-                                                  "texture":  "#0"
+                                                  "texture":  "#1"
                                               }
                                    }
                      }

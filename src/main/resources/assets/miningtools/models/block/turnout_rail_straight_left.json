@@ -1,9 +1,9 @@
-﻿{
+{
     "credit":  "Made for MiningTools",
     "textures":  {
                      "0":  "miningtools:block/cmodels/rail",
                      "1":  "miningtools:block/cmodels/wire_off",
-                     "3":  "miningtools:block/cmodels/rail_curve",
+                     "3":  "miningtools:block/cmodels/rail_curve_open",
                      "particle":  "miningtools:block/cmodels/rail"
                  },
     "elements":  [

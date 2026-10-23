@@ -97,9 +97,10 @@ The ultimate train-protection device attached to the rear of your consist.
 An automated subterranean excavator for carving out subway lines and railway corridors.
 * **3×3 Excavation**: Automatically drills a 3-block-wide by 3-block-tall tunnel directly forward.
 * **Top-Down Drilling**: Breaks blocks from top to bottom so sand and gravel fall safely into the drill path rather than suffocating the machine.
-* **Automated Track Laying**: Automatically places tracks ahead of itself on solid ground.
-* **Internal Storage**: Stores mined materials and carries extra rails and coal fuel.
-* **Safety Sensors**: Automatically halts if it encounters lava, chasms without floor support, unbreakable blocks, or runs out of track.
+* **Automated Track Laying**: Automatically places tracks ahead of itself on solid ground from its 9 dedicated track slots.
+* **Ballast Inventory & Auto Gap-Bridging**: Features a dedicated 9-slot Ballast Inventory accepting **gravel, sand, cobblestone, and stone**. When the bore encounters an air gap, cave pothole, ravine, or liquid floor beneath its path, it automatically places ballast to fill the void, beds the track foundation, and continues drilling without stopping!
+* **Safety Sensors**: Automatically halts if it encounters bedrock, chasms exceeding ballast reserves, or runs out of track or fuel.
+* **Bi-Directional Operation**: Forward drilling mode and slow, safe reversing mode that reverses trailing cars seamlessly.
 
 ---
 
@@ -146,8 +147,8 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 ## 🛤️ Specialty Switch & Power Rails
 
 * **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts cross over perpendicularly without turning or derailing.
-* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or crowbar interaction.
-* **Wye Rail**: Triangular 3-way junction rail for smooth directional splitting and turnaround loops.
+* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades.
+* **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication and smart directional routing (approaching from the stem branches left/right by redstone; approaching from mainline branches into stem if aligned, or passes straight through if not aligned).
 * **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
 * **Locomotive Horn Rail**: Pressure-sensitive rail that triggers locomotive whistles and horns (ideal for level crossings and tunnel entrances).
 * **Electric Rail**: Conductive third rail that transmits Forge Energy (FE) along your network to charge Electric Locomotives on the fly.

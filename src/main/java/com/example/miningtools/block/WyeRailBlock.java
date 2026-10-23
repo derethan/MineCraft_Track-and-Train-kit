@@ -119,61 +119,69 @@ public class WyeRailBlock extends BaseRailBlock {
     public RailShape getRailDirection(BlockState state, BlockGetter level, BlockPos pos, @Nullable AbstractMinecart cart) {
         if (cart != null) {
             Direction facing = state.getValue(FACING);
+            boolean powered = state.getValue(POWERED);
             Direction stemDir = getStemDirection(facing);
-            Direction.Axis stemAxis = stemDir.getAxis();
-            Direction.Axis straightAxis = (stemAxis == Direction.Axis.X) ? Direction.Axis.Z : Direction.Axis.X;
-            RailShape straightShape = getStraightShape(facing);
-            RailShape switchShape = calculateShape(facing, state.getValue(POWERED));
+            Direction leftDir = facing.getCounterClockWise();
+            Direction rightDir = facing.getClockWise();
 
-            // 1. Check position offset from block center along the stem direction.
-            // The straight mainline stays strictly at offsetAlongStem == 0.0, whereas carts/locomotives
-            // entering from the stem or riding the curved branch have offsetAlongStem > 0.
+            RailShape straightShape = getStraightShape(facing);
+            RailShape leftBranch = getLeftBranch(facing);
+            RailShape rightBranch = getRightBranch(facing);
+            RailShape activeBranch = powered ? rightBranch : leftBranch;
+
+            // Compute relative position from block center
             double relX = cart.getX() - (pos.getX() + 0.5);
             double relZ = cart.getZ() - (pos.getZ() + 0.5);
-            double offsetAlongStem = relX * stemDir.getStepX() + relZ * stemDir.getStepZ();
-            if (offsetAlongStem > 0.015) {
-                return switchShape;
-            }
+            double offsetStem = relX * stemDir.getStepX() + relZ * stemDir.getStepZ();
+            double offsetLeft = relX * leftDir.getStepX() + relZ * leftDir.getStepZ();
+            double offsetRight = relX * rightDir.getStepX() + relZ * rightDir.getStepZ();
 
             Vec3 movement = cart.getDeltaMovement();
-            double dStraight = (straightAxis == Direction.Axis.X) ? Math.abs(movement.x) : Math.abs(movement.z);
-            double dStem = (stemAxis == Direction.Axis.X) ? Math.abs(movement.x) : Math.abs(movement.z);
+            double velStem = stemDir.getStepX() * movement.x + stemDir.getStepZ() * movement.z;
+            double velLeft = leftDir.getStepX() * movement.x + leftDir.getStepZ() * movement.z;
+            double velRight = rightDir.getStepX() * movement.x + rightDir.getStepZ() * movement.z;
 
-            // 2. If moving from the stem towards the junction (opposite of stemDir), take the switched branch
-            double velocityAlongStem = stemDir.getStepX() * movement.x + stemDir.getStepZ() * movement.z;
-            if (velocityAlongStem < -1.0E-4 && dStem > dStraight * 0.25) {
-                return switchShape;
+            // 1. If cart is on the stem side (heading in or riding the curved branch towards stem),
+            // or moving towards the junction from the stem (velStem < -1.0E-4):
+            if (offsetStem > 0.05 || velStem < -1.0E-4) {
+                return activeBranch;
             }
 
-            // 3. If moving along the straight mainline track, always go straight through regardless of redstone
-            if (dStraight > 1.0E-4 && dStraight >= dStem) {
-                return straightShape;
+            // 2. Moving along mainline towards rightDir (entered from leftDir side):
+            if (velRight > 1.0E-4 || (Math.abs(velLeft) <= 1.0E-4 && offsetLeft > 0.05)) {
+                // If switch is set to LEFT (!powered), cart matches active direction and follows curve to stem (south)
+                // If switch is set to RIGHT (powered), cart does not match and continues straight through
+                return (!powered) ? leftBranch : straightShape;
             }
 
-            // 4. If moving along the stem axis
-            if (dStem > dStraight) {
-                return switchShape;
+            // 3. Moving along mainline towards leftDir (entered from rightDir side):
+            if (velLeft > 1.0E-4 || (Math.abs(velRight) <= 1.0E-4 && offsetRight > 0.05)) {
+                // If switch is set to RIGHT (powered), cart matches active direction and follows curve to stem (south)
+                // If switch is set to LEFT (!powered), cart does not match and continues straight through
+                return powered ? rightBranch : straightShape;
             }
 
-            // 5. Stationary / zero-velocity fallback: check locomotive facing first
+            // 4. Stationary fallback:
             if (cart instanceof BasicLocomotiveEntity loco) {
-                return loco.getFacing().getAxis() == straightAxis ? straightShape : switchShape;
+                Direction locoFacing = loco.getFacing();
+                if (locoFacing == leftDir) {
+                    return powered ? rightBranch : straightShape;
+                } else if (locoFacing == rightDir) {
+                    return (!powered) ? leftBranch : straightShape;
+                }
+                return activeBranch;
             }
             if (cart instanceof ElectricLocomotiveEntity eloco) {
-                return eloco.getFacing().getAxis() == straightAxis ? straightShape : switchShape;
+                Direction elocoFacing = eloco.getFacing();
+                if (elocoFacing == leftDir) {
+                    return powered ? rightBranch : straightShape;
+                } else if (elocoFacing == rightDir) {
+                    return (!powered) ? leftBranch : straightShape;
+                }
+                return activeBranch;
             }
 
-            // 6. Stationary minecart: check yaw alignment (in AbstractMinecart, 0/180 = X axis, 90 = Z axis)
-            float yaw = cart.getYRot() % 180.0F;
-            if (yaw < 0.0F) {
-                yaw += 180.0F;
-            }
-            Direction.Axis cartAxis = (yaw >= 45.0F && yaw <= 135.0F) ? Direction.Axis.Z : Direction.Axis.X;
-            if (cartAxis == straightAxis) {
-                return straightShape;
-            }
-
-            return switchShape;
+            return activeBranch;
         }
         return state.getValue(SHAPE);
     }
