@@ -256,7 +256,7 @@ public class MiningTools {
             "tunnel_bore",
             key -> EntityType.Builder.<TunnelBoreEntity>of(TunnelBoreEntity::new, MobCategory.MISC)
                     .sized(2.8F, 2.75F)
-                    .passengerAttachments(0.1875F)
+                    .passengerAttachments(2.05F)
                     .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
     );
 
@@ -396,7 +396,7 @@ public class MiningTools {
             "electric_locomotive",
             key -> EntityType.Builder.<ElectricLocomotiveEntity>of(ElectricLocomotiveEntity::new, MobCategory.MISC)
                     .sized(0.98F, 1.25F)
-                    .passengerAttachments(0.1875F)
+                    .passengerAttachments(2.05F)
                     .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
     );
 

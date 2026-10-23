@@ -294,10 +294,11 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
         if (this.hasPassenger(passenger)) {
             Direction facing = this.getFacing();
-            // Driver cabin seat is located behind the boiler/furnace inside the cab platform
-            double offsetX = -facing.getStepX() * 1.8;
-            double offsetZ = -facing.getStepZ() * 1.8;
-            double offsetY = 1.05;
+            // Elevated driver observation cockpit in the back half
+            // Allows the player to sit in the rear section while having a clear forward sightline to the drill head and tunnel
+            double offsetX = -facing.getStepX() * 0.8;
+            double offsetZ = -facing.getStepZ() * 0.8;
+            double offsetY = 2.05;
             moveFunction.accept(passenger, this.getX() + offsetX, this.getY() + offsetY, this.getZ() + offsetZ);
         }
     }
