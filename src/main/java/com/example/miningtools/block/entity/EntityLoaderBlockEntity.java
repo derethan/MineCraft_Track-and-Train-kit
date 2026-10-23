@@ -4,6 +4,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.example.miningtools.MiningTools;
+import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
@@ -35,7 +36,7 @@ public class EntityLoaderBlockEntity extends AbstractEntityTransferBlockEntity {
         List<AbstractMinecart> carts = level.getEntitiesOfClass(
                 AbstractMinecart.class,
                 trackBox,
-                c -> c.isAlive() && !c.isRemoved() && c.getPassengers().isEmpty() && !TrainChainingUtil.isLeadCart(c)
+                c -> c.isAlive() && !c.isRemoved() && (c instanceof LivestockCartEntity lc ? lc.canFitMorePassengers() : c.getPassengers().isEmpty()) && !TrainChainingUtil.isLeadCart(c)
         );
 
         if (carts.isEmpty()) {

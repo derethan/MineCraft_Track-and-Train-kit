@@ -20,11 +20,13 @@ import com.example.miningtools.client.model.DieselLocomotiveModel;
 import com.example.miningtools.client.model.ElectricLocomotiveModel;
 import com.example.miningtools.client.model.LargeLiquidMinecartModel;
 import com.example.miningtools.client.model.LiquidMinecartModel;
+import com.example.miningtools.client.model.LivestockCartModel;
 import com.example.miningtools.client.model.LoggingCartModel;
 import com.example.miningtools.client.model.TunnelBoreModel;
 import com.example.miningtools.client.renderer.BasicLocomotiveRenderer;
 import com.example.miningtools.client.renderer.CabooseRenderer;
 import com.example.miningtools.client.renderer.CargoMinecartRenderer;
+import com.example.miningtools.client.renderer.LivestockCartRenderer;
 import com.example.miningtools.client.renderer.DieselLocomotiveRenderer;
 import com.example.miningtools.client.renderer.ElectricLocomotiveRenderer;
 import com.example.miningtools.client.renderer.LargeLiquidMinecartRenderer;
@@ -73,6 +75,9 @@ public class MiningToolsClient {
 
     public static final ModelLayerLocation BASIC_LOCOMOTIVE_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "basic_locomotive"), "main");
+
+    public static final ModelLayerLocation LIVESTOCK_CART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "livestock_cart"), "main");
 
     public static final ModelLayerLocation LOGGING_CART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "logging_cart"), "main");
@@ -154,6 +159,7 @@ public class MiningToolsClient {
         event.registerLayerDefinition(TUNNEL_BORE_LAYER, TunnelBoreModel::createBodyLayer);
         event.registerLayerDefinition(BASIC_LOCOMOTIVE_LAYER, BasicLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(LOGGING_CART_LAYER, LoggingCartModel::createBodyLayer);
+        event.registerLayerDefinition(LIVESTOCK_CART_LAYER, LivestockCartModel::createBodyLayer);
         event.registerLayerDefinition(LIQUID_MINECART_LAYER, LiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(LARGE_LIQUID_MINECART_LAYER, LargeLiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(CABOOSE_LAYER, CabooseModel::createBodyLayer);
@@ -165,6 +171,7 @@ public class MiningToolsClient {
         event.registerEntityRenderer(MiningTools.TUNNEL_BORE_ENTITY.get(), TunnelBoreRenderer::new);
         event.registerEntityRenderer(MiningTools.BASIC_LOCOMOTIVE_ENTITY.get(), BasicLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.CARGO_MINECART_ENTITY.get(), CargoMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.LIVESTOCK_CART_ENTITY.get(), LivestockCartRenderer::new);
         event.registerEntityRenderer(MiningTools.LIQUID_MINECART_ENTITY.get(), LiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.LARGE_LIQUID_MINECART_ENTITY.get(), LargeLiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.CABOOSE_ENTITY.get(), CabooseRenderer::new);

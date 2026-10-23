@@ -70,6 +70,14 @@ A heavy-duty freight wagon with 27 storage slots and an intelligent **Filter Slo
 * **Ore Mode**: Raw unrefined ores mounded high.
 * **Ingot Mode**: Stacked precious metal ingots.
 
+### Livestock Cart (Railroad Stock Car)
+An authentic North American railroad stock car modeled to scale with rolling stock:
+* **Dual Stall Capacity**: Comfortably accommodates up to **2 entities** simultaneously (cows, sheep, pigs, chickens, rabbits, villagers, or players) across distinct front and rear stalls.
+* **Open Slatted Wooden Construction**: Built with horizontal wooden slats separated by open gaps, keeping livestock well-ventilated and clearly visible from the outside as the train travels.
+* **Leash Hitching**: Right-clicking the cart while leading an animal on a Lead instantly unleashes and boards the animal inside.
+* **Smart Facility Compatibility**: Integrates directly with the **Trackside Entity Loader** (loading up to 2 filtered animals) and **Trackside Entity Unloader**.
+* **Activator Rail Ejection**: Rolling over a powered Activator Rail gently dismounts passengers at destination pens.
+
 ### Liquid Minecarts (Small & Large)
 Specialized tanker wagons designed to safely transport fluids across rail lines.
 * **Small Liquid Minecart**: 8,000 mB (8 Buckets) capacity.
@@ -173,6 +181,7 @@ When seated inside a locomotive or coupled cart:
 | **Electric Bullet Train** | Iron + Gold + Redstone + Copper + Minecart |
 | **Tunnel Bore** | Diamond / Iron Pickaxe + Pistons + Dispenser + Furnace + Iron |
 | **Cargo Minecart** | Chest + Minecart + Iron Bars |
+| **Livestock Cart** | Planks + Fences + Minecart + Lead |
 | **Liquid Minecart** | Iron Ingots + Minecart + Glass |
 | **Anchor Caboose** | Ender Pearl + Obsidian + Minecart + Redstone |
 | **Industrial Chunk Anchor** | Ender Pearl + Obsidian + Gold + Redstone Block + Iron |

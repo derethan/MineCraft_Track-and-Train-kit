@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "P": "#minecraft:planks",
+    "F": "#minecraft:fences",
+    "M": "minecraft:minecart",
+    "L": "minecraft:lead"
+  },
+  "pattern": [
+    "PPP",
+    "FLF",
+    "PMP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:livestock_cart"
+  }
+}

@@ -66,6 +66,8 @@
   "gui.miningtools.locomotive.light": "Light",
   "subtitles.miningtools.locomotive_whistle": "Locomotive whistle",
   "item.miningtools.cargo_minecart": "Cargo Minecart",
+  "item.miningtools.livestock_cart": "Livestock Cart",
+  "entity.miningtools.livestock_cart": "Livestock Cart",
   "entity.miningtools.cargo_minecart": "Cargo Minecart",
   "container.miningtools.cargo_minecart": "Cargo Minecart",
   "container.miningtools.cargo_minecart.filter": "Filter",

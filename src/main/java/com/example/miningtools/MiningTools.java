@@ -27,6 +27,7 @@ import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
+import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.item.BasicLocomotiveItem;
 import com.example.miningtools.item.CabooseItem;
@@ -36,6 +37,7 @@ import com.example.miningtools.item.DieselLocomotiveItem;
 import com.example.miningtools.item.ElectricLocomotiveItem;
 import com.example.miningtools.item.LargeLiquidMinecartItem;
 import com.example.miningtools.item.LiquidMinecartItem;
+import com.example.miningtools.item.LivestockCartItem;
 import com.example.miningtools.item.TunnelBoreItem;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.menu.CargoMinecartMenu;
@@ -338,6 +340,21 @@ public class MiningTools {
             p -> p.stacksTo(1)
     );
 
+    // Livestock Cart Entity & Item
+    public static final DeferredHolder<EntityType<?>, EntityType<LivestockCartEntity>> LIVESTOCK_CART_ENTITY = ENTITY_TYPES.register(
+            "livestock_cart",
+            key -> EntityType.Builder.<LivestockCartEntity>of(LivestockCartEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 1.1F)
+                    .passengerAttachments(0.22F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<LivestockCartItem> LIVESTOCK_CART_ITEM = ITEMS.registerItem(
+            "livestock_cart",
+            LivestockCartItem::new,
+            p -> p.stacksTo(1)
+    );
+
     public static final DeferredHolder<MenuType<?>, MenuType<CargoMinecartMenu>> CARGO_MINECART_MENU = MENUS.register(
             "cargo_minecart",
             () -> new MenuType<>(CargoMinecartMenu::new, FeatureFlags.DEFAULT_FLAGS)
@@ -454,6 +471,7 @@ public class MiningTools {
                         output.accept(DIESEL_LOCOMOTIVE_ITEM.get());
                         output.accept(ELECTRIC_LOCOMOTIVE_ITEM.get());
                         output.accept(CARGO_MINECART_ITEM.get());
+                        output.accept(LIVESTOCK_CART_ITEM.get());
                         output.accept(LIQUID_MINECART_ITEM.get());
                         output.accept(LARGE_LIQUID_MINECART_ITEM.get());
                         output.accept(CABOOSE_ITEM.get());
@@ -587,6 +605,7 @@ public class MiningTools {
             event.accept(BASIC_LOCOMOTIVE_ITEM);
             event.accept(ELECTRIC_LOCOMOTIVE_ITEM);
             event.accept(CARGO_MINECART_ITEM);
+            event.accept(LIVESTOCK_CART_ITEM);
             event.accept(LIQUID_MINECART_ITEM);
             event.accept(LARGE_LIQUID_MINECART_ITEM);
             event.accept(CABOOSE_ITEM);
