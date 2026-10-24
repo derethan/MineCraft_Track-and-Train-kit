@@ -63,7 +63,7 @@ public class BasicLocomotiveRenderer extends EntityRenderer<BasicLocomotiveEntit
             Vec3 diff = p0.subtract(p1);
             if (diff.lengthSqr() > 1.0E-6D) {
                 double dot = diff.x * state.facing.getStepX() + diff.z * state.facing.getStepZ();
-                Vec3 forwardDir = (dot >= 0.0 ? diff : diff.reverse()).normalize();
+                Vec3 forwardDir = (dot >= -0.2D ? diff : diff.reverse()).normalize();
                 state.pitch = (float) (Math.atan(forwardDir.y) * 73.0);
                 state.trackYaw = (float) (Mth.atan2(forwardDir.z, forwardDir.x) * 180.0 / Math.PI) - 90.0F;
             } else {

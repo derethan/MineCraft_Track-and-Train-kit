@@ -432,6 +432,9 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 }
             }
         }
+        targetYRot = Mth.wrapDegrees(targetYRot);
+        float rotDiff = Mth.wrapDegrees(targetYRot - this.yRotO);
+        this.yRotO = targetYRot - rotDiff;
         this.setYRot(targetYRot);
 
         if (this.level().isClientSide()) {
@@ -619,8 +622,17 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                     : travelDir;
             boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(moveDir).above()));
 
-            x = x0 + xD * progress;
-            z = z0 + zD * progress;
+            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+            if (isCurve) {
+                Vec3 railPosVec = this.getRailPos(x, y, z);
+                if (railPosVec != null) {
+                    x = railPosVec.x;
+                    z = railPosVec.z;
+                }
+            } else {
+                x = x0 + xD * progress;
+                z = z0 + zD * progress;
+            }
             y = railPos.getY() + 0.0625;
             if (shape.isSlope()) {
                 double slopeY0 = exit0.getY();
@@ -637,19 +649,43 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             }
             this.setPos(x, y, z);
 
-            double length = Math.sqrt(xD * xD + zD * zD);
-            if (length > 0.0) {
-                double flip = newVx * xD + newVz * zD;
-                if (flip < 0.0) {
-                    xD = -xD;
-                    zD = -zD;
+            // Align velocity with the track direction (handles curves and slopes)
+            if (isCurve) {
+                double circleCenterX = railPos.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
+                double circleCenterZ = railPos.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+                double vx = x - circleCenterX;
+                double vz = z - circleCenterZ;
+                double dist = Math.sqrt(vx * vx + vz * vz);
+                double ux = dist > 1.0E-5 ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
+                double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+                double tX = -uz;
+                double tZ = ux;
+                boolean movingExit0ToExit1 = (exit0.getX() == -travelDir.getStepX() && exit0.getZ() == -travelDir.getStepZ())
+                        || (exit1.getX() == travelDir.getStepX() && exit1.getZ() == travelDir.getStepZ());
+                double exitVecX = (exit1.getX() - exit0.getX()) * (movingExit0ToExit1 ? 1.0 : -1.0);
+                double exitVecZ = (exit1.getZ() - exit0.getZ()) * (movingExit0ToExit1 ? 1.0 : -1.0);
+                if (tX * exitVecX + tZ * exitVecZ < 0.0) {
+                    tX = -tX;
+                    tZ = -tZ;
                 }
                 double pow = Math.sqrt(newVx * newVx + newVz * newVz);
-                if (shape.isSlope()) {
-                    pow *= 0.70710678D;
+                newVx = pow * tX;
+                newVz = pow * tZ;
+            } else {
+                double length = Math.sqrt(xD * xD + zD * zD);
+                if (length > 0.0) {
+                    double flip = newVx * xD + newVz * zD;
+                    if (flip < 0.0) {
+                        xD = -xD;
+                        zD = -zD;
+                    }
+                    double pow = Math.sqrt(newVx * newVx + newVz * newVz);
+                    if (shape.isSlope()) {
+                        pow *= 0.70710678D;
+                    }
+                    newVx = pow * xD / length;
+                    newVz = pow * zD / length;
                 }
-                newVx = pow * xD / length;
-                newVz = pow * zD / length;
             }
 
             this.setDeltaMovement(newVx, 0.0, newVz);
@@ -1087,21 +1123,48 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             progress = (xx * xD + zz * zD) * 2.0;
         }
 
-        x = x0 + xD * progress;
-        z = z0 + zD * progress;
+        boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+        if (isCurve) {
+            Vec3 railPosVec = this.getRailPosForEntity(cart, x, y, z);
+            if (railPosVec != null) {
+                x = railPosVec.x;
+                z = railPosVec.z;
+            }
+        } else {
+            x = x0 + xD * progress;
+            z = z0 + zD * progress;
+        }
 
         double stepMag = Math.sqrt(dirX * dirX + dirZ * dirZ);
-        double length = Math.sqrt(xD * xD + zD * zD);
         double alignedDx = dirX;
         double alignedDz = dirZ;
-        if (length > 0.0 && stepMag > 1.0E-5D) {
-            double flip = dirX * xD + dirZ * zD;
-            if (flip < 0.0) {
-                xD = -xD;
-                zD = -zD;
+        if (isCurve) {
+            double circleCenterX = currentRail.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
+            double circleCenterZ = currentRail.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+            double vx = x - circleCenterX;
+            double vz = z - circleCenterZ;
+            double dist = Math.sqrt(vx * vx + vz * vz);
+            double ux = dist > 1.0E-5 ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
+            double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+            double tX = -uz;
+            double tZ = ux;
+            if (tX * dirX + tZ * dirZ < 0.0) {
+                tX = -tX;
+                tZ = -tZ;
             }
-            alignedDx = stepMag * xD / length;
-            alignedDz = stepMag * zD / length;
+            alignedDx = stepMag * tX;
+            alignedDz = stepMag * tZ;
+        } else {
+            double length = Math.sqrt(xD * xD + zD * zD);
+            if (length > 0.0 && stepMag > 1.0E-5D) {
+                double flip = dirX * xD + dirZ * zD;
+                if (flip < 0.0) {
+                    xD = -xD;
+                    zD = -zD;
+                }
+                alignedDx = stepMag * xD / length;
+                alignedDz = stepMag * zD / length;
+            }
         }
 
         double nextX = x + alignedDx;
@@ -1119,7 +1182,10 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         double actualDz = cart.getZ() - initialZ;
         if (actualDx * actualDx + actualDz * actualDz > 1.0E-5D) {
             float yaw = (float) (Mth.atan2(-actualDz, -actualDx) * 180.0 / Math.PI);
-            cart.setYRot(yaw % 360.0F);
+            yaw = Mth.wrapDegrees(yaw);
+            float rotDiff = Mth.wrapDegrees(yaw - cart.yRotO);
+            cart.yRotO = yaw - rotDiff;
+            cart.setYRot(yaw);
         }
         return true;
     }
@@ -1152,19 +1218,46 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
             Vec3i exit0 = exits.getFirst();
             Vec3i exit1 = exits.getSecond();
-            double xD = exit1.getX() - exit0.getX();
-            double zD = exit1.getZ() - exit0.getZ();
+            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
             Direction facing = this.getFacing();
-            double dirDot = xD * facing.getStepX() + zD * facing.getStepZ();
-            if (dirDot < 0.0) {
-                xD = -xD;
-                zD = -zD;
+            double xD;
+            double zD;
+
+            if (isCurve) {
+                double circleCenterX = xt + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
+                double circleCenterZ = zt + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+                double vx = x - circleCenterX;
+                double vz = z - circleCenterZ;
+                double dist = Math.sqrt(vx * vx + vz * vz);
+                double ux = dist > 1.0E-5 ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
+                double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+                double tX = -uz;
+                double tZ = ux;
+                boolean movingExit0ToExit1 = (exit0.getX() == -facing.getStepX() && exit0.getZ() == -facing.getStepZ())
+                        || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
+                double exitVecX = (exit1.getX() - exit0.getX()) * (movingExit0ToExit1 ? 1.0 : -1.0);
+                double exitVecZ = (exit1.getZ() - exit0.getZ()) * (movingExit0ToExit1 ? 1.0 : -1.0);
+                if (tX * exitVecX + tZ * exitVecZ < 0.0) {
+                    tX = -tX;
+                    tZ = -tZ;
+                }
+                xD = tX;
+                zD = tZ;
+            } else {
+                xD = exit1.getX() - exit0.getX();
+                zD = exit1.getZ() - exit0.getZ();
+                double dirDot = xD * facing.getStepX() + zD * facing.getStepZ();
+                if (dirDot < 0.0) {
+                    xD = -xD;
+                    zD = -zD;
+                }
+                double dd = Math.sqrt(xD * xD + zD * zD);
+                if (dd > 0.0) {
+                    xD /= dd;
+                    zD /= dd;
+                }
             }
-            double dd = Math.sqrt(xD * xD + zD * zD);
-            if (dd > 0.0) {
-                xD /= dd;
-                zD /= dd;
-            }
+
             x += xD * offset;
             z += zD * offset;
             if (exit0.getY() != 0 && Mth.floor(x) - xt == exit0.getX() && Mth.floor(z) - zt == exit0.getZ()) {
@@ -1206,33 +1299,55 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
             Vec3i exit0 = exits.getFirst();
             Vec3i exit1 = exits.getSecond();
-            double x0 = xt + 0.5 + exit0.getX() * 0.5;
-            double y0 = yt + 0.0625 + exit0.getY() * 0.5;
-            double z0 = zt + 0.5 + exit0.getZ() * 0.5;
-            double x1 = xt + 0.5 + exit1.getX() * 0.5;
-            double y1 = yt + 0.0625 + exit1.getY() * 0.5;
-            double z1 = zt + 0.5 + exit1.getZ() * 0.5;
-            double xD = x1 - x0;
-            double yD = (y1 - y0) * 2.0;
-            double zD = z1 - z0;
-            double progress;
-            if (xD == 0.0) {
-                progress = z - zt;
-            } else if (zD == 0.0) {
-                progress = x - xt;
+            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+            if (isCurve) {
+                double circleCenterX = xt + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
+                double circleCenterZ = zt + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+                double vx = x - circleCenterX;
+                double vz = z - circleCenterZ;
+                double signX = -(exit0.getX() + exit1.getX());
+                double signZ = -(exit0.getZ() + exit1.getZ());
+                if (vx * signX < 0.0) {
+                    vx = 0.0;
+                }
+                if (vz * signZ < 0.0) {
+                    vz = 0.0;
+                }
+                double dist = Math.sqrt(vx * vx + vz * vz);
+                if (dist > 1.0E-5) {
+                    x = circleCenterX + (vx / dist) * 0.5;
+                    z = circleCenterZ + (vz / dist) * 0.5;
+                }
+                y = yt + 0.0625;
             } else {
-                double xx = x - x0;
-                double zz = z - z0;
-                progress = (xx * xD + zz * zD) * 2.0;
-            }
+                double x0 = xt + 0.5 + exit0.getX() * 0.5;
+                double y0 = yt + 0.0625 + exit0.getY() * 0.5;
+                double z0 = zt + 0.5 + exit0.getZ() * 0.5;
+                double x1 = xt + 0.5 + exit1.getX() * 0.5;
+                double y1 = yt + 0.0625 + exit1.getY() * 0.5;
+                double z1 = zt + 0.5 + exit1.getZ() * 0.5;
+                double xD = x1 - x0;
+                double yD = (y1 - y0) * 2.0;
+                double zD = z1 - z0;
+                double progress;
+                if (xD == 0.0) {
+                    progress = z - zt;
+                } else if (zD == 0.0) {
+                    progress = x - xt;
+                } else {
+                    double xx = x - x0;
+                    double zz = z - z0;
+                    progress = (xx * xD + zz * zD) * 2.0;
+                }
 
-            x = x0 + xD * progress;
-            y = y0 + yD * progress;
-            z = z0 + zD * progress;
-            if (yD < 0.0) {
-                y++;
-            } else if (yD > 0.0) {
-                y += 0.5;
+                x = x0 + xD * progress;
+                y = y0 + yD * progress;
+                z = z0 + zD * progress;
+                if (yD < 0.0) {
+                    y++;
+                } else if (yD > 0.0) {
+                    y += 0.5;
+                }
             }
 
             return new Vec3(x, y, z);

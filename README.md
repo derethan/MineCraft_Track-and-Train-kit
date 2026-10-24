@@ -1,4 +1,4 @@
-# 🚂 Mining Tools (Track & Train Kit)
+# 🚂 Track and Train Pack (Track & Train Kit)
 
 **Heavy Rail Logistics, High-Speed Locomotives, Automated Trackside Facilities, and Subterranean Excavation for Minecraft 26.3 (NeoForge)**
 
@@ -6,11 +6,11 @@
 
 ## 📖 Overview
 
-**Mining Tools** transforms Minecraft's minecart and rail system into a complete heavy-haul railway logistics and automated mining network. 
+**Track and Train Pack** transforms Minecraft's minecart and rail system into a complete heavy-haul railway logistics and automated mining network. 
 
-Whether you need to haul massive freight trains across long distances, automate livestock and mob transit, transport bulk liquids, drill 3×3 subterranean tunnels automatically, or keep your automated quarries loaded 24/7—**Mining Tools** provides the locomotives, specialty tracks, and smart trackside machinery to get the job done.
+Whether you need to haul massive freight trains across long distances, automate livestock and mob transit, transport bulk liquids, drill 3×3 subterranean tunnels automatically, or keep your automated quarries loaded 24/7—**Track and Train Pack** provides the locomotives, specialty tracks, and smart trackside machinery to get the job done.
 
-> 📖 **Need a complete walkthrough, mechanics guide, or crafting recipes?** Check out the comprehensive **[Mining Tools Wiki & Walkthrough](WIKI.md)**!
+> 📖 **Need a complete walkthrough, mechanics guide, or crafting recipes?** Check out the comprehensive **[Track and Train Pack Wiki & Walkthrough](WIKI.md)**!
 
 ---
 
@@ -207,7 +207,7 @@ When seated inside a locomotive or coupled cart:
 
 ## ⚙️ Configuration
 
-Mining Tools features extensive configuration via `miningtools-common.toml` or the in-game NeoForge Config Screen:
+Track and Train Pack features extensive configuration via `miningtools-common.toml` or the in-game NeoForge Config Screen:
 * Locomotive coal burn durations and speed curves.
 * Diesel tank capacities, burn rates, and top speeds.
 * Electric battery capacity, FE/tick consumption, and electric rail transfer rates.
