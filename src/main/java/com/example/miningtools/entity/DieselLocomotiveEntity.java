@@ -477,17 +477,10 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         this.tickFuelAndMovement();
         this.updateDynamicLight();
 
-        // Push entities in path
-        Direction pushFacing = this.getFacing();
-        AABB pushBox = this.getBoundingBox().inflate(0.2D).expandTowards(pushFacing.getStepX() * 0.5D, 0.0D, pushFacing.getStepZ() * 0.5D);
-        List<Entity> pushableEntities = this.level().getEntities(
-                this,
-                pushBox,
-                e -> !e.noPhysics && !this.isChainedTo(e) && !this.hasPassenger(e)
-        );
-        for (Entity pushable : pushableEntities) {
-            this.push(pushable);
-        }
+        // Push entities in path from connection points (bumpers)
+        Direction travelDir = this.getTravelDirection();
+        double speed = this.isActive() ? this.getLocomotiveSpeed() : this.getDeltaMovement().horizontalDistance();
+        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed);
     }
 
     private void drainFuelItemSlot() {

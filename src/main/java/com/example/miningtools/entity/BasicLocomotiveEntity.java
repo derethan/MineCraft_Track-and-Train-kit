@@ -386,7 +386,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canCollideWith(Entity entity) {
-        if (this.isChainedTo(entity) || entity instanceof LivingEntity) {
+        if (this.isChainedTo(entity) || entity instanceof LivingEntity || entity instanceof AbstractMinecart) {
             return false;
         }
         return !entity.isPassengerOfSameVehicle(this);
@@ -394,6 +394,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canBeCollidedWith(@Nullable Entity other) {
+        if (other instanceof AbstractMinecart || other instanceof LivingEntity) {
+            return false;
+        }
         if (other != null && this.isChainedTo(other)) {
             return false;
         }
@@ -503,17 +506,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         this.tickFuelAndMovement();
         this.updateDynamicLight();
 
-        // Push entities in path
-        Direction pushFacing = this.getFacing();
-        AABB pushBox = this.getBoundingBox().inflate(0.2D).expandTowards(pushFacing.getStepX() * 0.5D, 0.0D, pushFacing.getStepZ() * 0.5D);
-        List<Entity> pushableEntities = this.level().getEntities(
-                this,
-                pushBox,
-                e -> !e.noPhysics && !this.isChainedTo(e) && !this.hasPassenger(e)
-        );
-        for (Entity pushable : pushableEntities) {
-            this.push(pushable);
-        }
+        // Push entities in path from connection points (bumpers)
+        Direction travelDir = this.getTravelDirection();
+        double speed = this.isActive() ? this.getLocomotiveSpeed() : this.getDeltaMovement().horizontalDistance();
+        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed);
     }
 
     public boolean tryRefuel() {
@@ -1758,6 +1754,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     public void push(Entity entity) {
         if (!this.level().isClientSide() && !entity.noPhysics && !this.hasPassenger(entity)) {
             if (this.isChainedTo(entity)) {
+                return;
+            }
+            if (entity instanceof AbstractMinecart otherCart) {
+                TrainChainingUtil.pushCartFromLocomotiveBumper(this, otherCart);
                 return;
             }
             if (entity instanceof LivingEntity) {

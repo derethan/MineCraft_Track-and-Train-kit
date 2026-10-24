@@ -2,6 +2,13 @@ package com.example.miningtools.util;
 
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
+import java.util.Comparator;
+import java.util.List;
+import net.minecraft.core.Vec3i;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.RailShape;
+import net.minecraft.world.phys.AABB;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Map;
@@ -736,13 +743,16 @@ public final class TrainChainingUtil {
     }
 
     public static boolean canCollideWith(AbstractMinecart cart, Entity entity) {
-        if (isChainedTo(cart, entity) || entity instanceof LivingEntity) {
+        if (isChainedTo(cart, entity) || entity instanceof LivingEntity || entity instanceof AbstractMinecart) {
             return false;
         }
         return !entity.isPassengerOfSameVehicle(cart);
     }
 
     public static boolean canBeCollidedWith(AbstractMinecart cart, @Nullable Entity other) {
+        if (other instanceof AbstractMinecart || other instanceof LivingEntity) {
+            return false;
+        }
         if (other != null && isChainedTo(cart, other)) {
             return false;
         }
@@ -762,6 +772,16 @@ public final class TrainChainingUtil {
             return;
         }
         if (isChainedTo(cart, entity)) {
+            return;
+        }
+
+        if ((cart instanceof BasicLocomotiveEntity || cart instanceof DieselLocomotiveEntity || cart instanceof ElectricLocomotiveEntity)
+                && entity instanceof AbstractMinecart otherCart) {
+            pushCartFromLocomotiveBumper(cart, otherCart);
+            return;
+        }
+        if (entity instanceof BasicLocomotiveEntity || entity instanceof DieselLocomotiveEntity || entity instanceof ElectricLocomotiveEntity) {
+            pushCartFromLocomotiveBumper((AbstractMinecart) entity, cart);
             return;
         }
 
@@ -854,6 +874,264 @@ public final class TrainChainingUtil {
             dz *= factor * 0.1D;
             if (entity.isPushable()) {
                 entity.push(dx, 0.0D, dz);
+            }
+        }
+    }
+
+    public static @Nullable Vec3 getRailPosForEntity(AbstractMinecart entity, double x, double y, double z) {
+        int xt = Mth.floor(x);
+        int yt = Mth.floor(y);
+        int zt = Mth.floor(z);
+        if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
+            yt--;
+        } else if (!BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt, zt)))) {
+            if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
+                yt -= 2;
+            } else if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
+                yt -= 3;
+            } else if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
+                yt++;
+            }
+        }
+
+        BlockPos railPos = new BlockPos(xt, yt, zt);
+        BlockState state = entity.level().getBlockState(railPos);
+        if (BaseRailBlock.isRail(state)) {
+            RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, entity.level(), railPos, entity);
+            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+            Vec3i exit0 = exits.getFirst();
+            Vec3i exit1 = exits.getSecond();
+            double x0 = railPos.getX() + 0.5 + exit0.getX() * 0.5;
+            double z0 = railPos.getZ() + 0.5 + exit0.getZ() * 0.5;
+            double x1 = railPos.getX() + 0.5 + exit1.getX() * 0.5;
+            double z1 = railPos.getZ() + 0.5 + exit1.getZ() * 0.5;
+            double xD = x1 - x0;
+            double zD = z1 - z0;
+            double progress;
+            if (xD == 0.0) {
+                progress = z - railPos.getZ();
+            } else if (zD == 0.0) {
+                progress = x - railPos.getX();
+            } else {
+                double xx = x - x0;
+                double zz = z - z0;
+                progress = (xx * xD + zz * zD) * 2.0;
+            }
+            x = x0 + xD * progress;
+            z = z0 + zD * progress;
+            y = railPos.getY();
+            if (shape.isSlope()) {
+                y = railPos.getY() + 1.0;
+            }
+            return new Vec3(x, y, z);
+        }
+        return null;
+    }
+
+    public static boolean moveCartAlongRails(AbstractMinecart cart, double dirX, double dirZ, double distance3D) {
+        if (distance3D < 1.0E-5D) return true;
+
+        BlockPos railPos = getCurrentBlockPosOrRailBelow(cart);
+        BlockState railState = cart.level().getBlockState(railPos);
+        if (!BaseRailBlock.isRail(railState)) {
+            cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
+            return !cart.horizontalCollision;
+        }
+
+        cart.setDeltaMovement(dirX * distance3D, 0.0, dirZ * distance3D);
+
+        RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, cart.level(), railPos, cart);
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
+
+        double x0 = railPos.getX() + 0.5 + exit0.getX() * 0.5;
+        double z0 = railPos.getZ() + 0.5 + exit0.getZ() * 0.5;
+        double x1 = railPos.getX() + 0.5 + exit1.getX() * 0.5;
+        double z1 = railPos.getZ() + 0.5 + exit1.getZ() * 0.5;
+        double xD = x1 - x0;
+        double zD = z1 - z0;
+        double progress;
+        if (xD == 0.0) {
+            progress = cart.getZ() - railPos.getZ();
+        } else if (zD == 0.0) {
+            progress = cart.getX() - railPos.getX();
+        } else {
+            double xx = cart.getX() - x0;
+            double zz = cart.getZ() - z0;
+            progress = (xx * xD + zz * zD) * 2.0;
+        }
+
+        Direction cartDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
+                ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
+                : cart.getMotionDirection();
+        boolean uphillAhead = BaseRailBlock.isRail(cart.level().getBlockState(railPos.relative(cartDir).above()));
+
+        double x = x0 + xD * progress;
+        double z = z0 + zD * progress;
+        double y = railPos.getY();
+        if (shape.isSlope() || uphillAhead) {
+            y = railPos.getY() + 1.0;
+        }
+        cart.setPos(x, y, z);
+
+        double horizStep = shape.isSlope() ? distance3D * 0.70710678D : distance3D;
+        double length = Math.sqrt(xD * xD + zD * zD);
+        double alignedVx = dirX * horizStep;
+        double alignedVz = dirZ * horizStep;
+        if (length > 0.0) {
+            double flip = dirX * xD + dirZ * zD;
+            if (flip < 0.0) {
+                xD = -xD;
+                zD = -zD;
+            }
+            alignedVx = horizStep * xD / length;
+            alignedVz = horizStep * zD / length;
+        }
+
+        cart.setDeltaMovement(alignedVx, 0.0, alignedVz);
+        cart.move(MoverType.SELF, new Vec3(alignedVx, 0.0, alignedVz));
+
+        if (shape.isSlope()) {
+            Vec3i lowerExit = exit0.getY() == 0 ? exit0 : exit1;
+            Vec3i upperExit = exit0.getY() > 0 ? exit0 : exit1;
+            if (Mth.floor(cart.getX()) - railPos.getX() == upperExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == upperExit.getZ()) {
+                cart.setPos(cart.getX(), cart.getY() + 1.0, cart.getZ());
+            } else if (Mth.floor(cart.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == lowerExit.getZ()) {
+                BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
+                if (BaseRailBlock.isRail(cart.level().getBlockState(lowerRail))) {
+                    cart.setPos(cart.getX(), cart.getY() - 1.0, cart.getZ());
+                }
+            }
+        }
+
+        Vec3 newRailPos = getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
+        if (newRailPos != null) {
+            cart.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
+        }
+        return !cart.horizontalCollision;
+    }
+
+    public static void pushCartFromLocomotiveBumper(AbstractMinecart loco, AbstractMinecart otherCart) {
+        if (loco.level().isClientSide() || isChainedTo(loco, otherCart) || isConnectedInSameTrain(loco, otherCart)) {
+            return;
+        }
+
+        Direction facing;
+        if (loco instanceof BasicLocomotiveEntity basic) {
+            facing = basic.getFacing();
+        } else if (loco instanceof DieselLocomotiveEntity diesel) {
+            facing = diesel.getFacing();
+        } else if (loco instanceof ElectricLocomotiveEntity elec) {
+            facing = elec.getTravelDirection();
+        } else {
+            facing = loco.getMotionDirection();
+        }
+
+        double dx = otherCart.getX() - loco.getX();
+        double dz = otherCart.getZ() - loco.getZ();
+        double dot = dx * facing.getStepX() + dz * facing.getStepZ();
+        Direction bumperDir = dot >= 0 ? facing : facing.getOpposite();
+
+        double locoRadius = getCartCouplerRadius(loco);
+        double cartRadius = getCartCouplerRadius(otherCart);
+        double contactDist = locoRadius + cartRadius;
+
+        double dist = dx * bumperDir.getStepX() + dz * bumperDir.getStepZ();
+        double penetration = contactDist - dist;
+
+        double locoSpeed = loco.getDeltaMovement().horizontalDistance();
+        if (loco instanceof BasicLocomotiveEntity basic && basic.isActive()) {
+            locoSpeed = Math.max(locoSpeed, basic.getLocomotiveSpeed());
+        } else if (loco instanceof DieselLocomotiveEntity diesel && diesel.isActive()) {
+            locoSpeed = Math.max(locoSpeed, diesel.getLocomotiveSpeed());
+        } else if (loco instanceof ElectricLocomotiveEntity elec && elec.isActive()) {
+            locoSpeed = Math.max(locoSpeed, elec.getLocomotiveSpeed());
+        }
+
+        if (penetration > -0.05D) {
+            double pushDist = Math.max(penetration + 0.05D, Math.max(locoSpeed, 0.2D));
+            moveCartAlongRails(otherCart, bumperDir.getStepX(), bumperDir.getStepZ(), pushDist);
+        }
+
+        double pushSpeed = Math.max(locoSpeed, 0.35D);
+        otherCart.setDeltaMovement(
+                bumperDir.getStepX() * pushSpeed,
+                otherCart.getDeltaMovement().y,
+                bumperDir.getStepZ() * pushSpeed
+        );
+        otherCart.needsSync = true;
+    }
+
+    public static void pushEntitiesInLocomotivePath(AbstractMinecart loco, Direction travelDir, double locoSpeed) {
+        if (loco.level().isClientSide()) return;
+
+        double locoRadius = getCartCouplerRadius(loco);
+        double scanReach = locoRadius + 2.5D + Math.max(locoSpeed, 0.5D);
+
+        double minX = Math.min(loco.getX(), loco.getX() + travelDir.getStepX() * scanReach) - 0.75D;
+        double maxX = Math.max(loco.getX(), loco.getX() + travelDir.getStepX() * scanReach) + 0.75D;
+        double minZ = Math.min(loco.getZ(), loco.getZ() + travelDir.getStepZ() * scanReach) - 0.75D;
+        double maxZ = Math.max(loco.getZ(), loco.getZ() + travelDir.getStepZ() * scanReach) + 0.75D;
+        double minY = loco.getY() - 0.5D;
+        double maxY = loco.getY() + 1.5D;
+        AABB scanBox = new AABB(minX, minY, minZ, maxX, maxY, maxZ);
+
+        List<Entity> pushableEntities = loco.level().getEntities(
+                loco,
+                scanBox,
+                e -> !e.noPhysics && !loco.hasPassenger(e) && !isChainedTo(loco, e)
+        );
+
+        pushableEntities.sort(Comparator.comparingDouble(e -> {
+            double dx = e.getX() - loco.getX();
+            double dz = e.getZ() - loco.getZ();
+            return dx * travelDir.getStepX() + dz * travelDir.getStepZ();
+        }));
+
+        for (Entity entity : pushableEntities) {
+            if (entity instanceof LivingEntity living) {
+                double lateralX = -travelDir.getStepZ();
+                double lateralZ = travelDir.getStepX();
+                double lateralDist = (living.getX() - loco.getX()) * lateralX + (living.getZ() - loco.getZ()) * lateralZ;
+                double lateralSign = lateralDist >= 0 ? 1.0 : -1.0;
+                double pushStrength = Math.max(locoSpeed * 2.2D, 0.5D);
+                double pushX = travelDir.getStepX() * pushStrength + lateralX * 0.4D * lateralSign;
+                double pushZ = travelDir.getStepZ() * pushStrength + lateralZ * 0.4D * lateralSign;
+                living.setDeltaMovement(pushX, 0.25D, pushZ);
+                living.needsSync = true;
+            } else if (entity instanceof AbstractMinecart cart) {
+                if (isConnectedInSameTrain(loco, cart)) {
+                    continue;
+                }
+                pushCartFromLocomotiveBumper(loco, cart);
+            }
+        }
+
+        // Check if any unchained cart is penetrating the REAR bumper
+        Direction oppositeDir = travelDir.getOpposite();
+        double rearReach = locoRadius + 1.5D;
+        double rMinX = Math.min(loco.getX(), loco.getX() + oppositeDir.getStepX() * rearReach) - 0.75D;
+        double rMaxX = Math.max(loco.getX(), loco.getX() + oppositeDir.getStepX() * rearReach) + 0.75D;
+        double rMinZ = Math.min(loco.getZ(), loco.getZ() + oppositeDir.getStepZ() * rearReach) - 0.75D;
+        double rMaxZ = Math.max(loco.getZ(), loco.getZ() + oppositeDir.getStepZ() * rearReach) + 0.75D;
+        AABB rearBox = new AABB(rMinX, minY, rMinZ, rMaxX, maxY, rMaxZ);
+        List<AbstractMinecart> rearCarts = loco.level().getEntitiesOfClass(
+                AbstractMinecart.class,
+                rearBox,
+                c -> !c.noPhysics && !loco.hasPassenger(c) && !isChainedTo(loco, c) && !isConnectedInSameTrain(loco, c)
+        );
+        for (AbstractMinecart rearCart : rearCarts) {
+            double dx = rearCart.getX() - loco.getX();
+            double dz = rearCart.getZ() - loco.getZ();
+            double dist = dx * oppositeDir.getStepX() + dz * oppositeDir.getStepZ();
+            double cartRadius = getCartCouplerRadius(rearCart);
+            double contactDist = locoRadius + cartRadius;
+            double penetration = contactDist - dist;
+            if (penetration > 0.0D) {
+                moveCartAlongRails(rearCart, oppositeDir.getStepX(), oppositeDir.getStepZ(), penetration + 0.05D);
+                rearCart.setDeltaMovement(0.0, rearCart.getDeltaMovement().y, 0.0);
+                rearCart.needsSync = true;
             }
         }
     }
