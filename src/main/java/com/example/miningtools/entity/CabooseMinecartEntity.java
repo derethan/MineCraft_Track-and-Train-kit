@@ -1,5 +1,9 @@
 package com.example.miningtools.entity;
 
+import com.example.miningtools.util.TrainChainingUtil;
+import net.minecraft.world.entity.Entity;
+import org.jspecify.annotations.Nullable;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -256,5 +260,30 @@ public class CabooseMinecartEntity extends AbstractMinecart {
     @Override
     public int getDefaultDisplayOffset() {
         return 0;
+    }
+
+    @Override
+    public boolean isPushable() {
+        return TrainChainingUtil.isCartPushable(this);
+    }
+
+    @Override
+    public boolean canCollideWith(Entity entity) {
+        return TrainChainingUtil.canCollideWith(this, entity);
+    }
+
+    @Override
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        return TrainChainingUtil.canBeCollidedWith(this, other);
+    }
+
+    @Override
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
     }
 }

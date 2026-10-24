@@ -7,22 +7,29 @@ import java.util.Map;
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
 import com.example.miningtools.client.gui.DieselLocomotiveScreen;
+import com.example.miningtools.client.gui.ChunkLoaderScreen;
+import com.example.miningtools.client.gui.EntityTransferScreen;
 import com.example.miningtools.client.gui.ElectricLocomotiveScreen;
 import com.example.miningtools.client.gui.FluidLoaderScreen;
 import com.example.miningtools.client.gui.SpeedometerOverlay;
 import com.example.miningtools.client.gui.TrackSwitchScreen;
 import com.example.miningtools.client.gui.TunnelBoreScreen;
+import com.example.miningtools.client.gui.TurretCartScreen;
+import com.example.miningtools.client.model.TurretCartModel;
+import com.example.miningtools.client.renderer.TurretCartRenderer;
 import com.example.miningtools.client.model.BasicLocomotiveModel;
 import com.example.miningtools.client.model.CabooseModel;
 import com.example.miningtools.client.model.DieselLocomotiveModel;
 import com.example.miningtools.client.model.ElectricLocomotiveModel;
 import com.example.miningtools.client.model.LargeLiquidMinecartModel;
 import com.example.miningtools.client.model.LiquidMinecartModel;
+import com.example.miningtools.client.model.LivestockCartModel;
 import com.example.miningtools.client.model.LoggingCartModel;
 import com.example.miningtools.client.model.TunnelBoreModel;
 import com.example.miningtools.client.renderer.BasicLocomotiveRenderer;
 import com.example.miningtools.client.renderer.CabooseRenderer;
 import com.example.miningtools.client.renderer.CargoMinecartRenderer;
+import com.example.miningtools.client.renderer.LivestockCartRenderer;
 import com.example.miningtools.client.renderer.DieselLocomotiveRenderer;
 import com.example.miningtools.client.renderer.ElectricLocomotiveRenderer;
 import com.example.miningtools.client.renderer.LargeLiquidMinecartRenderer;
@@ -34,6 +41,8 @@ import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.TrackSwitchSyncPayload;
+import com.example.miningtools.network.ChunkLoaderSyncPayload;
+import com.example.miningtools.network.EntityTransferSyncPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.KeyMapping;
@@ -70,6 +79,9 @@ public class MiningToolsClient {
     public static final ModelLayerLocation BASIC_LOCOMOTIVE_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "basic_locomotive"), "main");
 
+    public static final ModelLayerLocation LIVESTOCK_CART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "livestock_cart"), "main");
+
     public static final ModelLayerLocation LOGGING_CART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "logging_cart"), "main");
 
@@ -78,6 +90,9 @@ public class MiningToolsClient {
 
     public static final ModelLayerLocation LARGE_LIQUID_MINECART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "large_liquid_minecart"), "main");
+
+    public static final ModelLayerLocation TURRET_CART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "turret_cart"), "main");
 
     public static final ModelLayerLocation CABOOSE_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "caboose"), "main");
@@ -138,6 +153,8 @@ public class MiningToolsClient {
         NeoForge.EVENT_BUS.addListener(this::onClientTick);
         NeoForge.EVENT_BUS.addListener(SpeedometerOverlay::onRenderGui);
         TrackSwitchSyncPayload.CLIENT_HANDLER = TrackSwitchScreen::open;
+        EntityTransferSyncPayload.CLIENT_HANDLER = EntityTransferScreen::open;
+        ChunkLoaderSyncPayload.CLIENT_HANDLER = ChunkLoaderScreen::open;
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {
@@ -148,9 +165,11 @@ public class MiningToolsClient {
         event.registerLayerDefinition(TUNNEL_BORE_LAYER, TunnelBoreModel::createBodyLayer);
         event.registerLayerDefinition(BASIC_LOCOMOTIVE_LAYER, BasicLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(LOGGING_CART_LAYER, LoggingCartModel::createBodyLayer);
+        event.registerLayerDefinition(LIVESTOCK_CART_LAYER, LivestockCartModel::createBodyLayer);
         event.registerLayerDefinition(LIQUID_MINECART_LAYER, LiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(LARGE_LIQUID_MINECART_LAYER, LargeLiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(CABOOSE_LAYER, CabooseModel::createBodyLayer);
+        event.registerLayerDefinition(TURRET_CART_LAYER, TurretCartModel::createBodyLayer);
         event.registerLayerDefinition(ELECTRIC_LOCOMOTIVE_LAYER, ElectricLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(DIESEL_LOCOMOTIVE_LAYER, DieselLocomotiveModel::createBodyLayer);
     }
@@ -159,9 +178,11 @@ public class MiningToolsClient {
         event.registerEntityRenderer(MiningTools.TUNNEL_BORE_ENTITY.get(), TunnelBoreRenderer::new);
         event.registerEntityRenderer(MiningTools.BASIC_LOCOMOTIVE_ENTITY.get(), BasicLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.CARGO_MINECART_ENTITY.get(), CargoMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.LIVESTOCK_CART_ENTITY.get(), LivestockCartRenderer::new);
         event.registerEntityRenderer(MiningTools.LIQUID_MINECART_ENTITY.get(), LiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.LARGE_LIQUID_MINECART_ENTITY.get(), LargeLiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.CABOOSE_ENTITY.get(), CabooseRenderer::new);
+        event.registerEntityRenderer(MiningTools.TURRET_CART_ENTITY.get(), TurretCartRenderer::new);
         event.registerEntityRenderer(MiningTools.ELECTRIC_LOCOMOTIVE_ENTITY.get(), ElectricLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.DIESEL_LOCOMOTIVE_ENTITY.get(), DieselLocomotiveRenderer::new);
     }
@@ -173,6 +194,7 @@ public class MiningToolsClient {
         event.register(MiningTools.FLUID_LOADER_MENU.get(), FluidLoaderScreen::new);
         event.register(MiningTools.ELECTRIC_LOCOMOTIVE_MENU.get(), ElectricLocomotiveScreen::new);
         event.register(MiningTools.DIESEL_LOCOMOTIVE_MENU.get(), DieselLocomotiveScreen::new);
+        event.register(MiningTools.TURRET_CART_MENU.get(), TurretCartScreen::new);
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {

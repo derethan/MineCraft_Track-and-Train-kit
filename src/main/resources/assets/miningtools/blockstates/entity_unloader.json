@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "miningtools:block/entity_unloader", "y": 0 },
+    "facing=east":  { "model": "miningtools:block/entity_unloader", "y": 90 },
+    "facing=south": { "model": "miningtools:block/entity_unloader", "y": 180 },
+    "facing=west":  { "model": "miningtools:block/entity_unloader", "y": 270 }
+  }
+}

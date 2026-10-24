@@ -20,18 +20,52 @@ import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
+import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TurretCartEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 public final class TrainChainingUtil {
+    /**
+     * Finds the rail BlockPos at, below, or above an entity, supporting steep multi-block descents.
+     * Checks entity level, 1 block below, 2 blocks below, 3 blocks below, and 1 block above.
+     */
+    public static BlockPos getCurrentBlockPosOrRailBelow(Entity entity) {
+        int i = Mth.floor(entity.getX());
+        int j = Mth.floor(entity.getY());
+        int k = Mth.floor(entity.getZ());
+        Level level = entity.level();
+        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j, k)))) {
+            return new BlockPos(i, j, k);
+        }
+        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j - 1, k)))) {
+            return new BlockPos(i, j - 1, k);
+        }
+        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j - 2, k)))) {
+            return new BlockPos(i, j - 2, k);
+        }
+        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j - 3, k)))) {
+            return new BlockPos(i, j - 3, k);
+        }
+        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j + 1, k)))) {
+            return new BlockPos(i, j + 1, k);
+        }
+        return new BlockPos(i, j, k);
+    }
     private TrainChainingUtil() {}
 
     public static final String TAG_PARENT_CART = "miningtools:parent_cart";
@@ -62,6 +96,14 @@ public final class TrainChainingUtil {
         if (entity instanceof CabooseMinecartEntity) {
             // Caboose porches and couplers extend to 108px * 0.14 = 15.12px = 0.95m
             return 0.95D;
+        }
+        if (entity instanceof LivestockCartEntity) {
+            // Standard railroad stock car frame (24px long -> 0.88m radius)
+            return 0.88D;
+        }
+        if (entity instanceof TurretCartEntity) {
+            // Standard armored turret wagon frame (24px long -> 0.88m radius)
+            return 0.88D;
         }
         if (entity instanceof CargoMinecartEntity) {
             // Flatbed logging / cargo cart couplers extend to 14px = 0.88m
@@ -675,5 +717,144 @@ public final class TrainChainingUtil {
             }
         }
         return false;
+    }
+
+    public static boolean isPartOfRunningTrain(AbstractMinecart cart) {
+        if (cart == null || cart.level() == null) return false;
+        if (cart instanceof BasicLocomotiveEntity loco && loco.isRunning()) return true;
+        if (cart instanceof DieselLocomotiveEntity loco && loco.isRunning()) return true;
+        if (cart instanceof ElectricLocomotiveEntity loco && loco.isRunning()) return true;
+        if (cart instanceof TunnelBoreEntity bore && bore.isRunning()) return true;
+
+        BasicLocomotiveEntity steam = BasicLocomotiveEntity.getConnectedLocomotive(cart);
+        if (steam != null && steam.isRunning()) return true;
+        DieselLocomotiveEntity diesel = DieselLocomotiveEntity.getConnectedLocomotive(cart);
+        if (diesel != null && diesel.isRunning()) return true;
+        ElectricLocomotiveEntity elec = ElectricLocomotiveEntity.getConnectedLocomotive(cart);
+        if (elec != null && elec.isRunning()) return true;
+        return false;
+    }
+
+    public static boolean canCollideWith(AbstractMinecart cart, Entity entity) {
+        if (isChainedTo(cart, entity) || entity instanceof LivingEntity) {
+            return false;
+        }
+        return !entity.isPassengerOfSameVehicle(cart);
+    }
+
+    public static boolean canBeCollidedWith(AbstractMinecart cart, @Nullable Entity other) {
+        if (other != null && isChainedTo(cart, other)) {
+            return false;
+        }
+        return !cart.isRemoved();
+    }
+
+    public static boolean isCartPushable(AbstractMinecart cart) {
+        if (cart instanceof BasicLocomotiveEntity loco) return !loco.isRunning();
+        if (cart instanceof DieselLocomotiveEntity loco) return !loco.isRunning();
+        if (cart instanceof ElectricLocomotiveEntity loco) return !loco.isRunning();
+        if (cart instanceof TunnelBoreEntity bore) return !bore.isRunning();
+        return !isPartOfRunningTrain(cart);
+    }
+
+    public static void pushCollidingEntity(AbstractMinecart cart, Entity entity) {
+        if (cart.level().isClientSide() || entity.noPhysics || cart.hasPassenger(entity)) {
+            return;
+        }
+        if (isChainedTo(cart, entity)) {
+            return;
+        }
+
+        Vec3 motion = cart.getDeltaMovement();
+        double horizSpeed = motion.horizontalDistance();
+        boolean isRunningTrain = isPartOfRunningTrain(cart);
+
+        if (entity instanceof LivingEntity living) {
+            double dirX;
+            double dirZ;
+            double speed;
+            if (horizSpeed > 0.01D) {
+                dirX = motion.x / horizSpeed;
+                dirZ = motion.z / horizSpeed;
+                speed = horizSpeed;
+            } else if (cart instanceof BasicLocomotiveEntity loco && loco.isActive()) {
+                dirX = loco.getFacing().getStepX();
+                dirZ = loco.getFacing().getStepZ();
+                speed = loco.getLocomotiveSpeed();
+            } else if (cart instanceof DieselLocomotiveEntity loco && loco.isActive()) {
+                dirX = loco.getFacing().getStepX();
+                dirZ = loco.getFacing().getStepZ();
+                speed = loco.getLocomotiveSpeed();
+            } else if (cart instanceof ElectricLocomotiveEntity loco && loco.isActive()) {
+                dirX = loco.getTravelDirection().getStepX();
+                dirZ = loco.getTravelDirection().getStepZ();
+                speed = loco.getLocomotiveSpeed();
+            } else {
+                double diffX = living.getX() - cart.getX();
+                double diffZ = living.getZ() - cart.getZ();
+                double dLen = Math.hypot(diffX, diffZ);
+                if (dLen > 1.0E-4D) {
+                    dirX = diffX / dLen;
+                    dirZ = diffZ / dLen;
+                } else {
+                    dirX = 1.0;
+                    dirZ = 0.0;
+                }
+                speed = 0.1D;
+            }
+
+            double lateralX = -dirZ;
+            double lateralZ = dirX;
+            double lateralDist = (living.getX() - cart.getX()) * lateralX + (living.getZ() - cart.getZ()) * lateralZ;
+            double lateralSign = lateralDist >= 0 ? 1.0 : -1.0;
+
+            double pushStrength = Math.max(speed * 2.2D, 0.5D);
+            double pushX = dirX * pushStrength + lateralX * 0.4D * lateralSign;
+            double pushZ = dirZ * pushStrength + lateralZ * 0.4D * lateralSign;
+            double pushY = 0.25D;
+
+            living.setDeltaMovement(pushX, pushY, pushZ);
+            living.needsSync = true;
+            return;
+        }
+
+        if (isRunningTrain || horizSpeed > 0.05D) {
+            if (entity.isPushable()) {
+                double dirX = horizSpeed > 0.01D ? (motion.x / horizSpeed) : 0.0;
+                double dirZ = horizSpeed > 0.01D ? (motion.z / horizSpeed) : 0.0;
+                if (cart instanceof BasicLocomotiveEntity loco) {
+                    dirX = loco.getFacing().getStepX();
+                    dirZ = loco.getFacing().getStepZ();
+                } else if (cart instanceof DieselLocomotiveEntity loco) {
+                    dirX = loco.getFacing().getStepX();
+                    dirZ = loco.getFacing().getStepZ();
+                } else if (cart instanceof ElectricLocomotiveEntity loco) {
+                    dirX = loco.getTravelDirection().getStepX();
+                    dirZ = loco.getTravelDirection().getStepZ();
+                }
+                double pushStrength = Math.max(horizSpeed, 0.3D);
+                entity.setDeltaMovement(dirX * pushStrength, entity.getDeltaMovement().y, dirZ * pushStrength);
+                entity.needsSync = true;
+            }
+            return;
+        }
+
+        double dx = entity.getX() - cart.getX();
+        double dz = entity.getZ() - cart.getZ();
+        double distSq = dx * dx + dz * dz;
+        if (distSq >= 1.0E-4D) {
+            double dist = Math.sqrt(distSq);
+            dx /= dist;
+            dz /= dist;
+            double factor = 1.0D / dist;
+            if (factor > 1.0D) {
+                factor = 1.0D;
+            }
+            dx *= factor * 0.1D;
+            dz *= factor * 0.1D;
+            if (entity.isPushable()) {
+                entity.push(dx, 0.0D, dz);
+            }
+        }
     }
 }

@@ -232,6 +232,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         return custom != null ? custom.getString().trim() : "";
     }
 
+        @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
     public Direction getFacing() {
         return this.entityData.get(DATA_FACING);
     }
@@ -308,7 +313,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     public double getLocomotiveSpeed() {
         double maxSpeed = Config.LOCOMOTIVE_MAX_SPEED.get();
         return switch (this.speedLevel) {
-            case 1 -> Math.max(0.04D, maxSpeed * 0.15D); // Crawl (~0.05 b/t)
+            case 1 -> 0.05D;                             // Crawl (1.0 m/s = 0.05 b/t)
             case 2 -> Math.max(0.06D, maxSpeed * 0.30D); // Slow (~0.10 b/t)
             case 3 -> Math.max(0.08D, maxSpeed * 0.50D); // Normal / Half-Speed (~0.175 b/t)
             case 4 -> maxSpeed * 0.75D;                  // Fast (~0.26 b/t)
@@ -749,11 +754,17 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             // Move horizontally along track
             this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
 
-            // If exited down the slope via lower exit, step down Y by 1
-            if (exit0.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit0.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit0.getZ()) {
-                this.setPos(this.getX(), this.getY() + exit0.getY(), this.getZ());
-            } else if (exit1.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit1.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit1.getZ()) {
-                this.setPos(this.getX(), this.getY() + exit1.getY(), this.getZ());
+            if (shape.isSlope()) {
+                Vec3i lowerExit = exit0.getY() == 0 ? exit0 : exit1;
+                Vec3i upperExit = exit0.getY() > 0 ? exit0 : exit1;
+                if (Mth.floor(this.getX()) - railPos.getX() == upperExit.getX() && Mth.floor(this.getZ()) - railPos.getZ() == upperExit.getZ()) {
+                    this.setPos(this.getX(), this.getY() + 1.0, this.getZ());
+                } else if (Mth.floor(this.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(this.getZ()) - railPos.getZ() == lowerExit.getZ()) {
+                    BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
+                    if (BaseRailBlock.isRail(this.level().getBlockState(lowerRail))) {
+                        this.setPos(this.getX(), this.getY() - 1.0, this.getZ());
+                    }
+                }
             }
 
             // Snap X, Y, Z precisely to the rail surface
@@ -904,9 +915,14 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         int zt = Mth.floor(z);
         if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
             yt--;
-        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))
-                && BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
-            yt++;
+        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))) {
+            if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
+                yt -= 2;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
+                yt -= 3;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
+                yt++;
+            }
         }
 
         BlockPos railPos = new BlockPos(xt, yt, zt);
@@ -985,9 +1001,14 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         int zt = Mth.floor(z);
         if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
             yt--;
-        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))
-                && BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
-            yt++;
+        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))) {
+            if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
+                yt -= 2;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
+                yt -= 3;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
+                yt++;
+            }
         }
 
         BlockPos railPos = new BlockPos(xt, yt, zt);
@@ -1164,7 +1185,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     public static String getSpeedName(int speedLevel) {
         return switch (speedLevel) {
-            case 1 -> "Crawl";
+            case 1 -> "Crawl (1.0 m/s)";
             case 2 -> "Slow";
             case 3 -> "Normal";
             case 4 -> "Fast";
@@ -1587,7 +1608,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             }
         }
 
-        BlockPos railPos = cart.getCurrentBlockPosOrRailBelow();
+        BlockPos railPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(cart);
         BlockState railState = this.level().getBlockState(railPos);
         if (!BaseRailBlock.isRail(railState)) {
             cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
@@ -1685,11 +1706,17 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         cart.setDeltaMovement(alignedVx, 0.0, alignedVz);
         cart.move(MoverType.SELF, new Vec3(alignedVx, 0.0, alignedVz));
 
-        // Step down Y if exiting slope through the lower exit
-        if (exit0.getY() != 0 && Mth.floor(cart.getX()) - railPos.getX() == exit0.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == exit0.getZ()) {
-            cart.setPos(cart.getX(), cart.getY() + exit0.getY(), cart.getZ());
-        } else if (exit1.getY() != 0 && Mth.floor(cart.getX()) - railPos.getX() == exit1.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == exit1.getZ()) {
-            cart.setPos(cart.getX(), cart.getY() + exit1.getY(), cart.getZ());
+        if (shape.isSlope()) {
+            Vec3i lowerExit = exit0.getY() == 0 ? exit0 : exit1;
+            Vec3i upperExit = exit0.getY() > 0 ? exit0 : exit1;
+            if (Mth.floor(cart.getX()) - railPos.getX() == upperExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == upperExit.getZ()) {
+                cart.setPos(cart.getX(), cart.getY() + 1.0, cart.getZ());
+            } else if (Mth.floor(cart.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == lowerExit.getZ()) {
+                BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
+                if (BaseRailBlock.isRail(this.level().getBlockState(lowerRail))) {
+                    cart.setPos(cart.getX(), cart.getY() - 1.0, cart.getZ());
+                }
+            }
         }
 
         // Snap precisely onto the new rail position

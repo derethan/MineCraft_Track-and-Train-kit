@@ -268,6 +268,11 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         return this.getFluidAmount() > 0;
     }
 
+        @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
     public Direction getFacing() {
         return this.entityData.get(DATA_FACING);
     }
@@ -321,7 +326,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
     public static String getSpeedName(int level) {
         return switch (level) {
-            case 1 -> "1 (Shunt)";
+            case 1 -> "1 (Crawl 1 m/s)";
             case 2 -> "2 (Slow)";
             case 3 -> "3 (Cruise)";
             case 4 -> "4 (Express)";
@@ -333,7 +338,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     public double getLocomotiveSpeed() {
         double maxSpeed = Config.DIESEL_LOCOMOTIVE_MAX_SPEED.get();
         double multiplier = switch (this.speedLevel) {
-            case 1 -> 0.20D;
+            case 1 -> 0.05D; // Crawl (1.0 m/s = 0.05 b/t)
             case 2 -> 0.40D;
             case 3 -> 0.60D;
             case 4 -> 0.80D;
@@ -471,6 +476,18 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
         this.tickFuelAndMovement();
         this.updateDynamicLight();
+
+        // Push entities in path
+        Direction pushFacing = this.getFacing();
+        AABB pushBox = this.getBoundingBox().inflate(0.2D).expandTowards(pushFacing.getStepX() * 0.5D, 0.0D, pushFacing.getStepZ() * 0.5D);
+        List<Entity> pushableEntities = this.level().getEntities(
+                this,
+                pushBox,
+                e -> !e.noPhysics && !this.isChainedTo(e) && !this.hasPassenger(e)
+        );
+        for (Entity pushable : pushableEntities) {
+            this.push(pushable);
+        }
     }
 
     private void drainFuelItemSlot() {
@@ -641,6 +658,19 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
             this.setDeltaMovement(newVx, 0.0, newVz);
             this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
+
+            if (shape.isSlope()) {
+                Vec3i lowerExit = exit0.getY() == 0 ? exit0 : exit1;
+                Vec3i upperExit = exit0.getY() > 0 ? exit0 : exit1;
+                if (Mth.floor(this.getX()) - railPos.getX() == upperExit.getX() && Mth.floor(this.getZ()) - railPos.getZ() == upperExit.getZ()) {
+                    this.setPos(this.getX(), this.getY() + 1.0, this.getZ());
+                } else if (Mth.floor(this.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(this.getZ()) - railPos.getZ() == lowerExit.getZ()) {
+                    BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
+                    if (BaseRailBlock.isRail(this.level().getBlockState(lowerRail))) {
+                        this.setPos(this.getX(), this.getY() - 1.0, this.getZ());
+                    }
+                }
+            }
 
             Vec3 newRailPos = this.getRailPos(this.getX(), this.getY(), this.getZ());
             if (newRailPos != null) {
@@ -898,36 +928,23 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     @Override
+    public boolean isPushable() {
+        return !this.running;
+    }
+
+    @Override
+    public boolean canCollideWith(Entity entity) {
+        return TrainChainingUtil.canCollideWith(this, entity);
+    }
+
+    @Override
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        return TrainChainingUtil.canBeCollidedWith(this, other);
+    }
+
+    @Override
     public void push(Entity entity) {
-        if (!this.level().isClientSide() && !entity.noPhysics && !this.hasPassenger(entity)) {
-            if (this.isChainedTo(entity)) {
-                return;
-            }
-            if (entity instanceof LivingEntity) {
-                Direction facing = this.getFacing();
-                Direction lateral = facing.getClockWise();
-                double lateralDist = (entity.getX() - this.getX()) * lateral.getStepX() + (entity.getZ() - this.getZ()) * lateral.getStepZ();
-                double lateralSign = lateralDist >= 0 ? 1.0 : -1.0;
-                double speed = this.isActive() ? this.getLocomotiveSpeed() : Math.max(super.getDeltaMovement().horizontalDistance(), 0.1D);
-                double pushStrength = Math.max(speed * 2.2D, 0.5D);
-                double pushX = facing.getStepX() * pushStrength + lateral.getStepX() * 0.4D * lateralSign;
-                double pushZ = facing.getStepZ() * pushStrength + lateral.getStepZ() * 0.4D * lateralSign;
-                double pushY = 0.25D;
-                entity.setDeltaMovement(pushX, pushY, pushZ);
-                entity.needsSync = true;
-                return;
-            }
-            if (this.running) {
-                if (entity.isPushable()) {
-                    Direction facing = this.getFacing();
-                    double pushStrength = Math.max(this.getLocomotiveSpeed(), 0.3D);
-                    entity.setDeltaMovement(facing.getStepX() * pushStrength, entity.getDeltaMovement().y, facing.getStepZ() * pushStrength);
-                    entity.needsSync = true;
-                }
-                return;
-            }
-            super.push(entity);
-        }
+        TrainChainingUtil.pushCollidingEntity(this, entity);
     }
 
     public Vec3 getAnchorPosFor(Vec3 otherPos) {
@@ -1006,7 +1023,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     private boolean moveCartAlongRails(AbstractMinecart cart, double dirX, double dirZ, double distance3D) {
         if (distance3D < 1.0E-5D) return true;
 
-        BlockPos railPos = cart.getCurrentBlockPosOrRailBelow();
+        BlockPos railPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(cart);
         BlockState railState = this.level().getBlockState(railPos);
         if (!BaseRailBlock.isRail(railState)) {
             cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
@@ -1037,10 +1054,15 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             progress = (xx * xD + zz * zD) * 2.0;
         }
 
+        Direction cartDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
+                ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
+                : cart.getMotionDirection();
+        boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(cartDir).above()));
+
         double x = x0 + xD * progress;
         double z = z0 + zD * progress;
         double y = railPos.getY();
-        if (shape.isSlope()) {
+        if (shape.isSlope() || uphillAhead) {
             y = railPos.getY() + 1.0;
         }
         cart.setPos(x, y, z);
@@ -1061,6 +1083,19 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
         cart.setDeltaMovement(alignedVx, 0.0, alignedVz);
         cart.move(MoverType.SELF, new Vec3(alignedVx, 0.0, alignedVz));
+
+        if (shape.isSlope()) {
+            Vec3i lowerExit = exit0.getY() == 0 ? exit0 : exit1;
+            Vec3i upperExit = exit0.getY() > 0 ? exit0 : exit1;
+            if (Mth.floor(cart.getX()) - railPos.getX() == upperExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == upperExit.getZ()) {
+                cart.setPos(cart.getX(), cart.getY() + 1.0, cart.getZ());
+            } else if (Mth.floor(cart.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == lowerExit.getZ()) {
+                BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
+                if (BaseRailBlock.isRail(this.level().getBlockState(lowerRail))) {
+                    cart.setPos(cart.getX(), cart.getY() - 1.0, cart.getZ());
+                }
+            }
+        }
 
         Vec3 newRailPos = this.getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
         if (newRailPos != null) {
@@ -1085,9 +1120,14 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         int zt = Mth.floor(z);
         if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
             yt--;
-        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))
-                && BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
-            yt++;
+        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))) {
+            if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
+                yt -= 2;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
+                yt -= 3;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
+                yt++;
+            }
         }
 
         BlockPos railPos = new BlockPos(xt, yt, zt);
@@ -1139,9 +1179,14 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         int zt = Mth.floor(z);
         if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
             yt--;
-        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))
-                && BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
-            yt++;
+        } else if (!BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt, zt)))) {
+            if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
+                yt -= 2;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
+                yt -= 3;
+            } else if (BaseRailBlock.isRail(this.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
+                yt++;
+            }
         }
 
         BlockPos railPos = new BlockPos(xt, yt, zt);

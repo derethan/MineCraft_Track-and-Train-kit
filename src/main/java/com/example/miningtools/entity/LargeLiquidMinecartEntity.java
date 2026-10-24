@@ -1,5 +1,11 @@
 package com.example.miningtools.entity;
 
+import net.minecraft.core.BlockPos;
+
+import com.example.miningtools.util.TrainChainingUtil;
+import net.minecraft.world.entity.Entity;
+import org.jspecify.annotations.Nullable;
+
 import com.example.miningtools.MiningTools;
 
 import net.minecraft.world.entity.EntityType;
@@ -41,5 +47,30 @@ public class LargeLiquidMinecartEntity extends LiquidMinecartEntity {
     @Override
     public ItemStack getPickResult() {
         return new ItemStack(MiningTools.LARGE_LIQUID_MINECART_ITEM.get());
+    }
+
+    @Override
+    public boolean isPushable() {
+        return TrainChainingUtil.isCartPushable(this);
+    }
+
+    @Override
+    public boolean canCollideWith(Entity entity) {
+        return TrainChainingUtil.canCollideWith(this, entity);
+    }
+
+    @Override
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        return TrainChainingUtil.canBeCollidedWith(this, other);
+    }
+
+    @Override
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
     }
 }

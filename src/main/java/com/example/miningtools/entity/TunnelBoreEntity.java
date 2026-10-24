@@ -44,10 +44,12 @@ import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
@@ -57,8 +59,12 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class TunnelBoreEntity extends AbstractMinecartContainer {
-    public static final int INVENTORY_SIZE = 10;
+    public static final int INVENTORY_SIZE = 19;
     public static final int FUEL_SLOT = 0;
+    public static final int RAIL_SLOTS_START = 1;
+    public static final int RAIL_SLOTS_COUNT = 9;
+    public static final int BALLAST_SLOTS_START = 10;
+    public static final int BALLAST_SLOTS_COUNT = 9;
 
     public static final int MODE_STOPPED = 0;
     public static final int MODE_FORWARD = 1;
@@ -294,10 +300,11 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
         if (this.hasPassenger(passenger)) {
             Direction facing = this.getFacing();
-            // Driver cabin seat is located behind the boiler/furnace inside the cab platform
-            double offsetX = -facing.getStepX() * 1.8;
-            double offsetZ = -facing.getStepZ() * 1.8;
-            double offsetY = 1.05;
+            // Elevated driver observation cockpit in the back half
+            // Allows the player to sit in the rear section while having a clear forward sightline to the drill head and tunnel
+            double offsetX = -facing.getStepX() * 0.8;
+            double offsetZ = -facing.getStepZ() * 0.8;
+            double offsetY = 2.05;
             moveFunction.accept(passenger, this.getX() + offsetX, this.getY() + offsetY, this.getZ() + offsetZ);
         }
     }
@@ -367,12 +374,12 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canCollideWith(Entity entity) {
-        return !entity.isPassengerOfSameVehicle(this);
+        return TrainChainingUtil.canCollideWith(this, entity);
     }
 
     @Override
-    public boolean canBeCollidedWith(@Nullable Entity other) {
-        return !this.isRemoved();
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        return TrainChainingUtil.canBeCollidedWith(this, other);
     }
 
     /**
@@ -516,23 +523,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     @Override
     public void push(Entity entity) {
-        if (!this.level().isClientSide() && !entity.noPhysics && !this.hasPassenger(entity)) {
-            if (this.isChainedTo(entity)) {
-                return;
-            }
-            Direction facing = this.getFacing();
-            double cx = this.getX() + facing.getStepX() * -1.525;
-            double cz = this.getZ() + facing.getStepZ() * -1.525;
-            double xa = entity.getX() - cx;
-            double za = entity.getZ() - cz;
-            double dd = xa * xa + za * za;
-            if (dd >= 1.0E-4F) {
-                dd = Math.sqrt(dd);
-                xa /= dd;
-                za /= dd;
-                entity.push(xa * 0.08, 0.0, za * 0.08);
-            }
-        }
+        TrainChainingUtil.pushCollidingEntity(this, entity);
     }
 
     @Override
@@ -640,6 +631,114 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             }
         }
         return null;
+    }
+
+    public static boolean isBallastItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (stack.is(Items.GRAVEL) || stack.is(Items.SUSPICIOUS_GRAVEL) || stack.is(ItemTags.SAND)) {
+            return true;
+        }
+        if (stack.getItem() instanceof BlockItem bi) {
+            Block block = bi.getBlock();
+            if (block instanceof BaseRailBlock || block instanceof LiquidBlock) {
+                return false;
+            }
+            BlockState def = block.defaultBlockState();
+            return def.isSolid();
+        }
+        return false;
+    }
+
+    private int findBallastSlot(boolean preferNonGravity) {
+        if (preferNonGravity) {
+            for (int i = 0; i < BALLAST_SLOTS_COUNT; i++) {
+                int slot = BALLAST_SLOTS_START + i;
+                ItemStack s = this.getItem(slot);
+                if (!s.isEmpty() && isBallastItem(s) && s.getItem() instanceof BlockItem bi) {
+                    if (!(bi.getBlock() instanceof FallingBlock)) {
+                        return slot;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < BALLAST_SLOTS_COUNT; i++) {
+            int slot = BALLAST_SLOTS_START + i;
+            ItemStack s = this.getItem(slot);
+            if (!s.isEmpty() && isBallastItem(s)) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    private boolean placeBallastAt(BlockPos pos, boolean preferNonGravity) {
+        int slot = this.findBallastSlot(preferNonGravity);
+        if (slot == -1) {
+            return false;
+        }
+        ItemStack stack = this.getItem(slot);
+        if (stack.getItem() instanceof BlockItem bi) {
+            Block block = bi.getBlock();
+            stack.shrink(1);
+            this.level().setBlock(pos, block.defaultBlockState(), 3);
+            SoundType st = block.defaultBlockState().getSoundType();
+            this.level().playSound(null, pos, st.getPlaceSound(), SoundSource.BLOCKS, (st.getVolume() + 1.0F) / 2.0F, st.getPitch() * 0.8F);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean ensureFloorSturdy(BlockPos targetPos) {
+        BlockState state = this.level().getBlockState(targetPos);
+        if (state.isFaceSturdy(this.level(), targetPos, Direction.UP)) {
+            return true;
+        }
+
+        // Target position is air, liquid, or not sturdy.
+        BlockPos belowPos = targetPos.below();
+        BlockState belowState = this.level().getBlockState(belowPos);
+
+        // 1. If the block directly below is solid, any ballast (gravel, sand, cobblestone) will stay sturdy!
+        if (belowState.isFaceSturdy(this.level(), belowPos, Direction.UP)) {
+            return this.placeBallastAt(targetPos, false);
+        }
+
+        // 2. The block below is also air/liquid. If we have a non-gravity block (cobblestone, stone, dirt), place it directly!
+        int nonGravSlot = this.findBallastSlot(true);
+        if (nonGravSlot != -1) {
+            ItemStack stack = this.getItem(nonGravSlot);
+            if (stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof FallingBlock)) {
+                return this.placeBallastAt(targetPos, true);
+            }
+        }
+
+        // 3. We only have falling blocks (gravel / sand). Find the solid floor below (up to 24 blocks down):
+        int depth = 1;
+        BlockPos search = targetPos.below();
+        while (depth <= 24 && search.getY() >= this.level().getMinY()) {
+            BlockState bs = this.level().getBlockState(search);
+            if (bs.isFaceSturdy(this.level(), search, Direction.UP)) {
+                break;
+            }
+            search = search.below();
+            depth++;
+        }
+
+        if (depth <= 24 && search.getY() >= this.level().getMinY()) {
+            // Fill upward from solid ground up to targetPos
+            BlockPos fillPos = search.above();
+            while (fillPos.getY() <= targetPos.getY()) {
+                if (!this.placeBallastAt(fillPos, false)) {
+                    return false; // Ran out of ballast
+                }
+                fillPos = fillPos.above();
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private int calculateMineTicks(BlockState state, BlockPos pos) {
@@ -859,10 +958,21 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             BlockPos nextRailPos = this.currentRailPos.relative(facing);
             BlockPos floorPos = nextRailPos.below();
 
-            // Safety check: ensure solid floor beneath the next rail
-            if (!this.level().getBlockState(floorPos).isFaceSturdy(this.level(), floorPos, Direction.UP)) {
+            // Ensure solid floor beneath the next rail using ballast (gravel, sand, stone)
+            if (!this.ensureFloorSturdy(floorPos)) {
                 this.setActive(false);
                 return;
+            }
+
+            // Optionally fill side floor positions across the 3-wide tunnel if ballast is available
+            Direction rightDir = facing.getClockWise();
+            BlockPos leftFloor = floorPos.relative(rightDir, -1);
+            BlockPos rightFloor = floorPos.relative(rightDir, 1);
+            if (!this.level().getBlockState(leftFloor).isFaceSturdy(this.level(), leftFloor, Direction.UP)) {
+                this.ensureFloorSturdy(leftFloor);
+            }
+            if (!this.level().getBlockState(rightFloor).isFaceSturdy(this.level(), rightFloor, Direction.UP)) {
+                this.ensureFloorSturdy(rightFloor);
             }
 
             if (!this.hasOrCanRefuel()) {
@@ -874,10 +984,11 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             BlockState nextState = this.level().getBlockState(nextRailPos);
             if (!nextState.is(BlockTags.RAILS)) {
                 int railSlot = -1;
-                for (int i = 1; i < INVENTORY_SIZE; i++) {
-                    ItemStack s = this.getItem(i);
+                for (int i = 0; i < RAIL_SLOTS_COUNT; i++) {
+                    int slot = RAIL_SLOTS_START + i;
+                    ItemStack s = this.getItem(slot);
                     if (!s.isEmpty() && s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BaseRailBlock) {
-                        railSlot = i;
+                        railSlot = slot;
                         break;
                     }
                 }

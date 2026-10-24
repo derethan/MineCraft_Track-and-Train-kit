@@ -1,5 +1,11 @@
 package com.example.miningtools.entity;
 
+import net.minecraft.core.BlockPos;
+
+import com.example.miningtools.util.TrainChainingUtil;
+import net.minecraft.world.entity.Entity;
+import org.jspecify.annotations.Nullable;
+
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -413,5 +419,30 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         super.readAdditionalSaveData(input);
         setFilterItem(this.getItem(FILTER_SLOT));
         updateStoredCount();
+    }
+
+    @Override
+    public boolean isPushable() {
+        return TrainChainingUtil.isCartPushable(this);
+    }
+
+    @Override
+    public boolean canCollideWith(Entity entity) {
+        return TrainChainingUtil.canCollideWith(this, entity);
+    }
+
+    @Override
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        return TrainChainingUtil.canBeCollidedWith(this, other);
+    }
+
+    @Override
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
     }
 }

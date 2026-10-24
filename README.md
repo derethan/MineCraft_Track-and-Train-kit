@@ -1,238 +1,222 @@
-# Mining Tools
+# 🚂 Mining Tools (Track & Train Kit)
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-26.3-brightgreen.svg)](https://minecraft.net/)
-[![NeoForge](https://img.shields.io/badge/NeoForge-26.3.0.48--beta-orange.svg)](https://neoforged.net/)
-[![Version](https://img.shields.io/badge/Version-1.0.1-blue.svg)](https://github.com/)
-
-**Mining Tools** is an industrial railway and excavation mod for **Minecraft 26.3 (NeoForge)**. Inspired by classic railway engineering and heavy mining machinery, Mining Tools introduces powerful steam locomotives, automated 3×3 tunnel-boring machines, adaptive freight carts, intelligent specialty switch rails, and a live HUD speedometer.
+**Heavy Rail Logistics, High-Speed Locomotives, Automated Trackside Facilities, and Subterranean Excavation for Minecraft 26.3 (NeoForge)**
 
 ---
 
-## Table of Contents
+## 📖 Overview
 
-- [Features Overview](#features-overview)
-- [Rolling Stock & Machinery](#rolling-stock--machinery)
-  - [Basic Locomotive](#basic-locomotive)
-  - [Tunnel Bore](#tunnel-bore)
-  - [Cargo Minecart](#cargo-minecart)
-- [Specialty Rails](#specialty-rails)
-  - [Control Rail](#control-rail)
-  - [Turnout Rail](#turnout-rail)
-  - [Wye Rail](#wye-rail)
-  - [Junction Rail](#junction-rail)
-- [HUD Speedometer & Telemetry](#hud-speedometer--telemetry)
-- [Train Coupling & Compatibility](#train-coupling--compatibility)
-- [Crafting Recipes](#crafting-recipes)
-- [Configuration](#configuration)
-- [Building & Installation](#building--installation)
+**Mining Tools** transforms Minecraft's minecart and rail system into a complete heavy-haul railway logistics and automated mining network. 
+
+Whether you need to haul massive freight trains across long distances, automate livestock and mob transit, transport bulk liquids, drill 3×3 subterranean tunnels automatically, or keep your automated quarries loaded 24/7—**Mining Tools** provides the locomotives, specialty tracks, and smart trackside machinery to get the job done.
+
+> 📖 **Need a complete walkthrough, mechanics guide, or crafting recipes?** Check out the comprehensive **[Mining Tools Wiki & Walkthrough](WIKI.md)**!
 
 ---
 
-## Features Overview
+## 🌟 Key Highlights
 
-- 🚂 **Basic Locomotive**: A coal-burning steam engine capable of pulling and pushing trains with 5 selectable speed levels, dynamic directional headlights, and an interactive steam whistle.
-- 🚜 **Tunnel Bore**: A heavy multi-block excavator that automatically bores 3×3 tunnels through terrain, clears gravity blocks safely, and lays track forward as it advances.
-- 📦 **Cargo Minecart**: High-capacity freight cart (27 slots) featuring dynamic 3D visuals that transform based on configured cargo filters (Logs, Lumber, Ores, Ingots, or Shipping Container).
-- 🛤️ **Specialty Switch & Junction Rails**:
-  - **Control Rail**: Redstone-activated locomotive station and dispatch rail.
-  - **Turnout Rail**: Mainline/divergent switch rail toggled via Redstone or manual interaction.
-  - **Wye Rail**: 3-way Y-junction switch track with momentum-aware path routing and in-place rotation.
-  - **Junction Rail**: 4-way flat perpendicular cross intersection (+) allowing trains to cross without collisions or unwanted turns.
-- 🧭 **In-Game HUD Dashboard**: On-screen speedometer displaying blocks/sec (m/s), km/h, compass heading, active throttle gear, and locomotive fuel reserve.
-- 🔗 **Train Integration**: Native compatibility with train chaining systems (such as *Minecart Trains Fork*), featuring calibrated hitch offsets and rear couplers.
+* 🚂 **3 Distinct Locomotives**: Coal-fired Steam Locomotive, CN Diesel Locomotive, and High-Speed Electric Bullet Train.
+* 🔗 **Realistic Train Chaining & MU Consists**: Link dozens of carts together using the Railroad Crowbar. Distribute lead, mid-train, and pusher locomotives to multiply train pulling capacity!
+* 🚜 **Automated Tunnel Bore**: Drills a 3×3 tunnel through stone and deepslate, clears loose gravel/sand safely, and places its own rail tracks automatically.
+* 📦 **Dynamic Freight & Tankers**: Adaptive Cargo Carts that visually change (Logs, Shipping Container, Ores, Ingots) and Large 16-Bucket Liquid Tankers.
+* 🛤️ **Specialty Switch & Power Rails**: 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
+* 📡 **Smart Track Automation**: Automated Entity Loaders, Entity Unloaders, Fluid Stations, and Train-Name Signal Switches.
+* ⚓ **Zero-Decoupling Chunk Anchors**: Both mobile (Anchor Caboose) and stationary (Industrial Chunk Anchor) chunk loaders that keep automation and trains ticking across chunk borders.
+* 🧭 **Live HUD Dashboard**: On-screen speedometer showing blocks/sec, km/h, heading, throttle gear, and fuel reserves.
 
 ---
 
-## Rolling Stock & Machinery
+## 🚂 Locomotives & Motive Power
 
-### Basic Locomotive
+Every locomotive features dynamic directional headlights (level 15 lighting), interactive horns, a multi-gear transmission, and a dedicated interactive cockpit GUI.
 
-The **Basic Locomotive** provides mainline motive power to haul freight and passenger trains across your rail network.
+### 1. Basic Steam Locomotive
+The quintessential iron horse for industrial mining and freight operations.
+* **Fuel**: Consumes coal or charcoal (default: 80 seconds per coal).
+* **Speed**: 5 throttle gears with a calibrated **1.0 m/s (0.05 b/t) Crawl Speed** in Gear 1 for precise switching and coupling, scaling up to 0.35+ blocks/tick (7 m/s).
+* **Pulling Capacity**: Pulls up to **5 carts** with zero drag penalty.
+* **Whistle & Cowcatcher**: Sounds a loud steam whistle that scatters mobs off the tracks and pushes obstacles out of the way.
 
-- **Fuel**: Consumes coal or charcoal (default: 1,600 ticks / 80 seconds per piece).
-- **Speed Levels**: 5 adjustable speed gears (configurable from slow yard shunting up to 0.35+ blocks/tick).
-- **Dynamic Headlight**: Projects a movable beam of light (light level 15) ahead of the train along track vectors.
-- **Steam Whistle / Horn**: Sounds an audible locomotive horn, emits steam/smoke particle bursts, and panics/scares nearby mobs within 12 blocks off the tracks.
-- **Cowcatcher / Mob Clearing**: Moving locomotives push stray entities off the rails, preventing carts from stalling on livestock or monsters.
-- **Rail Automation**:
-  - Activator Rails trigger the whistle automatically.
-  - Control Rails automatically halt or start the engine.
+### 2. CN Diesel Locomotive (#3087)
+A heavy-duty mainline diesel road-switcher modeled after Canadian National (CN) locomotives.
+* **Speed**: **2× Top Speed** of the steam locomotive (0.70 blocks/tick).
+* **Fuel**: Liquid diesel fuel. Equipped with an internal **16,000 mB (16-bucket)** fuel tank with a golden-yellow fuel gauge and bucket draining slot.
+* **Fuel Compatibility**: Native support for **Industrial Refinery Diesel**, **Ultimate Car Mod Bio-Diesel**, **Logistics Bio-Fuel**, and all fluids tagged `#c:diesel`, `#c:biofuel`, or `#c:biodiesel`.
+* **Pulling Capacity**: Pulls up to **10 carts** with zero drag penalty.
+* **Multiple-Unit (MU) Chaining**: Chain multiple diesel locomotives together (front, middle, or rear) to pull massive 20–30+ car trains at maximum speed!
 
-#### Controls (Keyboard & GUI)
+### 3. Electric Bullet Train
+Sleek, aerodynamic, ultra-high-speed electric rail transit.
+* **Speed**: **5× Speed** of the steam locomotive (1.75 blocks/tick).
+* **Power**: Runs on Forge Energy (FE/RF) with a **100,000 FE** onboard battery.
+* **Electric Rail Pickup**: Draws power directly through trackside **Electric Rails** without stopping, or recharges using battery items in its GUI.
+* **Pulling Capacity**: Pulls up to **10 carts** at lightning speeds.
 
-When riding a Locomotive or any coupled cart in a train:
+---
 
-| Key Binding | Default Key | Action |
+## 🔗 Train Mechanics & Railroad Crowbar
+
+* **Railroad Crowbar**: Right-click to link any two carts or locomotives together into an unbroken train. Shift + Right-click to uncouple.
+* **Distributed Locomotive Traction**: Each locomotive adds its pull allowance to the train. When pulling more carts than the combined allowance, trains realistically experience drag slowdown—incentivizing realistic multi-engine freight consists!
+* **Unified Heavy-Rail Collision & Cowcatcher Physics**: All locomotives and rolling stock carts now share solid physical collision with living entity deflection. Mobs and players in the path of any train car are safely shoved aside without stalling, freezing, or bouncing the train!
+* **Non-Inverting Reverse**: Reversing train direction shifts motion into reverse without disorienting 180° visual cart flips.
+
+---
+
+## 🚃 Rolling Stock & Freight
+
+### Cargo Minecart
+A heavy-duty freight wagon with 27 storage slots and an intelligent **Filter Slot**. The cart's 3D model automatically adapts to its cargo:
+* **Log Mode**: Four vertical timber stakes loaded with stacked wooden logs.
+* **Container Mode**: Heavy enclosed shipping container (stakes retract).
+* **Ore Mode**: Raw unrefined ores mounded high.
+* **Ingot Mode**: Stacked precious metal ingots.
+
+### Livestock Cart (Railroad Stock Car)
+An authentic North American railroad stock car modeled to scale with rolling stock:
+* **Dual Stall Capacity**: Comfortably accommodates up to **2 entities** simultaneously (cows, sheep, pigs, chickens, rabbits, villagers, or players) across distinct front and rear stalls.
+* **Open Slatted Wooden Construction**: Built with horizontal wooden slats separated by open gaps, keeping livestock well-ventilated and clearly visible from the outside as the train travels.
+* **Leash Hitching**: Right-clicking the cart while leading an animal on a Lead instantly unleashes and boards the animal inside.
+* **Smart Facility Compatibility**: Integrates directly with the **Trackside Entity Loader** (loading up to 2 filtered animals) and **Trackside Entity Unloader**.
+* **Activator Rail Ejection**: Rolling over a powered Activator Rail gently dismounts passengers at destination pens.
+
+### Liquid Minecarts (Small & Large)
+Specialized tanker wagons designed to safely transport fluids across rail lines.
+* **Small Liquid Minecart**: 8,000 mB (8 Buckets) capacity.
+* **Large Liquid Minecart**: 16,000 mB (16 Buckets) heavy rail tanker.
+* Seamlessly loads and unloads via the **Trackside Fluid Station**.
+
+### Arrow Turret Cart
+An armored rolling-stock defense wagon styled after the Caboose and heavy freight cars to protect trains from hostiles.
+* **Dual Weapon Slots**: Mount up to **2 Bows** into dedicated gun ports on the rotating turret.
+* **9-Slot Ammo Magazine**: Carries up to 9 stacks of arrows (standard, tipped, or spectral arrows).
+* **Automated Hostile Defense**: Scans within a **16-block radius** for hostile mobs (Enemy) and fires alternate staggered volleys from its dual bow mounts.
+* **Target Filtering**: Automatically ignores players, animals, villagers, and passenger mobs on trains.
+* **Dynamic Turret Rotation**: The armored cupola smoothly tracks and swivels towards active targets.
+### Anchor Caboose
+The ultimate train-protection device attached to the rear of your consist.
+* **Mobile Chunk Loading**: Forces a 3×3 chunk perimeter around itself **plus** keeps all chunks occupied by the entire train loaded in memory as it travels.
+* **Prevents Runaway Decoupling**: Eliminates trains freezing or separating across chunk boundaries.
+* **Atmospheric Visuals**: Features an authentic stove pipe chimney puffing smoke particles.
+
+---
+
+## 🚜 Heavy Machinery: The Tunnel Bore
+
+An automated subterranean excavator for carving out subway lines and railway corridors.
+* **3×3 Excavation**: Automatically drills a 3-block-wide by 3-block-tall tunnel directly forward.
+* **Top-Down Drilling**: Breaks blocks from top to bottom so sand and gravel fall safely into the drill path rather than suffocating the machine.
+* **Automated Track Laying**: Automatically places tracks ahead of itself on solid ground from its 9 dedicated track slots.
+* **Ballast Inventory & Auto Gap-Bridging**: Features a dedicated 9-slot Ballast Inventory accepting **gravel, sand, cobblestone, and stone**. When the bore encounters an air gap, cave pothole, ravine, or liquid floor beneath its path, it automatically places ballast to fill the void, beds the track foundation, and continues drilling without stopping!
+* **Safety Sensors**: Automatically halts if it encounters bedrock, chasms exceeding ballast reserves, or runs out of track or fuel.
+* **Bi-Directional Operation**: Forward drilling mode and slow, safe reversing mode that reverses trailing cars seamlessly.
+
+---
+
+## 📡 Track Automation & Facilities
+
+### Trackside Entity Loader
+Placed directly under any piece of track to automatically board entities into passing empty minecarts.
+* **Whitelist & Blacklist**: Type entity IDs (e.g. `rabbit, cow`), custom nametags, or player usernames.
+* **Age Filter**: Toggle between **Both**, **Adults Only**, or **Babies Only**.
+* **Detection Range**: Adjustable radius (1 to 16 blocks).
+
+### Trackside Entity Unloader
+Placed directly under track to automatically dismount passengers from passing minecarts.
+* **Safe Landing**: Automatically teleports dismounted passengers to adjacent solid ground away from the tracks.
+* **Filtering**: Same Whitelist, Blacklist, Age Filter, and Range controls.
+
+### Trackside Fluid Station
+Placed underneath tracks to pump fluids into or drain fluids from Liquid Minecarts.
+* **16,000 mB Buffer Tank**: Connects with fluid pipes, buckets, and canisters.
+* **Redstone Automation**: Configurable to emit a pulse when carts are empty, full, or finished transferring.
+
+### Track Signal Switch
+A mechanical trackside switch stand with an animated signal lantern and arm.
+* **Automated Routing**: Define routing rules based on train names (e.g. send "Freight-North" onto side tracks automatically).
+* **Manual & Redstone Modes**: Can also be toggled manually or via redstone wire.
+
+### Industrial Chunk Anchor
+A stationary, heavy-duty chunk loader block for mines, quarries, mob farms, and factories.
+* **Configurable Area**: Cycle between **1×1 Chunk (Single)**, **3×3 Chunks (9 Total)**, or **5×5 Chunks (25 Total)**.
+* **Redstone Modes**: Toggle between **Always Active** and **Redstone Required**.
+* **Visual Status**: Glowing cyan energy core, green status LED, light level 12, and portal particles.
+
+### Railway Buffer Stop (Stop Block)
+A heavy-duty end-of-track railway barrier modeled after authentic industrial buffer stops:
+* **True Rail Clamping**: Dual A-frame structural steel legs clamp onto incoming tracks at standard rail gauge.
+* **Heavy Timber Bumper & Pads**: Massive rustic creosote beam with metal end straps, dual vulcanized rubber impact bumper pads, and a red/white reflective center warning plate.
+* **Safe Physical Halting**: Stops incoming minecarts, freight cars, and locomotives immediately on contact with zero clipping and zero bouncy derailing.
+* **Engine Auto-Shutdown**: When struck by a running locomotive or tunnel bore, it safely cuts throttle and stops the engine while emitting an authentic impact clatter and spark particles.
+* **Terminal Redstone Detection**: Emits a continuous redstone signal (strength 15) while a train or cart is resting against the buffer, perfect for terminal station automation and signaling.
+* **Crowbar Reorient**: Right-click or Sneak+Right-Click with the Railroad Crowbar to quickly rotate facing direction.
+
+---
+
+## 🛤️ Specialty Switch & Power Rails
+
+* **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts cross over perpendicularly without turning or derailing.
+* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades.
+* **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication and smart directional routing (approaching from the stem branches left/right by redstone; approaching from mainline branches into stem if aligned, or passes straight through if not aligned).
+* **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
+* **Locomotive Horn Rail**: Pressure-sensitive rail that triggers locomotive whistles and horns (ideal for level crossings and tunnel entrances).
+* **Electric Rail**: Conductive third rail that transmits Forge Energy (FE) along your network to charge Electric Locomotives on the fly.
+
+---
+
+## ⌨️ Controls & Keybindings
+
+When seated inside a locomotive or coupled cart:
+
+| Action | Default Key | Description |
 | :--- | :---: | :--- |
-| **Throttle Up / Start** | `W` (Forward) | Ignites fuel and starts locomotive movement |
-| **Brake / Stop** | `S` (Backward) | Cuts throttle and brings the train to a halt |
-| **Gear Down** | `A` (Left) | Decreases target speed level (1 to 5) |
-| **Gear Up** | `D` (Right) | Increases target speed level (1 to 5) |
+| **Throttle Up / Start** | `W` | Engages engine and starts locomotive forward |
+| **Brake / Stop** | `S` | Disengages throttle and applies brakes |
+| **Gear Down** | `A` | Decreases target speed level (Gears 1–5) |
+| **Gear Up** | `D` | Increases target speed level (Gears 1–5) |
 | **Reverse** | `R` | Reverses locomotive travel direction |
-| **Whistle / Horn** | `H` | Sounds steam whistle and clears track of mobs |
-| **Headlight** | `L` | Toggles dynamic front headlight on / off |
-
-*All controls are also accessible via interactive buttons inside the Locomotive GUI.*
-
----
-
-### Tunnel Bore
-
-The **Tunnel Bore** is an industrial excavation machine designed for automated subterranean rail construction.
-
-- **3×3 Excavation**: Automatically clears a 3-block-wide by 3-block-tall tunnel directly along its heading.
-- **Top-Down Drilling**: Mines each cross-section layer from top to bottom so gravity blocks (gravel, sand) collapse safely into the drill path rather than suffocating the machine.
-- **Auto-Track Laying**: Automatically places rails from its internal inventory onto solid ground ahead of itself before stepping forward.
-- **Safety System**: Automatically halts if it encounters unbreakable blocks (e.g., Bedrock), liquid hazards, a pit without floor support, or runs out of track/fuel.
-- **Inventory & Fuel**:
-  - **Slot 0**: Fuel slot (Coal / Charcoal).
-  - **Slots 1–9**: Rail storage buffer (holds standard rails, powered rails, etc.).
-- **Animated Model**: Features an animated rotating cutter head, dual steam smokestacks, and drilling impact particles.
-- **Coupler Hitch**: Sits on rails with a rear hitch offset calibrated for pulling trailing cargo wagons.
+| **Horn / Whistle** | `H` | Sounds horn, scares nearby mobs off track |
+| **Headlight** | `L` | Toggles dynamic directional headlight |
+| **Vehicle GUI** | `G` | Opens the vehicle dashboard and fuel inventory |
 
 ---
 
-### Cargo Minecart
+## 🔨 Crafting Overview
 
-The **Cargo Minecart** offers heavy-duty bulk transport with integrated item filtering and adaptive visuals.
-
-- **Storage Capacity**: 27 standard inventory storage slots + 1 dedicated **Filter Slot**.
-- **Adaptive Visual Appearance**:
-  - **Log Filter**: Accepts tree logs (`#minecraft:logs`); renders with a specialized logging cart frame and strapped timber load.
-  - **Wood Filter**: Accepts 6-sided bark wood/hyphae blocks; renders as an open lumber cart.
-  - **Ore Filter**: Accepts raw ore chunks and ore blocks (`#c:ores`, `#c:raw_materials`); renders with heavy iron ore bins.
-  - **Ingot Filter**: Accepts refined ingots and nuggets (`#c:ingots`, `#c:nuggets`); renders with reinforced strongbox containers.
-  - **Unfiltered / General Cargo**: When loaded with general items without a filter, renders with an industrial corrugated shipping container visual.
-  - **Empty**: Classic open-bed cargo minecart.
-- **Smart Filter Locking**: Prevents removing or changing an active filter while conflicting items remain inside the cart.
-- **Automation Ready**: Implements standard hopper/automation interfaces (`WorldlyContainer`) for automatic loading and unloading depots.
-
----
-
-## Specialty Rails
-
-| Rail Block | Description | Usage / Switching Mechanics |
-| :--- | :--- | :--- |
-| **Control Rail** | Locomotive dispatch & holding track | **Unpowered**: Halts arriving locomotives.<br>**Powered**: Fires up and dispatches stopped locomotives. |
-| **Turnout Rail** | Mainline / Divergent switch track | **Redstone / Right-Click**: Toggles between Mainline (straight) and Divergent (curved).<br>**Shift + Right-Click**: Swaps curve direction (Left ↔ Right). |
-| **Wye Rail** | 3-way Y-junction switch track | **Momentum-Aware Routing**: Straight-through traffic passes uninterrupted; stem traffic routes onto the active branch.<br>**Redstone / Right-Click**: Swaps active branch (Left ↔ Right).<br>**Shift + Right-Click**: Rotates orientation clockwise in-place. |
-| **Junction Rail** | 4-way perpendicular cross intersection (+) | Allows intersecting North-South and East-West rail lines to cross perpendicularly without carts derailing or turning. |
+| Item | Primary Ingredients |
+| :--- | :--- |
+| **Railroad Crowbar** | Iron Ingots + Red Dye |
+| **Basic Locomotive** | Furnace + Minecart + Iron Ingots + Redstone |
+| **CN Diesel Locomotive** | Heavy Locomotive Frame + Copper + Glass + Redstone + Iron |
+| **Electric Bullet Train** | Iron + Gold + Redstone + Copper + Minecart |
+| **Tunnel Bore** | Diamond / Iron Pickaxe + Pistons + Dispenser + Furnace + Iron |
+| **Cargo Minecart** | Chest + Minecart + Iron Bars |
+| **Livestock Cart** | Planks + Fences + Minecart + Lead |
+| **Liquid Minecart** | Iron Ingots + Minecart + Glass |
+| **Arrow Turret Cart** | Bows + Dispenser + Iron Ingots + Minecart |
+| **Anchor Caboose** | Ender Pearl + Obsidian + Minecart + Redstone |
+| **Industrial Chunk Anchor** | Ender Pearl + Obsidian + Gold + Redstone Block + Iron |
+| **Railway Buffer Stop** | Iron Ingots + Log/Planks + Redstone + Iron Bars (Yields 2) |
+| **Entity Loader** | Lead + Hopper + Copper + Iron + Redstone |
+| **Entity Unloader** | Activator Rail + Hopper + Copper + Iron + Redstone |
+| **Trackside Fluid Station** | Piston + Hopper + Copper + Iron + Redstone |
+| **Track Signal Switch** | Lever + Redstone Torch + Smooth Stone + Iron |
 
 ---
 
-## HUD Speedometer & Telemetry
+## ⚙️ Configuration
 
-Whenever a player rides a locomotive, minecart, or train wagon, an industrial cockpit HUD appears on screen:
-
-- **Vehicle Identifier & Compass**: Shows vehicle name and cardinal heading (`N`, `NE`, `E`, etc.), including an asterisk indicator (`*`) when headlights are engaged.
-- **Real-Time Speed**: Measured in both **m/s (blocks per second)** and **km/h**.
-- **Dynamic Speed Bar**: Segmented color gradient bar indicating current acceleration and reference velocity.
-- **Locomotive Telemetry**:
-  - **Gear / Speed Level**: Active target speed level (`L1` through `L5`).
-  - **Fuel Gauge**: Visual fuel percentage and coal stock indicators.
+Mining Tools features extensive configuration via `miningtools-common.toml` or the in-game NeoForge Config Screen:
+* Locomotive coal burn durations and speed curves.
+* Diesel tank capacities, burn rates, and top speeds.
+* Electric battery capacity, FE/tick consumption, and electric rail transfer rates.
+* Pull capacities and drag penalties for each locomotive type.
 
 ---
 
-## Train Coupling & Compatibility
+## 📦 Installation & Dependencies
 
-Mining Tools is designed with native support for multi-cart train mechanics:
-
-- **Minecart Trains Fork Compatibility**: Fully integrated with train chaining and coupling systems.
-- **Anchor Offsets**: Locomotives, cargo carts, and the tunnel bore define calibrated hitch points (`getRearAnchorPos()` / `getFrontAnchorPos()`) to guarantee realistic chain spacing without clipping or model collision.
-- **Train-Wide Controls**: Players seated in any coupled carriage within a train can control the lead locomotive using throttle hotkeys.
-
----
-
-## Crafting Recipes
-
-### Basic Locomotive
-```
-[ Iron Ingot ] [ Redstone / Lamp ] [ Iron Ingot ]
-[ Iron Ingot ] [     Furnace     ] [ Iron Ingot ]
-[ Iron Ingot ] [     Minecart    ] [ Iron Ingot ]
-```
-*(Also crafts with a single Redstone/Lamp in top-center slot)*
-
-### Tunnel Bore
-```
-[ Iron Pickaxe ] [   Iron Block   ] [ Iron Pickaxe ]
-[  Iron Ingot  ] [Furnace Minecart] [  Iron Ingot  ]
-[  Iron Ingot  ] [ Chest Minecart ] [  Iron Ingot  ]
-```
-
-### Cargo Minecart
-*Shapeless recipe:*
-```
-[ Minecart ] + [ Chest ] + [ Iron Ingot ]
-```
-
-### Control Rail (Yields 6)
-```
-[ Iron Ingot ] [            ] [ Iron Ingot ]
-[ Iron Ingot ] [    Coal    ] [ Iron Ingot ]
-[ Iron Ingot ] [  Redstone  ] [ Iron Ingot ]
-```
-
-### Turnout Rail (Yields 4)
-```
-[ Rail ] [       ] [ Rail ]
-[      ] [ Lever ] [      ]
-[ Rail ] [       ] [ Rail ]
-```
-
-### Wye Rail (Yields 4)
-```
-[ Rail ] [                ] [ Rail ]
-[      ] [ Redstone Torch ] [      ]
-[ Rail ] [                ] [ Rail ]
-```
-
-### Junction Rail (Yields 4)
-```
-[ Iron Ingot ] [            ] [    Rail    ]
-[            ] [    Rail    ] [            ]
-[    Rail    ] [            ] [ Iron Ingot ]
-```
-
----
-
-## Configuration
-
-Configuration is handled via NeoForge's configuration system in `config/miningtools.common.toml` or directly in-game via the Mods menu:
-
-```toml
-[locomotive]
-    # Duration in game ticks that each piece of coal or charcoal burns (default: 1600 ticks = 80 seconds)
-    # Range: 20 ~ 72000
-    coalBurnTicks = 1600
-
-    # Maximum travel speed of the Basic Locomotive at Speed Level 5 in blocks per tick (vanilla max is 0.4)
-    # Range: 0.05 ~ 1.0
-    maxSpeed = 0.35
-
-    # Acceleration rate of the Basic Locomotive when starting up
-    # Range: 0.005 ~ 0.2
-    acceleration = 0.04
-```
-
----
-
-## Building & Installation
-
-### Requirements
-- **Minecraft**: `26.3`
-- **Mod Loader**: [NeoForge](https://neoforged.net/) (`26.3.0.48-beta` or compatible)
-- **Java**: Java 21+
-
-### Building from Source
-Clone the repository and run the Gradle wrapper:
-
-```bash
-# Refresh dependencies and build JAR
-./gradlew build
-
-# Launch client development environment
-./gradlew runClient
-```
-
-The compiled mod JAR will be output to `build/libs/`. Place the JAR into your Minecraft `.minecraft/mods` directory alongside NeoForge.
+1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
+2. Drop `miningtools-1.0.1.jar` into your `.minecraft/mods` folder.
+3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

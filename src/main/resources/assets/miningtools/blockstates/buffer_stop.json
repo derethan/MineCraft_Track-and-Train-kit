@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,powered=false": { "model": "miningtools:block/buffer_stop", "y": 0 },
+    "facing=east,powered=false":  { "model": "miningtools:block/buffer_stop", "y": 90 },
+    "facing=south,powered=false": { "model": "miningtools:block/buffer_stop", "y": 180 },
+    "facing=west,powered=false":  { "model": "miningtools:block/buffer_stop", "y": 270 },
+    "facing=north,powered=true":  { "model": "miningtools:block/buffer_stop", "y": 0 },
+    "facing=east,powered=true":   { "model": "miningtools:block/buffer_stop", "y": 90 },
+    "facing=south,powered=true":  { "model": "miningtools:block/buffer_stop", "y": 180 },
+    "facing=west,powered=true":   { "model": "miningtools:block/buffer_stop", "y": 270 }
+  }
+}
