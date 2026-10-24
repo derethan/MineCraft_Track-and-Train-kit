@@ -10,8 +10,8 @@
 - **Build Command**:
   cmd /c "set JAVA_HOME=C:\Users\swack\AppData\Local\Packages\Microsoft.4297127D64EC6_8wekyb3d8bbwe\LocalCache\Local\runtime\java-runtime-epsilon\windows-x64\java-runtime-epsilon&& cd /d C:\Users\swack\Documents\GitHub\MineCraft_Track-and-Train-kit&& gradlew.bat jar --no-daemon"
 - **Deploy Destinations**:
-  1. C:\Users\swack\curseforge\minecraft\Instances\26.3\mods\miningtools-1.0.1.jar
-  2. C:\Users\swack\Desktop\New folder (2)\miningtools-1.0.1.jar
+  1. C:\Users\swack\curseforge\minecraft\Instances\26.3\mods\track and trains-1.0.1.jar
+  2. C:\Users\swack\Desktop\New folder (2)\track and trains-1.0.1.jar
 
 ---
 
@@ -114,4 +114,4 @@
 - All compile errors resolved (BUILD SUCCESSFUL).
 - Surveyor's Charge & Remote Detonator implemented and tested.
 - Oil prospecting and configurable ignored/included block reporting functional.
-- Built JAR deployed to CurseForge instance (26.3\mods\miningtools-1.0.1.jar) and Desktop instance.
+- Built JAR deployed to CurseForge instance (26.3\mods\track and trains-1.0.1.jar) and Desktop instance.
