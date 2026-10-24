@@ -79,5 +79,8 @@
   "item.miningtools.electric_locomotive": "Electric Bullet Train",
   "entity.miningtools.electric_locomotive": "Electric Bullet Train",
   "container.miningtools.electric_locomotive": "Electric Bullet Train",
-  "message.miningtools.cargo_minecart.filter_locked": "Cannot remove or change filter while cart contains items!"
+  "message.miningtools.cargo_minecart.filter_locked": "Cannot remove or change filter while cart contains items!",
+  "item.miningtools.turret_cart": "Arrow Turret Cart",
+  "entity.miningtools.turret_cart": "Arrow Turret Cart",
+  "container.miningtools.turret_cart": "Arrow Turret Cart"
 }

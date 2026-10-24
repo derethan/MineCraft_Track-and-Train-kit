@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": "minecraft:bow",
+    "D": "minecraft:dispenser",
+    "I": "minecraft:iron_ingot",
+    "M": "minecraft:minecart"
+  },
+  "pattern": [
+    "BIB",
+    "IDI",
+    "IMI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:turret_cart"
+  }
+}

@@ -84,6 +84,13 @@ Specialized tanker wagons designed to safely transport fluids across rail lines.
 * **Large Liquid Minecart**: 16,000 mB (16 Buckets) heavy rail tanker.
 * Seamlessly loads and unloads via the **Trackside Fluid Station**.
 
+### Arrow Turret Cart
+An armored rolling-stock defense wagon styled after the Caboose and heavy freight cars to protect trains from hostiles.
+* **Dual Weapon Slots**: Mount up to **2 Bows** into dedicated gun ports on the rotating turret.
+* **9-Slot Ammo Magazine**: Carries up to 9 stacks of arrows (standard, tipped, or spectral arrows).
+* **Automated Hostile Defense**: Scans within a **16-block radius** for hostile mobs (Enemy) and fires alternate staggered volleys from its dual bow mounts.
+* **Target Filtering**: Automatically ignores players, animals, villagers, and passenger mobs on trains.
+* **Dynamic Turret Rotation**: The armored cupola smoothly tracks and swivels towards active targets.
 ### Anchor Caboose
 The ultimate train-protection device attached to the rear of your consist.
 * **Mobile Chunk Loading**: Forces a 3×3 chunk perimeter around itself **plus** keeps all chunks occupied by the entire train loaded in memory as it travels.
@@ -184,6 +191,7 @@ When seated inside a locomotive or coupled cart:
 | **Cargo Minecart** | Chest + Minecart + Iron Bars |
 | **Livestock Cart** | Planks + Fences + Minecart + Lead |
 | **Liquid Minecart** | Iron Ingots + Minecart + Glass |
+| **Arrow Turret Cart** | Bows + Dispenser + Iron Ingots + Minecart |
 | **Anchor Caboose** | Ender Pearl + Obsidian + Minecart + Redstone |
 | **Industrial Chunk Anchor** | Ender Pearl + Obsidian + Gold + Redstone Block + Iron |
 | **Railway Buffer Stop** | Iron Ingots + Log/Planks + Redstone + Iron Bars (Yields 2) |

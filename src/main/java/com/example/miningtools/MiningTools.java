@@ -29,6 +29,9 @@ import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TurretCartEntity;
+import com.example.miningtools.item.TurretCartItem;
+import com.example.miningtools.menu.TurretCartMenu;
 import com.example.miningtools.item.BasicLocomotiveItem;
 import com.example.miningtools.item.CabooseItem;
 import com.example.miningtools.item.CargoMinecartItem;
@@ -390,6 +393,26 @@ public class MiningTools {
             p -> p.stacksTo(1)
     );
 
+    // Arrow Turret Cart Entity, Item & Menu
+    public static final DeferredHolder<EntityType<?>, EntityType<TurretCartEntity>> TURRET_CART_ENTITY = ENTITY_TYPES.register(
+            "turret_cart",
+            key -> EntityType.Builder.<TurretCartEntity>of(TurretCartEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 0.98F)
+                    .passengerAttachments(0.35F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<TurretCartItem> TURRET_CART_ITEM = ITEMS.registerItem(
+            "turret_cart",
+            TurretCartItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TurretCartMenu>> TURRET_CART_MENU = MENUS.register(
+            "turret_cart",
+            () -> new MenuType<>(TurretCartMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Caboose Minecart Entity & Item (Train Chunk Anchor)
     public static final DeferredHolder<EntityType<?>, EntityType<CabooseMinecartEntity>> CABOOSE_ENTITY = ENTITY_TYPES.register(
             "caboose",
@@ -475,6 +498,7 @@ public class MiningTools {
                         output.accept(LIQUID_MINECART_ITEM.get());
                         output.accept(LARGE_LIQUID_MINECART_ITEM.get());
                         output.accept(CABOOSE_ITEM.get());
+                        output.accept(TURRET_CART_ITEM.get());
                         output.accept(ELECTRIC_RAIL_ITEM.get());
                     })
                     .build()
@@ -609,6 +633,7 @@ public class MiningTools {
             event.accept(LIQUID_MINECART_ITEM);
             event.accept(LARGE_LIQUID_MINECART_ITEM);
             event.accept(CABOOSE_ITEM);
+            event.accept(TURRET_CART_ITEM);
             event.accept(ELECTRIC_RAIL_ITEM);
         }
     }

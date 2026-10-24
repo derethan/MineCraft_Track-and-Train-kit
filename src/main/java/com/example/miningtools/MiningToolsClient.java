@@ -14,6 +14,9 @@ import com.example.miningtools.client.gui.FluidLoaderScreen;
 import com.example.miningtools.client.gui.SpeedometerOverlay;
 import com.example.miningtools.client.gui.TrackSwitchScreen;
 import com.example.miningtools.client.gui.TunnelBoreScreen;
+import com.example.miningtools.client.gui.TurretCartScreen;
+import com.example.miningtools.client.model.TurretCartModel;
+import com.example.miningtools.client.renderer.TurretCartRenderer;
 import com.example.miningtools.client.model.BasicLocomotiveModel;
 import com.example.miningtools.client.model.CabooseModel;
 import com.example.miningtools.client.model.DieselLocomotiveModel;
@@ -87,6 +90,9 @@ public class MiningToolsClient {
 
     public static final ModelLayerLocation LARGE_LIQUID_MINECART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "large_liquid_minecart"), "main");
+
+    public static final ModelLayerLocation TURRET_CART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "turret_cart"), "main");
 
     public static final ModelLayerLocation CABOOSE_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "caboose"), "main");
@@ -163,6 +169,7 @@ public class MiningToolsClient {
         event.registerLayerDefinition(LIQUID_MINECART_LAYER, LiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(LARGE_LIQUID_MINECART_LAYER, LargeLiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(CABOOSE_LAYER, CabooseModel::createBodyLayer);
+        event.registerLayerDefinition(TURRET_CART_LAYER, TurretCartModel::createBodyLayer);
         event.registerLayerDefinition(ELECTRIC_LOCOMOTIVE_LAYER, ElectricLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(DIESEL_LOCOMOTIVE_LAYER, DieselLocomotiveModel::createBodyLayer);
     }
@@ -175,6 +182,7 @@ public class MiningToolsClient {
         event.registerEntityRenderer(MiningTools.LIQUID_MINECART_ENTITY.get(), LiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.LARGE_LIQUID_MINECART_ENTITY.get(), LargeLiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.CABOOSE_ENTITY.get(), CabooseRenderer::new);
+        event.registerEntityRenderer(MiningTools.TURRET_CART_ENTITY.get(), TurretCartRenderer::new);
         event.registerEntityRenderer(MiningTools.ELECTRIC_LOCOMOTIVE_ENTITY.get(), ElectricLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.DIESEL_LOCOMOTIVE_ENTITY.get(), DieselLocomotiveRenderer::new);
     }
@@ -186,6 +194,7 @@ public class MiningToolsClient {
         event.register(MiningTools.FLUID_LOADER_MENU.get(), FluidLoaderScreen::new);
         event.register(MiningTools.ELECTRIC_LOCOMOTIVE_MENU.get(), ElectricLocomotiveScreen::new);
         event.register(MiningTools.DIESEL_LOCOMOTIVE_MENU.get(), DieselLocomotiveScreen::new);
+        event.register(MiningTools.TURRET_CART_MENU.get(), TurretCartScreen::new);
     }
 
     private void registerKeyMappings(RegisterKeyMappingsEvent event) {

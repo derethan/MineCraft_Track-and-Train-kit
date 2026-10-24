@@ -22,6 +22,7 @@ import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TurretCartEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
@@ -66,6 +67,10 @@ public final class TrainChainingUtil {
         }
         if (entity instanceof LivestockCartEntity) {
             // Standard railroad stock car frame (24px long -> 0.88m radius)
+            return 0.88D;
+        }
+        if (entity instanceof TurretCartEntity) {
+            // Standard armored turret wagon frame (24px long -> 0.88m radius)
             return 0.88D;
         }
         if (entity instanceof CargoMinecartEntity) {
