@@ -85,5 +85,8 @@
   "container.miningtools.turret_cart": "Arrow Turret Cart",
   "block.miningtools.surveyors_charge": "Surveyor's Charge",
   "item.miningtools.surveyors_charge": "Surveyor's Charge",
-  "item.miningtools.remote_detonator": "Remote Detonator"
+  "item.miningtools.remote_detonator": "Remote Detonator",
+  "item.miningtools.hopper_cart": "Aggregate Hopper Car",
+  "entity.miningtools.hopper_cart": "Aggregate Hopper Car",
+  "container.miningtools.hopper_cart": "Aggregate Hopper Car"
 }

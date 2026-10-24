@@ -614,3 +614,33 @@ A handheld wireless detonator keyed to trigger Surveyor's Charges.
 
 ---
 *Mining Tools — Built for heavy rail engineering and automated logistics.*
+
+---
+
+## Loose Aggregate Hopper Car (Hopper Minecart)
+A heavy-duty open-top hopper car designed for hauling bulk loose aggregates such as ballast gravel, sand, dirt, raw ores, and coal (modeled after TIMX and Herzog ballast hoppers).
+
+### Visual Heap Features
+- **Empty State**: Renders as a hollow open hopper container showing internal sloped bottom discharge chutes.
+- **Loaded State**: Dynamically renders 3 piled aggregate mounds heaped inside the car when containing bulk aggregates.
+- **Dynamic Textures**: Automatically applies custom textures corresponding to the loaded aggregate:
+  - **Coal**: Rich black coal mounds.
+  - **Gravel**: Ballast stone heaps (gravel, cobblestone, andesite, diorite, granite, tuff).
+  - **Sand**: Clean yellow sand mounds.
+  - **Red Sand**: Terracotta red sand heaps.
+  - **Dirt**: Soil / clay mounds.
+  - **Raw Ore**: Metal raw ore aggregates (c:raw_materials, c:ores).
+
+### Inventory & Filter Configuration
+- **27 Storage Slots**: High-capacity storage for bulk materials.
+- **Dedicated Filter Slot**: Slot positioned with a hopper funnel icon. Placing a sample aggregate into this slot locks the car to only accept that aggregate type.
+- **Crafting Recipe**:
+  - 5 Iron Ingots + 1 Hopper + 1 Chest Minecart.
+
+---
+
+## Diesel Fuel Tender Siphoning
+The **CN Diesel Locomotive** now acts as a smart fuel consumer with tender wagon support:
+- Hitching a **Liquid Minecart** or **Large Liquid Minecart** directly behind (or ahead of) the locomotive turns it into a functional fuel tender.
+- The locomotive automatically detects the coupled tender and siphons compatible diesel fuel (crude oil, diesel, bio-diesel, etc.) at up to 100 mB per tick.
+- Allows locomotives to run for extensive distances without player intervention.

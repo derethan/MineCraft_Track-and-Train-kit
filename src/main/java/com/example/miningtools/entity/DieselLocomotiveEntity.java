@@ -68,6 +68,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidStacksResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidUtil;
@@ -477,6 +478,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
         // Server-side tank drainage from input inventory slot 0
         this.drainFuelItemSlot();
+        this.siphonFuelFromTenderCarts();
 
         this.tickFuelAndMovement();
         this.updateDynamicLight();
@@ -485,6 +487,73 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         Direction travelDir = this.getTravelDirection();
         double speed = this.isActive() ? this.getLocomotiveSpeed() : this.getDeltaMovement().horizontalDistance();
         TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed, preTickX, preTickY, preTickZ);
+    }
+
+    /**
+     * Siphons compatible diesel fuel from any directly coupled Liquid Minecart (tender)
+     * connected directly behind or ahead of the locomotive.
+     */
+    private void siphonFuelFromTenderCarts() {
+        if (this.level().isClientSide() || !(this.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        int space = this.getCapacity() - this.getFluidAmount();
+        if (space <= 0) {
+            return;
+        }
+
+        List<Entity> tenders = new ArrayList<>();
+        UUID parentUUID = TrainChainingUtil.getCartParentUUID(this);
+        if (parentUUID != null) {
+            Entity p = serverLevel.getEntity(parentUUID);
+            if (p != null) tenders.add(p);
+        }
+        UUID childUUID = TrainChainingUtil.getCartChildUUID(this);
+        if (childUUID != null) {
+            Entity c = serverLevel.getEntity(childUUID);
+            if (c != null) tenders.add(c);
+        }
+
+        if (tenders.isEmpty()) {
+            List<AbstractMinecart> nearby = this.level().getEntitiesOfClass(
+                    AbstractMinecart.class,
+                    this.getBoundingBox().inflate(2.6D),
+                    e -> e != this && (e instanceof LiquidMinecartEntity || e instanceof LargeLiquidMinecartEntity)
+            );
+            tenders.addAll(nearby);
+        }
+
+        int maxTransfer = Math.min(space, 100);
+        for (Entity tender : tenders) {
+            ResourceHandler<FluidResource> sourceHandler = null;
+            if (tender instanceof LiquidMinecartEntity lme) {
+                sourceHandler = lme.getFluidHandler();
+            } else if (tender instanceof LargeLiquidMinecartEntity llme) {
+                sourceHandler = llme.getFluidHandler();
+            } else {
+                sourceHandler = tender.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.ENTITY, null);
+            }
+
+            if (sourceHandler != null) {
+                try {
+                    int moved = ResourceHandlerUtil.move(
+                            sourceHandler,
+                            this.tank,
+                            r -> isDieselFuel(r.toStack(1)),
+                            maxTransfer,
+                            null
+                    );
+                    if (moved > 0) {
+                        this.syncFluidData();
+                        if (tender instanceof LiquidMinecartEntity lme) {
+                            lme.syncFluidData();
+                        }
+                        space -= moved;
+                        if (space <= 0) break;
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }
     }
 
     private void drainFuelItemSlot() {

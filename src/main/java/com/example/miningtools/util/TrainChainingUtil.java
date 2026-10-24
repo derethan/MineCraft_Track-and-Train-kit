@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 import com.example.miningtools.Config;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CabooseMinecartEntity;
+import com.example.miningtools.entity.AggregateHopperCartEntity;
 import com.example.miningtools.entity.CargoMinecartEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
@@ -116,6 +117,10 @@ public final class TrainChainingUtil {
         if (entity instanceof TurretCartEntity) {
             // Standard armored turret wagon frame (24px long -> 0.88m radius)
             return 0.88D;
+        }
+        if (entity instanceof AggregateHopperCartEntity) {
+            // High-sided aggregate hopper car (26px frame -> 0.92m radius)
+            return 0.92D;
         }
         if (entity instanceof CargoMinecartEntity) {
             // Flatbed logging / cargo cart couplers extend to 14px = 0.88m

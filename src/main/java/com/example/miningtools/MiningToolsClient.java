@@ -5,7 +5,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.example.miningtools.client.gui.BasicLocomotiveScreen;
+import com.example.miningtools.client.gui.AggregateHopperCartScreen;
 import com.example.miningtools.client.gui.CargoMinecartScreen;
+import com.example.miningtools.client.model.AggregateHopperCartModel;
+import com.example.miningtools.client.renderer.AggregateHopperCartRenderer;
 import com.example.miningtools.client.gui.DieselLocomotiveScreen;
 import com.example.miningtools.client.gui.ChunkLoaderScreen;
 import com.example.miningtools.client.gui.EntityTransferScreen;
@@ -81,6 +84,9 @@ public class MiningToolsClient {
 
     public static final ModelLayerLocation LIVESTOCK_CART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "livestock_cart"), "main");
+
+    public static final ModelLayerLocation HOPPER_CART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "hopper_cart"), "main");
 
     public static final ModelLayerLocation LOGGING_CART_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "logging_cart"), "main");
@@ -165,6 +171,7 @@ public class MiningToolsClient {
         event.registerLayerDefinition(TUNNEL_BORE_LAYER, TunnelBoreModel::createBodyLayer);
         event.registerLayerDefinition(BASIC_LOCOMOTIVE_LAYER, BasicLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(LOGGING_CART_LAYER, LoggingCartModel::createBodyLayer);
+        event.registerLayerDefinition(HOPPER_CART_LAYER, AggregateHopperCartModel::createBodyLayer);
         event.registerLayerDefinition(LIVESTOCK_CART_LAYER, LivestockCartModel::createBodyLayer);
         event.registerLayerDefinition(LIQUID_MINECART_LAYER, LiquidMinecartModel::createBodyLayer);
         event.registerLayerDefinition(LARGE_LIQUID_MINECART_LAYER, LargeLiquidMinecartModel::createBodyLayer);
@@ -178,6 +185,7 @@ public class MiningToolsClient {
         event.registerEntityRenderer(MiningTools.TUNNEL_BORE_ENTITY.get(), TunnelBoreRenderer::new);
         event.registerEntityRenderer(MiningTools.BASIC_LOCOMOTIVE_ENTITY.get(), BasicLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.CARGO_MINECART_ENTITY.get(), CargoMinecartRenderer::new);
+        event.registerEntityRenderer(MiningTools.HOPPER_CART_ENTITY.get(), AggregateHopperCartRenderer::new);
         event.registerEntityRenderer(MiningTools.LIVESTOCK_CART_ENTITY.get(), LivestockCartRenderer::new);
         event.registerEntityRenderer(MiningTools.LIQUID_MINECART_ENTITY.get(), LiquidMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.LARGE_LIQUID_MINECART_ENTITY.get(), LargeLiquidMinecartRenderer::new);
@@ -191,6 +199,7 @@ public class MiningToolsClient {
         event.register(MiningTools.TUNNEL_BORE_MENU.get(), TunnelBoreScreen::new);
         event.register(MiningTools.BASIC_LOCOMOTIVE_MENU.get(), BasicLocomotiveScreen::new);
         event.register(MiningTools.CARGO_MINECART_MENU.get(), CargoMinecartScreen::new);
+        event.register(MiningTools.HOPPER_CART_MENU.get(), AggregateHopperCartScreen::new);
         event.register(MiningTools.FLUID_LOADER_MENU.get(), FluidLoaderScreen::new);
         event.register(MiningTools.ELECTRIC_LOCOMOTIVE_MENU.get(), ElectricLocomotiveScreen::new);
         event.register(MiningTools.DIESEL_LOCOMOTIVE_MENU.get(), DieselLocomotiveScreen::new);

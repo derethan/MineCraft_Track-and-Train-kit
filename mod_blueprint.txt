@@ -115,3 +115,33 @@
 - Surveyor's Charge & Remote Detonator implemented and tested.
 - Oil prospecting and configurable ignored/included block reporting functional.
 - Built JAR deployed to CurseForge instance (26.3\mods\track and trains-1.0.1.jar) and Desktop instance.
+---
+
+## 8. Loose Aggregate Hopper Car & Fuel Tender Siphoning
+- **Loose Aggregate Hopper Car (AggregateHopperCartEntity / hopper_cart)**:
+  - Real-world hopper car design modeled after TIMX and Herzog ballast hopper cars.
+  - Features an open top, sloped discharge hoppers, end walkways, and ribbed exterior walls.
+  - **Dynamic Visual Contents**:
+    - When empty: Displays an empty open container showing sloped interior bulkheads.
+    - When containing aggregates: Renders 3 heaped aggregate mounds inside the hopper car.
+    - Supported aggregates with custom textures:
+      - **Coal**: Heaped triangular black coal mounds (matching reference photos 2 and 3).
+      - **Gravel / Cobblestone / Stone aggregates**: Ballast stone mounds.
+      - **Sand / Sandstone**: Yellow sand mounds.
+      - **Red Sand**: Terracotta red sand mounds.
+      - **Dirt / Mud / Clay / Podzol**: Earth mounds.
+      - **Raw Ores / Raw Materials (c:raw_materials, c:ores)**: Metallic ore aggregate mounds.
+  - **Inventory & Filter GUI**:
+    - 27 general storage slots for bulk materials.
+    - 1 dedicated filter slot (FILTER_SLOT = 27) with visual funnel icon in the GUI.
+    - Placing an aggregate item in the filter slot restricts the car to only accept that specific aggregate category.
+  - **Crafting Recipe**:
+    - 5 Iron Ingots + 1 Hopper + 1 Chest Minecart.
+  - **Train Physics**:
+    - 0.92m coupling radius in TrainChainingUtil for accurate bumper spacing.
+    - Smooth push physics and anti-overlap collision handling with linked train cars.
+
+- **Diesel Locomotive Fuel Siphoning (Fuel Tender Integration)**:
+  - Diesel locomotives (DieselLocomotiveEntity) automatically detect any directly coupled LiquidMinecartEntity or LargeLiquidMinecartEntity (tenders) hitched ahead or behind.
+  - Siphons compatible diesel fuel (crude oil, diesel, biodiesel, etc.) up to 100 mB/tick directly into the locomotive's internal 4,000 mB fuel tank.
+  - Enables long-haul, autonomous mainline operations without manual bucket refueling.
