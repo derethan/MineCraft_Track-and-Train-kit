@@ -455,17 +455,14 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         this.tickMovementAndPower();
         this.updateDynamicLight();
 
-        // Push entities in path
-        Direction pushFacing = this.getFacing();
-        AABB pushBox = this.getBoundingBox().inflate(0.2D).expandTowards(pushFacing.getStepX() * 0.6D, 0.0D, pushFacing.getStepZ() * 0.6D);
-        List<Entity> pushableEntities = this.level().getEntities(
-                this,
-                pushBox,
-                e -> !e.noPhysics && !this.isChainedTo(e) && !this.hasPassenger(e)
-        );
-        for (Entity pushable : pushableEntities) {
-            this.push(pushable);
-        }
+        double preTickX = this.getX();
+        double preTickY = this.getY();
+        double preTickZ = this.getZ();
+
+        // Push entities in path from connection points (bumpers)
+        Direction travelDir = this.getTravelDirection();
+        double speed = this.isActive() ? this.getLocomotiveSpeed() : this.getDeltaMovement().horizontalDistance();
+        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed, preTickX, preTickY, preTickZ);
     }
 
     private void tickBatteryChargingItem() {
@@ -749,9 +746,9 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
 
             if (this.running) {
-                this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
             } else {
-                this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
             }
         } else {
             this.setActive(false);
@@ -768,7 +765,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
             }
             if (onRails) {
-                this.handleChainedCartsMovement(this.getFacing());
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing());
             }
         }
     }
@@ -1027,7 +1024,30 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         this.handleChainedCartsMovement(facing, trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
     }
 
+    public Vec3 getAnchorPosFor(Vec3 otherPos) {
+        Direction facing = this.getFacing();
+        double baseX = super.position().x;
+        double baseY = super.position().y;
+        double baseZ = super.position().z;
+        double dx = otherPos.x - baseX;
+        double dz = otherPos.z - baseZ;
+        double dot = dx * facing.getStepX() + dz * facing.getStepZ();
+        double radius = TrainChainingUtil.getDirectionalCouplerRadius(this, facing, dot >= 0.0D);
+        double anchorX = baseX + facing.getStepX() * (dot < 0 ? -radius : radius);
+        double anchorZ = baseZ + facing.getStepZ() * (dot < 0 ? -radius : radius);
+        Vec3 railAtAnchor = this.getRailPos(anchorX, baseY, anchorZ);
+        double anchorY = railAtAnchor != null ? railAtAnchor.y : baseY;
+        return new Vec3(anchorX, anchorY, anchorZ);
+    }
+
     private boolean handleChainedCartsMovement(Direction facing,
+                                               List<Pair<Entity, AbstractMinecart>> links,
+                                               Map<UUID, Vec3> initialCartPositions,
+                                               double initialLocoX, double initialLocoY, double initialLocoZ) {
+        return TrainChainingUtil.handleChainedCartsMovement(this, facing, links, initialCartPositions, initialLocoX, initialLocoY, initialLocoZ);
+    }
+
+    private boolean _legacy_unused_handleChainedCartsMovement(Direction facing,
                                                List<Pair<Entity, AbstractMinecart>> links,
                                                Map<UUID, Vec3> initialCartPositions,
                                                double initialLocoX, double initialLocoY, double initialLocoZ) {
