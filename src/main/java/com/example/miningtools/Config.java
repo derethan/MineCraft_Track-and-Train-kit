@@ -1,5 +1,6 @@
 package com.example.miningtools;
 
+import java.util.List;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 // Configuration class using NeoForge's config APIs.
@@ -25,6 +26,12 @@ public class Config {
 
     public static final ModConfigSpec.IntValue ELECTRIC_RAIL_CAPACITY;
     public static final ModConfigSpec.IntValue ELECTRIC_RAIL_TRANSFER_RATE;
+
+    public static final ModConfigSpec.IntValue SURVEYOR_CHARGE_RADIUS;
+    public static final ModConfigSpec.BooleanValue SURVEYOR_CHARGE_DROP_BOREHOLE_BLOCKS;
+    public static final ModConfigSpec.DoubleValue REMOTE_DETONATOR_RANGE;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SURVEYOR_CHARGE_IGNORED_BLOCKS;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS;
 
     static {
         BUILDER.push("locomotive");
@@ -105,6 +112,67 @@ public class Config {
         ELECTRIC_RAIL_TRANSFER_RATE = BUILDER
                 .comment("Maximum FE per tick transferred into or between adjacent electric rails.")
                 .defineInRange("transferRate", 2000, 100, 50000);
+
+        BUILDER.pop();
+
+        BUILDER.push("surveyor_charge");
+
+        SURVEYOR_CHARGE_RADIUS = BUILDER
+                .comment("Detection radius in blocks in all directions around the Surveyor's Charge.")
+                .defineInRange("radius", 10, 1, 32);
+
+        SURVEYOR_CHARGE_DROP_BOREHOLE_BLOCKS = BUILDER
+                .comment("Whether blocks blasted in the 1x1 vertical borehole are dropped as items (true) or destroyed (false).")
+                .define("dropBoreholeBlocks", false);
+
+        REMOTE_DETONATOR_RANGE = BUILDER
+                .comment("Maximum range in blocks from which the Remote Detonator can trigger Surveyor's Charges.")
+                .defineInRange("remoteDetonatorRange", 12.0D, 1.0D, 64.0D);
+
+        SURVEYOR_CHARGE_IGNORED_BLOCKS = BUILDER
+                .comment("List of block registry IDs to ignore in the Surveyor's Charge report.",
+                         "Common terrain blocks are ignored by default so only minerals, ores, structures, and unusual blocks are listed.")
+                .defineListAllowEmpty("ignoredBlocks",
+                        () -> List.of(
+                                "minecraft:air",
+                                "minecraft:cave_air",
+                                "minecraft:void_air",
+                                "minecraft:stone",
+                                "minecraft:cobblestone",
+                                "minecraft:smooth_stone",
+                                "minecraft:deepslate",
+                                "minecraft:cobbled_deepslate",
+                                "minecraft:dirt",
+                                "minecraft:coarse_dirt",
+                                "minecraft:grass_block",
+                                "minecraft:podzol",
+                                "minecraft:sand",
+                                "minecraft:red_sand",
+                                "minecraft:sandstone",
+                                "minecraft:red_sandstone",
+                                "minecraft:gravel",
+                                "minecraft:water",
+                                "minecraft:bedrock",
+                                "minecraft:netherrack",
+                                "minecraft:basalt",
+                                "minecraft:blackstone",
+                                "minecraft:andesite",
+                                "minecraft:diorite",
+                                "minecraft:granite",
+                                "minecraft:tuff",
+                                "minecraft:calcite",
+                                "minecraft:dripstone_block",
+                                "miningtools:surveyors_charge"
+                        ),
+                        () -> "",
+                        obj -> obj instanceof String);
+
+        SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS = BUILDER
+                .comment("List of extra block registry IDs (e.g. from other mods like modid:custom_ore) to explicitly include in the report even if they would otherwise be ignored.")
+                .defineListAllowEmpty("extraReportBlocks",
+                        List::of,
+                        () -> "",
+                        obj -> obj instanceof String);
 
         BUILDER.pop();
     }

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "miningtools:block/surveyors_charge"
+    }
+  }
+}

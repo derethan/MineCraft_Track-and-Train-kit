@@ -3,6 +3,8 @@ package com.example.miningtools;
 import org.slf4j.Logger;
 
 import com.example.miningtools.block.BufferStopBlock;
+import com.example.miningtools.block.SurveyorsChargeBlock;
+import com.example.miningtools.item.RemoteDetonatorItem;
 import com.example.miningtools.block.ChunkLoaderBlock;
 import com.example.miningtools.block.ControlRailBlock;
 import com.example.miningtools.block.ElectricRailBlock;
@@ -268,6 +270,24 @@ public class MiningTools {
             BUFFER_STOP
     );
 
+    // Surveyor's Charge Block & Item
+    public static final DeferredBlock<SurveyorsChargeBlock> SURVEYORS_CHARGE = BLOCKS.registerBlock(
+            "surveyors_charge",
+            SurveyorsChargeBlock::new,
+            p -> p.strength(0.5F).sound(SoundType.WOOD)
+    );
+    public static final DeferredItem<BlockItem> SURVEYORS_CHARGE_ITEM = ITEMS.registerSimpleBlockItem(
+            "surveyors_charge",
+            SURVEYORS_CHARGE
+    );
+
+    // Remote Detonator Item
+    public static final DeferredItem<RemoteDetonatorItem> REMOTE_DETONATOR = ITEMS.registerItem(
+            "remote_detonator",
+            RemoteDetonatorItem::new,
+            p -> p.stacksTo(1)
+    );
+
     // Tunnel Bore Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<TunnelBoreEntity>> TUNNEL_BORE_ENTITY = ENTITY_TYPES.register(
             "tunnel_bore",
@@ -500,6 +520,8 @@ public class MiningTools {
                         output.accept(CABOOSE_ITEM.get());
                         output.accept(TURRET_CART_ITEM.get());
                         output.accept(ELECTRIC_RAIL_ITEM.get());
+                        output.accept(SURVEYORS_CHARGE_ITEM.get());
+                        output.accept(REMOTE_DETONATOR.get());
                     })
                     .build()
     );
@@ -635,6 +657,8 @@ public class MiningTools {
             event.accept(CABOOSE_ITEM);
             event.accept(TURRET_CART_ITEM);
             event.accept(ELECTRIC_RAIL_ITEM);
+            event.accept(SURVEYORS_CHARGE_ITEM);
+            event.accept(REMOTE_DETONATOR);
         }
     }
 

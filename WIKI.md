@@ -575,4 +575,42 @@ All recipes are crafted in a standard 3×3 Crafting Table:
 
 ---
 
+
+---
+
+## 9. Geological Prospecting & Survey System
+
+### Surveyor's Charge
+A specialized seismic explosive designed for subterranean resource prospecting and rapid vertical borehole excavation.
+- **Crafting Recipe (Shapeless)**:
+  - 1 Redstone Dust + 1 TNT + 1 Arrow
+- **Detonation Triggers**:
+  - Direct Redstone Signal (lever, button, pressure plate, wire).
+  - Wireless trigger via **Remote Detonator**.
+- **Blast Mechanics**:
+  - Self-destructs instantly with a loud explosion sound and smoke plumes.
+  - Blasts a clean 1x1 vertical borehole directly downward from its placement coordinate until bedrock or indestructible blocks (destroySpeed < 0.0F) are reached.
+  - Configurable option to drop excavated borehole blocks as items or cleanly destroy them to eliminate item lag.
+- **Geological Survey Scan & Oil Detection**:
+  - Scans a spherical 10-block radius in all directions around the blast site.
+  - Detects and counts all oil fluids and oil blocks (c:oil, c:crude_oil, registry matches for crude, oil, petroleum, diesel, fuel).
+  - Filters out common mundane blocks by default (stone, deepslate, dirt, sand, gravel, water, etc.) while tallying and sorting all ores, minerals, and valuable deposits by quantity.
+  - Transmits a comprehensive **Geological Survey Report** directly to the player.
+
+### Remote Detonator
+A handheld wireless detonator keyed to trigger Surveyor's Charges.
+- **Crafting Recipe (Shapeless)**:
+  - 1 Redstone Dust + 1 Lever + 1 Iron Ingot
+- **Operation**:
+  - Right-click anywhere to detonate all Surveyor's Charges within a 12-block radius.
+  - Immediately relays each charge's geological survey report directly into your chat.
+
+### Configuration (config/miningtools-common.toml)
+- surveyor_charge.radius (Default: 10): Sphere radius for geological scanning.
+- surveyor_charge.dropBoreholeBlocks (Default: alse): Toggle item drops from the vertical borehole shaft.
+- surveyor_charge.remoteDetonatorRange (Default: 12.0): Maximum activation distance for the Remote Detonator.
+- surveyor_charge.ignoredBlocks: List of block IDs to omit from the survey tally (e.g. ["minecraft:stone", ...]).
+- surveyor_charge.extraReportBlocks: List of specific modded block IDs (e.g. modid:custom_ore) to explicitly display in the report.
+
+---
 *Mining Tools — Built for heavy rail engineering and automated logistics.*

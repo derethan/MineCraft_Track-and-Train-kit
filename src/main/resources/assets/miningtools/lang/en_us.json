@@ -82,5 +82,8 @@
   "message.miningtools.cargo_minecart.filter_locked": "Cannot remove or change filter while cart contains items!",
   "item.miningtools.turret_cart": "Arrow Turret Cart",
   "entity.miningtools.turret_cart": "Arrow Turret Cart",
-  "container.miningtools.turret_cart": "Arrow Turret Cart"
+  "container.miningtools.turret_cart": "Arrow Turret Cart",
+  "block.miningtools.surveyors_charge": "Surveyor's Charge",
+  "item.miningtools.surveyors_charge": "Surveyor's Charge",
+  "item.miningtools.remote_detonator": "Remote Detonator"
 }
