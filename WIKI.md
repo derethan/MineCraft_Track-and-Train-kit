@@ -129,11 +129,11 @@ While driving, the lower-left overlay displays:
 ---
 
 ### Train Collision & Deflection Physics
-Every locomotive and rolling stock car in the fleet features unified, heavy-rail collision physics:
-* **Solid Physical Presence**: All locomotives and carts have solid collision boxes (canBeCollidedWith). Players and mobs can stand on them, walk up against them, and interact with them without clipping.
-* **Cowcatcher Mob Deflection**: When any moving locomotive or rolling stock car encounters a living entity (player, zombie, cow, creeper, etc.) on the tracks, it safely shoves them forward and to the side with an upward hop. The train continues rolling smoothly without stalling or bouncing backwards!
-* **Heavy Train Inertia**: While traveling or part of an active running train, cars cannot be pushed off the rails by wandering mobs or players.
-* **Chained Car Pass-Through**: Coupled cars automatically ignore collision against each other, ensuring long consists navigate tight turns and switches without binding or jitter.
+The fleet uses specialized physics tuned for both heavy locomotives and nimble rolling stock:
+* **Locomotive Cowcatcher Deflection**: Operating locomotives feature solid presence and cowcatcher deflection. When moving forward, a locomotive shoves wandering mobs and players safely forward and to the side with an upward hop without stalling or losing momentum.
+* **Rolling Stock Yard Maneuvering**: Uncoupled rolling stock cars (Cargo, Caboose, Liquid Tankers, Livestock, Turret) feature player-pushable physics. Players can walk into carts to push them by hand down the rails, making yard work and aligning cars for crowbar coupling easy and responsive.
+* **Elastic Bumping Physics**: When bumped by a locomotive or another rolling cart, carts smoothly exchange momentum along the rails without clipping or becoming wedged inside each other.
+* **Chained Car Pass-Through**: Coupled cars automatically ignore push collisions against each other, ensuring long consists navigate tight turns and switches without binding or jitter while maintaining exact coupler distance.
 
 ### Multi-Block Slope Tracking & Descent Physics
 All locomotives and rolling stock cars now feature seamless multi-block vertical grade navigation:

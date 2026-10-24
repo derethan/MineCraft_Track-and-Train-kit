@@ -60,12 +60,16 @@
 ## 4. Train Chaining & Physics Engine (`TrainChainingUtil.java`)
 - **Railroad Crowbar**: Right-click cart A then cart B to couple with heavy steel chain. Shift+Right-Click to uncouple.
 - **Coupler Radiuses**: Heavy Diesel (1.18m), Tanker DOT-111 (1.12m), Caboose (0.95m), Livestock/Turret/Cargo/Electric (0.88m), Steam (0.78m), Small Tanker (0.75m), Vanilla (0.50m).
-- **Solid Train Collision & Cowcatcher Deflection**:
-  - Unified `canCollideWith`, `canBeCollidedWith`, `isPushable`, `pushCollidingEntity`.
-  - Moving trains safely deflect wandering mobs/players forward and to the side with an upward hop without stalling or derailing.
+- **Locomotive Solid Collision & Cowcatcher Deflection**:
+  - Heavy locomotives utilize solid obstacle collision and cowcatcher cow/player deflection when operating.
   - Chained cars in the same train consist ignore collisions against each other.
+- **Rolling Stock Push & Bumping Physics**:
+  - Non-locomotive rolling stock carts (Cargo, Caboose, Liquid Tankers, Livestock, Turret) use vanilla pushable momentum physics.
+  - Players can push uncoupled carts by hand along the rails to easily position and link them with the crowbar.
+  - Carts exchange momentum naturally when bumped by locomotives or rolling into other carts without clipping or sticking together.
+  - Chained carts ignore vanilla push forces against each other to allow smooth consist motion without jitter.
 - **Multi-Block Grade & Slope Physics**:
-  - Deep 5-block vertical rail scanning: `getCurrentBlockPosOrRailBelow(Entity)` checks `Y, Y-1, Y-2, Y-3, Y+1` to prevent freezing in mid-air over 45° descending slope staircases.
+  - Deep 5-block vertical rail scanning: `getCurrentBlockPosOrRailBelow(Entity)` checks `Y, Y-1, Y-2, Y-3, Y+1` to prevent freezing in mid-air over 45° descending slope staircases (maintained across locomotives and all rolling stock carts).
   - Safe Sweep Pre-Lifting: `y = railPos.getY() + 1.0` during horizontal `move()` sweep ensures train collision boxes clear the stone step blocks supporting the track bed at the bottom of inclines.
   - Guarded Slope Exit Stepping: `if (shape.isSlope())` steps down `Y - 1.0` onto descending continuation rails below while never executing phantom hops on flat track.
   - Multi-Block Snapping: `getRailPosForEntity` and `getRailPosOffs` check `yt - 1, yt, yt - 2, yt - 3, yt + 1`.
@@ -87,5 +91,5 @@
 - All compile errors resolved (`BUILD SUCCESSFUL`).
 - Slope descent bug (freezing in mid-air) FIXED.
 - Slope bottom sticking bug (horizontal stone collision) FIXED.
-- Carts and locomotives unified on solid collision, crawl speed (1 m/s), and multi-block slope traversal.
+- Non-locomotive rolling stock collision resolved: player hand-pushing restored and cart-to-cart sticking removed.
 - Built JAR deployed to CurseForge and Desktop instances.

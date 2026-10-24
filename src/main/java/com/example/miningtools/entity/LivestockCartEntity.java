@@ -130,22 +130,10 @@ public class LivestockCartEntity extends AbstractMinecart {
                 }
             }
         }
-        TrainChainingUtil.pushCollidingEntity(this, entity);
-    }
-
-    @Override
-    public boolean isPushable() {
-        return TrainChainingUtil.isCartPushable(this);
-    }
-
-    @Override
-    public boolean canCollideWith(Entity entity) {
-        return TrainChainingUtil.canCollideWith(this, entity);
-    }
-
-    @Override
-    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
-        return TrainChainingUtil.canBeCollidedWith(this, other);
+        if (TrainChainingUtil.isChainedTo(this, entity)) {
+            return;
+        }
+        super.push(entity);
     }
 
     @Override
