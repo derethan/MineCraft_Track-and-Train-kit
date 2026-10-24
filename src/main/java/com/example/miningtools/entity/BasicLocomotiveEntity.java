@@ -502,6 +502,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             return;
         }
 
+        double preTickX = this.getX();
+        double preTickY = this.getY();
+        double preTickZ = this.getZ();
+
         // Server side fuel, rail kinematics, and dynamic light
         this.tickFuelAndMovement();
         this.updateDynamicLight();
@@ -509,7 +513,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         // Push entities in path from connection points (bumpers)
         Direction travelDir = this.getTravelDirection();
         double speed = this.isActive() ? this.getLocomotiveSpeed() : this.getDeltaMovement().horizontalDistance();
-        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed);
+        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed, preTickX, preTickY, preTickZ);
     }
 
     public boolean tryRefuel() {
@@ -814,9 +818,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
 
             if (this.running) {
-                this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
             } else {
-                this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), trainLinks, initialCartPositions, this.getX(), this.getY(), this.getZ());
             }
         } else {
             this.setActive(false);
@@ -834,7 +838,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
             }
             if (onRails) {
-                this.handleChainedCartsMovement(this.getFacing());
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing());
             }
         }
     }
@@ -894,7 +898,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         }
 
         // For locomotive (which is 1.25m tall), also check clearancePos.above()
-        if (entity instanceof BasicLocomotiveEntity || entity instanceof ElectricLocomotiveEntity) {
+        if (entity instanceof BasicLocomotiveEntity || entity instanceof ElectricLocomotiveEntity || entity instanceof DieselLocomotiveEntity) {
             BlockPos clearancePos2 = clearancePos.above();
             BlockState clearanceState2 = level.getBlockState(clearancePos2);
             if (!clearanceState2.isAir() && !clearanceState2.getCollisionShape(level, clearancePos2).isEmpty()) {

@@ -50,8 +50,16 @@ public class LargeLiquidMinecartEntity extends LiquidMinecartEntity {
     }
 
     @Override
+    public boolean canCollideWith(Entity entity) {
+        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
+            return false;
+        }
+        return super.canCollideWith(entity);
+    }
+
+    @Override
     public void push(Entity entity) {
-        if (TrainChainingUtil.isChainedTo(this, entity)) {
+        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
             return;
         }
         super.push(entity);
