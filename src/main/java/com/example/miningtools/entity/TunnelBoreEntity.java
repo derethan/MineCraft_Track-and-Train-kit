@@ -523,7 +523,23 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     @Override
     public void push(Entity entity) {
-        TrainChainingUtil.pushCollidingEntity(this, entity);
+        if (!this.level().isClientSide() && !entity.noPhysics && !this.hasPassenger(entity)) {
+            if (this.isChainedTo(entity)) {
+                return;
+            }
+            Direction facing = this.getFacing();
+            double cx = this.getX() + facing.getStepX() * -1.525;
+            double cz = this.getZ() + facing.getStepZ() * -1.525;
+            double xa = entity.getX() - cx;
+            double za = entity.getZ() - cz;
+            double dd = xa * xa + za * za;
+            if (dd >= 1.0E-4F) {
+                dd = Math.sqrt(dd);
+                xa /= dd;
+                za /= dd;
+                entity.push(xa * 0.08, 0.0, za * 0.08);
+            }
+        }
     }
 
     @Override

@@ -180,23 +180,11 @@ public class LiquidMinecartEntity extends AbstractMinecart {
     }
 
     @Override
-    public boolean isPushable() {
-        return TrainChainingUtil.isCartPushable(this);
-    }
-
-    @Override
-    public boolean canCollideWith(Entity entity) {
-        return TrainChainingUtil.canCollideWith(this, entity);
-    }
-
-    @Override
-    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
-        return TrainChainingUtil.canBeCollidedWith(this, other);
-    }
-
-    @Override
     public void push(Entity entity) {
-        TrainChainingUtil.pushCollidingEntity(this, entity);
+        if (TrainChainingUtil.isChainedTo(this, entity)) {
+            return;
+        }
+        super.push(entity);
     }
 
     @Override
