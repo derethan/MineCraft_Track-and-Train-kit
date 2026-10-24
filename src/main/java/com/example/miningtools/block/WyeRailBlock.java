@@ -3,6 +3,7 @@ package com.example.miningtools.block;
 import org.jspecify.annotations.Nullable;
 
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 
 import net.minecraft.core.BlockPos;
@@ -163,19 +164,28 @@ public class WyeRailBlock extends BaseRailBlock {
 
             // 4. Stationary fallback:
             if (cart instanceof BasicLocomotiveEntity loco) {
-                Direction locoFacing = loco.getFacing();
-                if (locoFacing == leftDir) {
+                Direction travel = loco.getTravelDirection();
+                if (travel == leftDir) {
                     return powered ? rightBranch : straightShape;
-                } else if (locoFacing == rightDir) {
+                } else if (travel == rightDir) {
+                    return (!powered) ? leftBranch : straightShape;
+                }
+                return activeBranch;
+            }
+            if (cart instanceof DieselLocomotiveEntity dloco) {
+                Direction travel = dloco.getTravelDirection();
+                if (travel == leftDir) {
+                    return powered ? rightBranch : straightShape;
+                } else if (travel == rightDir) {
                     return (!powered) ? leftBranch : straightShape;
                 }
                 return activeBranch;
             }
             if (cart instanceof ElectricLocomotiveEntity eloco) {
-                Direction elocoFacing = eloco.getFacing();
-                if (elocoFacing == leftDir) {
+                Direction travel = eloco.getTravelDirection();
+                if (travel == leftDir) {
                     return powered ? rightBranch : straightShape;
-                } else if (elocoFacing == rightDir) {
+                } else if (travel == rightDir) {
                     return (!powered) ? leftBranch : straightShape;
                 }
                 return activeBranch;

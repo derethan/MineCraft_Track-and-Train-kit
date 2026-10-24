@@ -471,6 +471,10 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             return;
         }
 
+        double preTickX = this.getX();
+        double preTickY = this.getY();
+        double preTickZ = this.getZ();
+
         // Server-side tank drainage from input inventory slot 0
         this.drainFuelItemSlot();
 
@@ -480,7 +484,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         // Push entities in path from connection points (bumpers)
         Direction travelDir = this.getTravelDirection();
         double speed = this.isActive() ? this.getLocomotiveSpeed() : this.getDeltaMovement().horizontalDistance();
-        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed);
+        TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed, preTickX, preTickY, preTickZ);
     }
 
     private void drainFuelItemSlot() {
@@ -626,27 +630,63 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                     : travelDir;
             boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(moveDir).above()));
 
-            double x = x0 + xD * progress;
-            double z = z0 + zD * progress;
-            double y = railPos.getY();
+            double x = this.getX();
+            double y = this.getY();
+            double z = this.getZ();
+
+            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+            if (isCurve) {
+                Vec3 railPosVec = this.getRailPos(this.getX(), this.getY(), this.getZ());
+                if (railPosVec != null) {
+                    x = railPosVec.x;
+                    z = railPosVec.z;
+                }
+            } else {
+                x = x0 + xD * progress;
+                z = z0 + zD * progress;
+            }
+            y = railPos.getY();
             if (shape.isSlope() || uphillAhead) {
                 y = railPos.getY() + 1.0;
             }
             this.setPos(x, y, z);
 
-            double length = Math.sqrt(xD * xD + zD * zD);
-            if (length > 0.0) {
-                double flip = newVx * xD + newVz * zD;
-                if (flip < 0.0) {
-                    xD = -xD;
-                    zD = -zD;
+            if (isCurve) {
+                double circleCenterX = railPos.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
+                double circleCenterZ = railPos.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+                double vx = x - circleCenterX;
+                double vz = z - circleCenterZ;
+                double dist = Math.sqrt(vx * vx + vz * vz);
+                double ux = dist > 1.0E-5 ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
+                double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+                double tX = -uz;
+                double tZ = ux;
+                boolean movingExit0ToExit1 = (exit0.getX() == -travelDir.getStepX() && exit0.getZ() == -travelDir.getStepZ())
+                        || (exit1.getX() == travelDir.getStepX() && exit1.getZ() == travelDir.getStepZ());
+                double exitVecX = (exit1.getX() - exit0.getX()) * (movingExit0ToExit1 ? 1.0 : -1.0);
+                double exitVecZ = (exit1.getZ() - exit0.getZ()) * (movingExit0ToExit1 ? 1.0 : -1.0);
+                if (tX * exitVecX + tZ * exitVecZ < 0.0) {
+                    tX = -tX;
+                    tZ = -tZ;
                 }
                 double pow = Math.sqrt(newVx * newVx + newVz * newVz);
-                if (shape.isSlope()) {
-                    pow *= 0.70710678D;
+                newVx = pow * tX;
+                newVz = pow * tZ;
+            } else {
+                double length = Math.sqrt(xD * xD + zD * zD);
+                if (length > 0.0) {
+                    double flip = newVx * xD + newVz * zD;
+                    if (flip < 0.0) {
+                        xD = -xD;
+                        zD = -zD;
+                    }
+                    double pow = Math.sqrt(newVx * newVx + newVz * newVz);
+                    if (shape.isSlope()) {
+                        pow *= 0.70710678D;
+                    }
+                    newVx = pow * xD / length;
+                    newVz = pow * zD / length;
                 }
-                newVx = pow * xD / length;
-                newVz = pow * zD / length;
             }
 
             this.setDeltaMovement(newVx, 0.0, newVz);
@@ -709,7 +749,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 this.triggerHornRail(currentRail, currentRailState);
             }
 
-            this.handleChainedCartsMovement(this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
+            TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), trainLinks, initialCartPositions, initialX, initialY, initialZ);
         } else {
             this.setActive(false);
             Vec3 currentDelta = super.getDeltaMovement();
@@ -725,7 +765,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
             }
             if (onRails) {
-                this.handleChainedCartsMovement(this.getFacing(), this.getOrderedTrainLinks(), new HashMap<>(), this.getX(), this.getY(), this.getZ());
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), this.getOrderedTrainLinks(), new HashMap<>(), this.getX(), this.getY(), this.getZ());
             }
         }
     }
@@ -948,10 +988,9 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         double dx = otherPos.x - baseX;
         double dz = otherPos.z - baseZ;
         double dot = dx * facing.getStepX() + dz * facing.getStepZ();
-        double sign = dot < 0 ? -1.0 : 1.0;
-        // Heavy road locomotive bumper offset
-        double anchorX = baseX + facing.getStepX() * (1.18 * sign);
-        double anchorZ = baseZ + facing.getStepZ() * (1.18 * sign);
+        double radius = TrainChainingUtil.getDirectionalCouplerRadius(this, facing, dot >= 0.0D);
+        double anchorX = baseX + facing.getStepX() * (dot < 0 ? -radius : radius);
+        double anchorZ = baseZ + facing.getStepZ() * (dot < 0 ? -radius : radius);
         Vec3 railAtAnchor = this.getRailPos(anchorX, baseY, anchorZ);
         double anchorY = railAtAnchor != null ? railAtAnchor.y : baseY;
         return new Vec3(anchorX, anchorY, anchorZ);
@@ -961,56 +1000,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                                                List<Pair<Entity, AbstractMinecart>> links,
                                                Map<UUID, Vec3> initialCartPositions,
                                                double initialLocoX, double initialLocoY, double initialLocoZ) {
-        if (links.isEmpty()) {
-            return false;
-        }
-
-        boolean moving = this.isActive() || super.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
-        double maxStep = moving ? Math.max(this.getLocomotiveSpeed() * 1.6D, 0.25D) : 0.15D;
-
-        for (Pair<Entity, AbstractMinecart> link : links) {
-            Entity prev = link.getFirst();
-            AbstractMinecart cart = link.getSecond();
-
-            Vec3 anchorPos = (prev == this)
-                    ? this.getAnchorPosFor(new Vec3(cart.getX(), cart.getY(), cart.getZ()))
-                    : new Vec3(prev.getX(), prev.getY(), prev.getZ());
-
-            Vec3 prevInitPos = (prev == this)
-                    ? new Vec3(initialLocoX, initialLocoY, initialLocoZ)
-                    : initialCartPositions.getOrDefault(prev.getUUID(), new Vec3(prev.getX(), prev.getY(), prev.getZ()));
-            double prevMoveX = prev.getX() - prevInitPos.x;
-            double prevMoveZ = prev.getZ() - prevInitPos.z;
-            double targetDist = TrainChainingUtil.getTargetCouplingDistance(prev, cart, prev == this);
-            double minAllowed = moving ? (targetDist - 0.08D) : (targetDist - 0.12D);
-            double maxAllowed = moving ? (targetDist + 0.08D) : (targetDist + 0.12D);
-
-            Vec3 cartPos = new Vec3(cart.getX(), cart.getY(), cart.getZ());
-            Vec3 diff = cartPos.subtract(anchorPos);
-            double horizDist = diff.horizontalDistance();
-            double trackDist = horizDist + 0.41421356D * Math.abs(diff.y);
-
-            double moveTowardCart = prevMoveX * diff.x + prevMoveZ * diff.z;
-            double effectiveMinAllowed = (moveTowardCart < -1.0E-4D) ? 0.85D : minAllowed;
-
-            double dirX = horizDist > 1.0E-3D ? diff.x / horizDist : facing.getStepX();
-            double dirZ = horizDist > 1.0E-3D ? diff.z / horizDist : facing.getStepZ();
-
-            if (trackDist > maxAllowed) {
-                double needed = Math.min(trackDist - targetDist, maxStep);
-                this.moveCartAlongRails(cart, -dirX, -dirZ, needed);
-            } else if (trackDist < effectiveMinAllowed) {
-                double needed = Math.min(targetDist - trackDist, maxStep);
-                this.moveCartAlongRails(cart, dirX, dirZ, needed);
-            } else {
-                Vec3 snapped = this.getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
-                if (snapped != null) {
-                    cart.setPos(snapped.x, snapped.y, snapped.z);
-                }
-                cart.setDeltaMovement(Vec3.ZERO);
-            }
-        }
-        return false;
+        return TrainChainingUtil.handleChainedCartsMovement(this, facing, links, initialCartPositions, initialLocoX, initialLocoY, initialLocoZ);
     }
 
     private boolean moveCartAlongRails(AbstractMinecart cart, double dirX, double dirZ, double distance3D) {

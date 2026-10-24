@@ -31,7 +31,7 @@ repositories {
 }
 
 base {
-    archivesName = mod_id
+    archivesName = 'track and trains'
 }
 
 // Mojang ships Java 25 to end users in 26.3, so mods should target Java 25.
