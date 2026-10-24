@@ -28,6 +28,15 @@ public class RemoteDetonatorItem extends Item {
         super(properties);
     }
 
+    private static double getDetonatorRange() {
+        try {
+            if (Config.REMOTE_DETONATOR_RANGE != null) {
+                return Config.REMOTE_DETONATOR_RANGE.get();
+            }
+        } catch (Throwable ignored) {}
+        return 12.0D;
+    }
+
     @Override
     public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack heldStack = player.getItemInHand(hand);
@@ -47,7 +56,7 @@ public class RemoteDetonatorItem extends Item {
             return InteractionResult.SUCCESS;
         }
 
-        double maxRange = Config.REMOTE_DETONATOR_RANGE.get();
+        double maxRange = getDetonatorRange();
         double maxRangeSq = maxRange * maxRange;
         BlockPos playerPos = player.blockPosition();
         int boxRange = (int) Math.ceil(maxRange);

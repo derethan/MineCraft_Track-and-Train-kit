@@ -1,8 +1,12 @@
 {
-  "parent": "minecraft:block/cube_bottom_top",
+  "parent": "minecraft:block/cube",
   "textures": {
-    "top": "miningtools:block/surveyors_charge_top",
-    "bottom": "miningtools:block/surveyors_charge_bottom",
-    "side": "miningtools:block/surveyors_charge_side"
+    "particle": "miningtools:block/surveyors_charge_side",
+    "up": "miningtools:block/surveyors_charge_top",
+    "down": "miningtools:block/surveyors_charge_bottom",
+    "north": "miningtools:block/surveyors_charge_side",
+    "south": "miningtools:block/surveyors_charge_side",
+    "east": "miningtools:block/surveyors_charge_side",
+    "west": "miningtools:block/surveyors_charge_side"
   }
 }

@@ -1,6 +1,7 @@
 package com.example.miningtools.block;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +34,38 @@ import net.minecraft.world.phys.AABB;
 
 public class SurveyorsChargeBlock extends Block {
 
+    private static final Set<String> DEFAULT_IGNORED = Set.of(
+            "minecraft:air",
+            "minecraft:cave_air",
+            "minecraft:void_air",
+            "minecraft:stone",
+            "minecraft:cobblestone",
+            "minecraft:smooth_stone",
+            "minecraft:deepslate",
+            "minecraft:cobbled_deepslate",
+            "minecraft:dirt",
+            "minecraft:coarse_dirt",
+            "minecraft:grass_block",
+            "minecraft:podzol",
+            "minecraft:sand",
+            "minecraft:red_sand",
+            "minecraft:sandstone",
+            "minecraft:red_sandstone",
+            "minecraft:gravel",
+            "minecraft:water",
+            "minecraft:bedrock",
+            "minecraft:netherrack",
+            "minecraft:basalt",
+            "minecraft:blackstone",
+            "minecraft:andesite",
+            "minecraft:diorite",
+            "minecraft:granite",
+            "minecraft:tuff",
+            "minecraft:calcite",
+            "minecraft:dripstone_block",
+            "miningtools:surveyors_charge"
+    );
+
     public SurveyorsChargeBlock(BlockBehaviour.Properties properties) {
         super(properties);
     }
@@ -53,6 +86,42 @@ public class SurveyorsChargeBlock extends Block {
         }
     }
 
+    private static int getScanRadius() {
+        try {
+            if (Config.SURVEYOR_CHARGE_RADIUS != null) {
+                return Config.SURVEYOR_CHARGE_RADIUS.get();
+            }
+        } catch (Throwable ignored) {}
+        return 10;
+    }
+
+    private static boolean shouldDropBoreholeBlocks() {
+        try {
+            if (Config.SURVEYOR_CHARGE_DROP_BOREHOLE_BLOCKS != null) {
+                return Config.SURVEYOR_CHARGE_DROP_BOREHOLE_BLOCKS.get();
+            }
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
+    private static Set<String> getIgnoredBlocks() {
+        try {
+            if (Config.SURVEYOR_CHARGE_IGNORED_BLOCKS != null && Config.SURVEYOR_CHARGE_IGNORED_BLOCKS.get() != null) {
+                return new HashSet<>(Config.SURVEYOR_CHARGE_IGNORED_BLOCKS.get());
+            }
+        } catch (Throwable ignored) {}
+        return DEFAULT_IGNORED;
+    }
+
+    private static Set<String> getExtraReportBlocks() {
+        try {
+            if (Config.SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS != null && Config.SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS.get() != null) {
+                return new HashSet<>(Config.SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS.get());
+            }
+        } catch (Throwable ignored) {}
+        return Collections.emptySet();
+    }
+
     /**
      * Detonates the Surveyor's Charge:
      * 1. Self-destructs with a loud explosion sound and smoke particles.
@@ -69,42 +138,44 @@ public class SurveyorsChargeBlock extends Block {
         level.removeBlock(pos, false);
 
         // Sound & Particle effects (loud bang)
-        serverLevel.playSound(
-                null,
-                pos,
-                SoundEvents.GENERIC_EXPLODE.value(),
-                SoundSource.BLOCKS,
-                4.0F,
-                (1.0F + (serverLevel.getRandom().nextFloat() - serverLevel.getRandom().nextFloat()) * 0.2F) * 0.7F
-        );
-        serverLevel.sendParticles(
-                ParticleTypes.EXPLOSION_EMITTER,
-                pos.getX() + 0.5D,
-                pos.getY() + 0.5D,
-                pos.getZ() + 0.5D,
-                1,
-                0,
-                0,
-                0,
-                0
-        );
-        serverLevel.sendParticles(
-                ParticleTypes.CAMPFIRE_COSY_SMOKE,
-                pos.getX() + 0.5D,
-                pos.getY() + 0.5D,
-                pos.getZ() + 0.5D,
-                30,
-                0.35D,
-                0.35D,
-                0.35D,
-                0.05D
-        );
+        try {
+            serverLevel.playSound(
+                    null,
+                    pos,
+                    SoundEvents.GENERIC_EXPLODE.value(),
+                    SoundSource.BLOCKS,
+                    4.0F,
+                    (1.0F + (serverLevel.getRandom().nextFloat() - serverLevel.getRandom().nextFloat()) * 0.2F) * 0.7F
+            );
+            serverLevel.sendParticles(
+                    ParticleTypes.EXPLOSION_EMITTER,
+                    pos.getX() + 0.5D,
+                    pos.getY() + 0.5D,
+                    pos.getZ() + 0.5D,
+                    1,
+                    0,
+                    0,
+                    0,
+                    0
+            );
+            serverLevel.sendParticles(
+                    ParticleTypes.CAMPFIRE_COSY_SMOKE,
+                    pos.getX() + 0.5D,
+                    pos.getY() + 0.5D,
+                    pos.getZ() + 0.5D,
+                    30,
+                    0.35D,
+                    0.35D,
+                    0.35D,
+                    0.05D
+            );
+        } catch (Throwable ignored) {}
 
         // 1. Blast 1x1 borehole straight down until bedrock / indestructible block
         int startY = pos.getY() - 1;
         int minY = level.getMinY();
         int lowestBlastedY = startY;
-        boolean dropBlocks = Config.SURVEYOR_CHARGE_DROP_BOREHOLE_BLOCKS.get();
+        boolean dropBlocks = shouldDropBoreholeBlocks();
 
         for (int y = startY; y >= minY; y--) {
             BlockPos shaftPos = new BlockPos(pos.getX(), y, pos.getZ());
@@ -127,9 +198,9 @@ public class SurveyorsChargeBlock extends Block {
         }
 
         // 2. Perform geological scan in configured radius around charge
-        int radius = Config.SURVEYOR_CHARGE_RADIUS.get();
-        Set<String> ignored = new HashSet<>(Config.SURVEYOR_CHARGE_IGNORED_BLOCKS.get());
-        Set<String> extraReport = new HashSet<>(Config.SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS.get());
+        int radius = getScanRadius();
+        Set<String> ignored = getIgnoredBlocks();
+        Set<String> extraReport = getExtraReportBlocks();
 
         Map<Block, Integer> blockCounts = new HashMap<>();
         int totalOilBlocks = 0;
