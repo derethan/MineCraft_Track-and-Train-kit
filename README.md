@@ -10,6 +10,8 @@
 
 Whether you need to haul massive freight trains across long distances, automate livestock and mob transit, transport bulk liquids, drill 3×3 subterranean tunnels automatically, or keep your automated quarries loaded 24/7—**Mining Tools** provides the locomotives, specialty tracks, and smart trackside machinery to get the job done.
 
+> 📖 **Need a complete walkthrough, mechanics guide, or crafting recipes?** Check out the comprehensive **[Mining Tools Wiki & Walkthrough](WIKI.md)**!
+
 ---
 
 ## 🌟 Key Highlights
@@ -32,7 +34,7 @@ Every locomotive features dynamic directional headlights (level 15 lighting), in
 ### 1. Basic Steam Locomotive
 The quintessential iron horse for industrial mining and freight operations.
 * **Fuel**: Consumes coal or charcoal (default: 80 seconds per coal).
-* **Speed**: 5 throttle gears (configurable up to 0.35+ blocks/tick).
+* **Speed**: 5 throttle gears with a calibrated **1.0 m/s (0.05 b/t) Crawl Speed** in Gear 1 for precise switching and coupling, scaling up to 0.35+ blocks/tick (7 m/s).
 * **Pulling Capacity**: Pulls up to **5 carts** with zero drag penalty.
 * **Whistle & Cowcatcher**: Sounds a loud steam whistle that scatters mobs off the tracks and pushes obstacles out of the way.
 
@@ -57,6 +59,7 @@ Sleek, aerodynamic, ultra-high-speed electric rail transit.
 
 * **Railroad Crowbar**: Right-click to link any two carts or locomotives together into an unbroken train. Shift + Right-click to uncouple.
 * **Distributed Locomotive Traction**: Each locomotive adds its pull allowance to the train. When pulling more carts than the combined allowance, trains realistically experience drag slowdown—incentivizing realistic multi-engine freight consists!
+* **Unified Heavy-Rail Collision & Cowcatcher Physics**: All locomotives and rolling stock carts now share solid physical collision with living entity deflection. Mobs and players in the path of any train car are safely shoved aside without stalling, freezing, or bouncing the train!
 * **Non-Inverting Reverse**: Reversing train direction shifts motion into reverse without disorienting 180° visual cart flips.
 
 ---

@@ -374,12 +374,12 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canCollideWith(Entity entity) {
-        return !entity.isPassengerOfSameVehicle(this);
+        return TrainChainingUtil.canCollideWith(this, entity);
     }
 
     @Override
-    public boolean canBeCollidedWith(@Nullable Entity other) {
-        return !this.isRemoved();
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        return TrainChainingUtil.canBeCollidedWith(this, other);
     }
 
     /**
@@ -523,23 +523,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
 
     @Override
     public void push(Entity entity) {
-        if (!this.level().isClientSide() && !entity.noPhysics && !this.hasPassenger(entity)) {
-            if (this.isChainedTo(entity)) {
-                return;
-            }
-            Direction facing = this.getFacing();
-            double cx = this.getX() + facing.getStepX() * -1.525;
-            double cz = this.getZ() + facing.getStepZ() * -1.525;
-            double xa = entity.getX() - cx;
-            double za = entity.getZ() - cz;
-            double dd = xa * xa + za * za;
-            if (dd >= 1.0E-4F) {
-                dd = Math.sqrt(dd);
-                xa /= dd;
-                za /= dd;
-                entity.push(xa * 0.08, 0.0, za * 0.08);
-            }
-        }
+        TrainChainingUtil.pushCollidingEntity(this, entity);
     }
 
     @Override
