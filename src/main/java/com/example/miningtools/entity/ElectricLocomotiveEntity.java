@@ -660,8 +660,8 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
                 double tX = -uz;
                 double tZ = ux;
-                boolean movingExit0ToExit1 = (exit0.getX() == -facing.getStepX() && exit0.getZ() == -facing.getStepZ())
-                        || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
+                boolean movingExit0ToExit1 = (exit0.getX() == -travelDir.getStepX() && exit0.getZ() == -travelDir.getStepZ())
+                        || (exit1.getX() == travelDir.getStepX() && exit1.getZ() == travelDir.getStepZ());
                 double exitVecX = (exit1.getX() - exit0.getX()) * (movingExit0ToExit1 ? 1.0 : -1.0);
                 double exitVecZ = (exit1.getZ() - exit0.getZ()) * (movingExit0ToExit1 ? 1.0 : -1.0);
                 if (tX * exitVecX + tZ * exitVecZ < 0.0) {
