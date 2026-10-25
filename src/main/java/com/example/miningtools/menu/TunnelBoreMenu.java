@@ -78,6 +78,10 @@ public class TunnelBoreMenu extends AbstractContainerMenu {
         this.addDataSlots(data);
     }
 
+    public Container getContainer() {
+        return this.container;
+    }
+
     public boolean isLit() {
         return this.data.get(0) > 0;
     }

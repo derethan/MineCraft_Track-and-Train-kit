@@ -169,8 +169,16 @@ public class TurretCartEntity extends AbstractMinecartContainer {
     // ---------------------------------------------------------------------
 
     @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
+    @Override
     public void tick() {
-        super.tick();
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
 
         if (this.level().isClientSide()) {
             float target = this.getTurretYaw();
@@ -424,6 +432,9 @@ public class TurretCartEntity extends AbstractMinecartContainer {
         this.updateBowMask();
     }
 
+
+
+
     @Override
     public boolean canCollideWith(Entity entity) {
         if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
@@ -433,15 +444,20 @@ public class TurretCartEntity extends AbstractMinecartContainer {
     }
 
     @Override
-    public void push(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
         }
-        super.push(entity);
+        return super.canBeCollidedWith(other);
     }
 
     @Override
-    public BlockPos getCurrentBlockPosOrRailBelow() {
-        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    protected Vec3 applyNaturalSlowdown(Vec3 deltaMovement) {
+        return TrainChainingUtil.applyRollingStockSlowdown(this, deltaMovement);
     }
 }

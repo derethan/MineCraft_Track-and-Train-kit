@@ -39,6 +39,7 @@ public class TurretCartRenderer extends AbstractMinecartRenderer<TurretCartEntit
     @Override
     public void extractRenderState(TurretCartEntity entity, TurretCartRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
+        CartRenderHelper.updateRailRenderState(entity, state);
         state.turretYaw = Mth.rotLerp(partialTicks, entity.clientTurretYawO, entity.clientTurretYaw);
         state.hasBow0 = entity.hasBowInSlot(0);
         state.hasBow1 = entity.hasBowInSlot(1);

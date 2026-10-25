@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.jspecify.annotations.Nullable;
 
 import com.example.miningtools.Config;
+import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CabooseMinecartEntity;
 import com.example.miningtools.entity.AggregateHopperCartEntity;
@@ -29,6 +30,7 @@ import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.entity.TurretCartEntity;
+import com.example.miningtools.entity.GeneratorMinecartEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
@@ -42,9 +44,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
+import net.minecraft.world.level.block.PoweredRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
@@ -60,23 +64,19 @@ public final class TrainChainingUtil {
         int i = Mth.floor(entity.getX());
         int j = Mth.floor(entity.getY());
         int k = Mth.floor(entity.getZ());
-        Level level = entity.level();
-        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j, k)))) {
-            return new BlockPos(i, j, k);
+        BlockPos atPos = new BlockPos(i, j, k);
+        if (BaseRailBlock.isRail(entity.level(), atPos)) {
+            return atPos;
         }
-        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j - 1, k)))) {
-            return new BlockPos(i, j - 1, k);
+        BlockPos belowPos = new BlockPos(i, j - 1, k);
+        if (BaseRailBlock.isRail(entity.level(), belowPos)) {
+            return belowPos;
         }
-        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j - 2, k)))) {
-            return new BlockPos(i, j - 2, k);
+        BlockPos abovePos = new BlockPos(i, j + 1, k);
+        if (BaseRailBlock.isRail(entity.level(), abovePos)) {
+            return abovePos;
         }
-        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j - 3, k)))) {
-            return new BlockPos(i, j - 3, k);
-        }
-        if (BaseRailBlock.isRail(level.getBlockState(new BlockPos(i, j + 1, k)))) {
-            return new BlockPos(i, j + 1, k);
-        }
-        return new BlockPos(i, j, k);
+        return atPos;
     }
 
     private TrainChainingUtil() {}
@@ -84,7 +84,55 @@ public final class TrainChainingUtil {
     public static final String TAG_PARENT_CART = "miningtools:parent_cart";
     public static final String TAG_CHILD_CART = "miningtools:child_cart";
 
-    public static final double COUPLER_GAP = 0.08D;
+    public static final double COUPLER_GAP = 0.28D;
+
+    /**
+     * Returns the normalized horizontal heading vector (X, 0, Z) for a cart along its track or yaw orientation.
+     */
+    public static Vec3 getCartHeadingVector(Entity entity, double fallbackDirX, double fallbackDirZ) {
+        if (entity instanceof BasicLocomotiveEntity bl) {
+            Direction f = bl.getFacing();
+            return new Vec3(f.getStepX(), 0.0D, f.getStepZ());
+        }
+        if (entity instanceof DieselLocomotiveEntity dl) {
+            Direction f = dl.getFacing();
+            return new Vec3(f.getStepX(), 0.0D, f.getStepZ());
+        }
+        if (entity instanceof ElectricLocomotiveEntity el) {
+            Direction f = el.getFacing();
+            return new Vec3(f.getStepX(), 0.0D, f.getStepZ());
+        }
+        double fLen = Math.hypot(fallbackDirX, fallbackDirZ);
+        if (fLen > 1.0E-4D) {
+            return new Vec3(fallbackDirX / fLen, 0.0D, fallbackDirZ / fLen);
+        }
+        float yawRad = (float) Math.toRadians(entity.getYRot());
+        double hx = -Math.cos(yawRad);
+        double hz = -Math.sin(yawRad);
+        double hLen = Math.hypot(hx, hz);
+        if (hLen > 1.0E-4D) {
+            return new Vec3(hx / hLen, 0.0D, hz / hLen);
+        }
+        return new Vec3(1.0D, 0.0D, 0.0D);
+    }
+
+    /**
+     * Returns the 3D world position of the cart's Front Connection Point (coupler/pivot).
+     */
+    public static Vec3 getFrontConnectionPoint(Entity entity, double dirX, double dirZ) {
+        Vec3 heading = getCartHeadingVector(entity, dirX, dirZ);
+        double r = getDirectionalCouplerRadius(entity, heading.x, heading.z);
+        return new Vec3(entity.getX() + heading.x * r, entity.getY() + 0.25D, entity.getZ() + heading.z * r);
+    }
+
+    /**
+     * Returns the 3D world position of the cart's Rear Connection Point (coupler/pivot).
+     */
+    public static Vec3 getRearConnectionPoint(Entity entity, double dirX, double dirZ) {
+        Vec3 heading = getCartHeadingVector(entity, dirX, dirZ);
+        double r = getDirectionalCouplerRadius(entity, -heading.x, -heading.z);
+        return new Vec3(entity.getX() - heading.x * r, entity.getY() + 0.25D, entity.getZ() - heading.z * r);
+    }
 
     /**
      * Returns the half-length radius (center to coupler bumper) of a train vehicle in blocks.
@@ -116,6 +164,10 @@ public final class TrainChainingUtil {
         }
         if (entity instanceof TurretCartEntity) {
             // Standard armored turret wagon frame (24px long -> 0.88m radius)
+            return 0.88D;
+        }
+        if (entity instanceof GeneratorMinecartEntity) {
+            // Heavy generator / dynamo cart frame (24px long -> 0.88m radius)
             return 0.88D;
         }
         if (entity instanceof AggregateHopperCartEntity) {
@@ -428,65 +480,150 @@ public final class TrainChainingUtil {
         return current;
     }
 
-    public static @Nullable Pair<AbstractMinecart, AbstractMinecart> determineRoles(AbstractMinecart first, AbstractMinecart second) {
-        boolean firstIsTail = isTailCart(first);
-        boolean secondIsTail = isTailCart(second);
+    /**
+     * Reverses the parent/child coupler polarity of a connected chain of carts so two train segments
+     * with matching free couplers (e.g., two tails or two heads) can couple together seamlessly
+     * without ever disconnecting existing neighbors.
+     */
+    public static void reverseChainOrientation(AbstractMinecart startCart, Level level) {
+        if (startCart == null || level == null) return;
 
-        if (firstIsTail && !secondIsTail) {
+        List<AbstractMinecart> chain = new ArrayList<>();
+        Set<UUID> visited = new HashSet<>();
+        Deque<AbstractMinecart> queue = new ArrayDeque<>();
+        queue.add(startCart);
+        visited.add(startCart.getUUID());
+
+        while (!queue.isEmpty() && chain.size() < 100) {
+            AbstractMinecart curr = queue.poll();
+            chain.add(curr);
+            UUID pId = getCartParentUUID(curr);
+            if (pId != null && visited.add(pId)) {
+                Entity pEnt = level.getEntity(pId);
+                if (pEnt instanceof AbstractMinecart pCart && !pCart.isRemoved()) {
+                    queue.add(pCart);
+                }
+            }
+            UUID cId = getCartChildUUID(curr);
+            if (cId != null && visited.add(cId)) {
+                Entity cEnt = level.getEntity(cId);
+                if (cEnt instanceof AbstractMinecart cCart && !cCart.isRemoved()) {
+                    queue.add(cCart);
+                }
+            }
+        }
+
+        Map<UUID, UUID> oldParents = new HashMap<>();
+        Map<UUID, UUID> oldChildren = new HashMap<>();
+        for (AbstractMinecart c : chain) {
+            oldParents.put(c.getUUID(), getCartParentUUID(c));
+            oldChildren.put(c.getUUID(), getCartChildUUID(c));
+        }
+
+        for (AbstractMinecart c : chain) {
+            UUID oldP = oldParents.get(c.getUUID());
+            UUID oldC = oldChildren.get(c.getUUID());
+            setCartParent(c, oldC, level);
+            setCartChild(c, oldP, level);
+        }
+    }
+
+    public static @Nullable Pair<AbstractMinecart, AbstractMinecart> determineRoles(AbstractMinecart first, AbstractMinecart second) {
+        if (first == null || second == null || first.getUUID().equals(second.getUUID())) {
             return null;
         }
-        if (secondIsTail && !firstIsTail) {
+        if (isConnectedInSameTrain(first, second)) {
+            return null;
+        }
+
+        UUID firstParent = getCartParentUUID(first);
+        UUID firstChild = getCartChildUUID(first);
+        UUID secondParent = getCartParentUUID(second);
+        UUID secondChild = getCartChildUUID(second);
+
+        boolean fFrontFree = (firstParent == null);
+        boolean fRearFree = (firstChild == null);
+        boolean sFrontFree = (secondParent == null);
+        boolean sRearFree = (secondChild == null);
+
+        // If a clicked cart has both front and rear couplers already occupied, walk to the nearest free end of its consist
+        if (!fFrontFree && !fRearFree) {
             AbstractMinecart tail = getTrainTail(first);
-            return Pair.of(tail != null ? tail : first, second);
+            AbstractMinecart head = getTrainHead(first);
+            if (tail != null && getCartChildUUID(tail) == null) {
+                first = tail;
+                fFrontFree = (getCartParentUUID(first) == null);
+                fRearFree = true;
+            } else if (head != null && getCartParentUUID(head) == null) {
+                first = head;
+                fFrontFree = true;
+                fRearFree = (getCartChildUUID(first) == null);
+            } else {
+                return null;
+            }
+        }
+
+        if (!sFrontFree && !sRearFree) {
+            AbstractMinecart head = getTrainHead(second);
+            AbstractMinecart tail = getTrainTail(second);
+            if (head != null && getCartParentUUID(head) == null) {
+                second = head;
+                sFrontFree = true;
+                sRearFree = (getCartChildUUID(second) == null);
+            } else if (tail != null && getCartChildUUID(tail) == null) {
+                second = tail;
+                sFrontFree = (getCartParentUUID(second) == null);
+                sRearFree = true;
+            } else {
+                return null;
+            }
         }
 
         boolean firstIsLead = isLeadCart(first);
         boolean secondIsLead = isLeadCart(second);
 
-        UUID firstChild = getCartChildUUID(first);
-        UUID firstParent = getCartParentUUID(first);
-        UUID secondChild = getCartChildUUID(second);
-        UUID secondParent = getCartParentUUID(second);
-
-        if (firstParent != null && firstChild == null) {
-            return Pair.of(first, second);
+        // If both carts are completely unlinked locomotives, orient by facing
+        if (firstIsLead && secondIsLead && fFrontFree && fRearFree && sFrontFree && sRearFree) {
+            Direction facing = (first instanceof BasicLocomotiveEntity bl) ? bl.getFacing()
+                    : (first instanceof DieselLocomotiveEntity dl) ? dl.getFacing()
+                    : (first instanceof ElectricLocomotiveEntity el) ? el.getFacing()
+                    : Direction.NORTH;
+            double dx = second.getX() - first.getX();
+            double dz = second.getZ() - first.getZ();
+            double dot = dx * facing.getStepX() + dz * facing.getStepZ();
+            if (dot < 0.0) {
+                return Pair.of(first, second);
+            } else {
+                return Pair.of(second, first);
+            }
         }
 
-        if (secondParent != null && secondChild == null && firstParent == null) {
+        // If second is an unlinked locomotive and first is unlinked rolling stock, put locomotive in front
+        if (secondIsLead && !firstIsLead && sRearFree && fFrontFree) {
             return Pair.of(second, first);
         }
 
-        if (firstChild != null && secondParent == null && secondChild == null) {
-            AbstractMinecart tail = getTrainTail(first);
-            if (tail != null && !tail.getUUID().equals(second.getUUID())) {
-                return Pair.of(tail, second);
-            }
+        // Connect directly using available front (parent) and rear (child) connection points without ever overwriting occupied couplers
+        if (fRearFree && sFrontFree) {
+            return Pair.of(first, second);
+        }
+        if (sRearFree && fFrontFree) {
+            return Pair.of(second, first);
         }
 
-        if (firstParent == null && firstChild == null && secondParent == null && secondChild == null) {
-            if (firstIsLead && !secondIsLead) {
-                return Pair.of(first, second);
-            }
-            if (secondIsLead && !firstIsLead) {
-                return Pair.of(second, first);
-            }
-            if (firstIsLead && secondIsLead) {
-                Direction facing = (first instanceof BasicLocomotiveEntity bl) ? bl.getFacing()
-                        : (first instanceof DieselLocomotiveEntity dl) ? dl.getFacing()
-                        : (first instanceof ElectricLocomotiveEntity el) ? el.getFacing()
-                        : Direction.NORTH;
-                double dx = second.getX() - first.getX();
-                double dz = second.getZ() - first.getZ();
-                double dot = dx * facing.getStepX() + dz * facing.getStepZ();
-                if (dot < 0.0) {
-                    return Pair.of(first, second);
-                } else {
-                    return Pair.of(second, first);
-                }
-            }
+        // Both have only rear couplers free (two train tails): reverse second's chain so its front coupler is free
+        if (fRearFree && sRearFree) {
+            reverseChainOrientation(second, first.level());
+            return Pair.of(first, second);
         }
 
-        return Pair.of(first, second);
+        // Both have only front couplers free (two train heads): reverse first's chain so its rear coupler is free
+        if (fFrontFree && sFrontFree) {
+            reverseChainOrientation(first, first.level());
+            return Pair.of(first, second);
+        }
+
+        return null;
     }
 
     public static boolean isLeadCart(AbstractMinecart cart) {
@@ -497,7 +634,7 @@ public final class TrainChainingUtil {
     }
 
     public static boolean isTailCart(AbstractMinecart cart) {
-        return cart instanceof CabooseMinecartEntity;
+        return false;
     }
 
     public static boolean linkCarts(AbstractMinecart parent, AbstractMinecart child, ServerLevel level) {
@@ -514,17 +651,18 @@ public final class TrainChainingUtil {
             return false;
         }
 
+        // Never overwrite an already-occupied front or rear coupler on either cart
         if (currentParentChild != null && !currentParentChild.equals(child.getUUID())) {
-            Entity oldChild = level.getEntity(currentParentChild);
-            if (oldChild instanceof AbstractMinecart oldChildCart) {
-                setCartParent(oldChildCart, null, level);
+            Entity existingChild = level.getEntity(currentParentChild);
+            if (existingChild instanceof AbstractMinecart existingCart && !existingCart.isRemoved()) {
+                return false;
             }
         }
 
         if (currentChildParent != null && !currentChildParent.equals(parent.getUUID())) {
-            Entity oldParent = level.getEntity(currentChildParent);
-            if (oldParent instanceof AbstractMinecart oldParentCart) {
-                setCartChild(oldParentCart, null, level);
+            Entity existingParent = level.getEntity(currentChildParent);
+            if (existingParent instanceof AbstractMinecart existingCart && !existingCart.isRemoved()) {
+                return false;
             }
         }
 
@@ -539,7 +677,6 @@ public final class TrainChainingUtil {
 
         return true;
     }
-
     public static boolean unlinkCart(AbstractMinecart cart, ServerLevel level) {
         if (cart == null) return false;
 
@@ -731,6 +868,26 @@ public final class TrainChainingUtil {
         return false;
     }
 
+    public static boolean isConsistWithLocomotive(AbstractMinecart cart) {
+        if (cart == null || cart.level() == null) return false;
+        if (cart instanceof BasicLocomotiveEntity || cart instanceof DieselLocomotiveEntity
+                || cart instanceof ElectricLocomotiveEntity || cart instanceof TunnelBoreEntity) {
+            return true;
+        }
+        return BasicLocomotiveEntity.getConnectedLocomotive(cart) != null
+                || DieselLocomotiveEntity.getConnectedLocomotive(cart) != null
+                || ElectricLocomotiveEntity.getConnectedLocomotive(cart) != null;
+    }
+
+    public static boolean isConnectedToAnyTrain(AbstractMinecart cart) {
+        if (cart == null || cart.level() == null) return false;
+        if (cart instanceof BasicLocomotiveEntity || cart instanceof DieselLocomotiveEntity
+                || cart instanceof ElectricLocomotiveEntity || cart instanceof TunnelBoreEntity) {
+            return true;
+        }
+        return getCartParentUUID(cart) != null || getCartChildUUID(cart) != null;
+    }
+
     public static boolean isPartOfRunningTrain(AbstractMinecart cart) {
         if (cart == null || cart.level() == null) return false;
         if (cart instanceof BasicLocomotiveEntity loco && loco.isRunning()) return true;
@@ -748,16 +905,13 @@ public final class TrainChainingUtil {
     }
 
     public static boolean canCollideWith(AbstractMinecart cart, Entity entity) {
-        if (isConnectedInSameTrain(cart, entity) || entity instanceof LivingEntity || entity instanceof AbstractMinecart) {
+        if (isConnectedInSameTrain(cart, entity)) {
             return false;
         }
         return !entity.isPassengerOfSameVehicle(cart);
     }
 
     public static boolean canBeCollidedWith(AbstractMinecart cart, @Nullable Entity other) {
-        if (other instanceof AbstractMinecart || other instanceof LivingEntity) {
-            return false;
-        }
         if (other != null && isConnectedInSameTrain(cart, other)) {
             return false;
         }
@@ -821,6 +975,398 @@ public final class TrainChainingUtil {
         else loco.setDeltaMovement(Vec3.ZERO);
     }
 
+    private static final Map<UUID, Long> CONSIST_TICK_MAP = new HashMap<>();
+    private static final Map<UUID, Long> POST_BUMP_BRAKE_UNTIL = new HashMap<>();
+
+    public static boolean isCartOnUnpoweredBrakingRail(Entity entity) {
+        if (entity == null || entity.level() == null) return false;
+        BlockPos railPos = getCurrentBlockPosOrRailBelow(entity);
+        BlockState state = entity.level().getBlockState(railPos);
+        if (state.is(MiningTools.BRAKING_RAIL.get())) {
+            return !state.getValue(PoweredRailBlock.POWERED);
+        }
+        if (state.is(MiningTools.CONTROL_RAIL.get())
+                && (entity instanceof BasicLocomotiveEntity || entity instanceof DieselLocomotiveEntity || entity instanceof ElectricLocomotiveEntity)) {
+            return !state.getValue(PoweredRailBlock.POWERED);
+        }
+        return false;
+    }
+
+    public static boolean isConsistHeldByBrakingRail(AbstractMinecart startCart) {
+        if (startCart == null || startCart.level() == null) return false;
+        if (isCartOnUnpoweredBrakingRail(startCart)) return true;
+
+        Level level = startCart.level();
+        Set<UUID> visited = new HashSet<>();
+        Deque<UUID> queue = new ArrayDeque<>();
+        visited.add(startCart.getUUID());
+        UUID p = getCartParentUUID(startCart);
+        if (p != null) queue.add(p);
+        UUID c = getCartChildUUID(startCart);
+        if (c != null) queue.add(c);
+
+        while (!queue.isEmpty() && visited.size() < 100) {
+            UUID next = queue.poll();
+            if (next != null && visited.add(next)) {
+                Entity ent = level.getEntity(next);
+                if (ent instanceof AbstractMinecart cart && !cart.isRemoved()) {
+                    if (isCartOnUnpoweredBrakingRail(cart)) {
+                        return true;
+                    }
+                    UUID cp = getCartParentUUID(cart);
+                    if (cp != null && !visited.contains(cp)) queue.add(cp);
+                    UUID cc = getCartChildUUID(cart);
+                    if (cc != null && !visited.contains(cc)) queue.add(cc);
+                }
+            }
+        }
+        return false;
+    }
+
+    public static void freezeConsistFromBrakingRail(AbstractMinecart startCart) {
+        if (startCart == null || startCart.level() == null) return;
+        Level level = startCart.level();
+        Set<UUID> visited = new HashSet<>();
+        Deque<UUID> queue = new ArrayDeque<>();
+        queue.add(startCart.getUUID());
+
+        while (!queue.isEmpty() && visited.size() < 100) {
+            UUID next = queue.poll();
+            if (next != null && visited.add(next)) {
+                Entity ent = level.getEntity(next);
+                if (ent instanceof AbstractMinecart cart && !cart.isRemoved()) {
+                    cart.setDeltaMovement(Vec3.ZERO);
+                    if (cart instanceof BasicLocomotiveEntity bl) {
+                        bl.stopLocomotiveFromRail();
+                    } else if (cart instanceof DieselLocomotiveEntity dl) {
+                        dl.stopLocomotiveFromRail();
+                    } else if (cart instanceof ElectricLocomotiveEntity el) {
+                        el.stopLocomotiveFromRail();
+                    } else if (cart instanceof TunnelBoreEntity bore && bore.isRunning()) {
+                        bore.setRunning(false);
+                    }
+                    UUID cp = getCartParentUUID(cart);
+                    if (cp != null && !visited.contains(cp)) queue.add(cp);
+                    UUID cc = getCartChildUUID(cart);
+                    if (cc != null && !visited.contains(cc)) queue.add(cc);
+                }
+            }
+        }
+    }
+
+    public static void releaseConsistFromBrakingRail(AbstractMinecart startCart) {
+        if (startCart == null || startCart.level() == null || startCart.level().isClientSide()) return;
+        if (isConsistHeldByBrakingRail(startCart)) {
+            return;
+        }
+        Level level = startCart.level();
+        Set<UUID> visited = new HashSet<>();
+        Deque<UUID> queue = new ArrayDeque<>();
+        queue.add(startCart.getUUID());
+
+        boolean startedLoco = false;
+        List<AbstractMinecart> allCarts = new ArrayList<>();
+
+        while (!queue.isEmpty() && visited.size() < 100) {
+            UUID next = queue.poll();
+            if (next != null && visited.add(next)) {
+                Entity ent = level.getEntity(next);
+                if (ent instanceof AbstractMinecart cart && !cart.isRemoved()) {
+                    allCarts.add(cart);
+                    if (cart instanceof BasicLocomotiveEntity bl) {
+                        if (!bl.isRunning()) {
+                            bl.startLocomotiveFromRail();
+                        }
+                        if (bl.isRunning()) startedLoco = true;
+                    } else if (cart instanceof DieselLocomotiveEntity dl) {
+                        if (!dl.isRunning()) {
+                            dl.startLocomotiveFromRail();
+                        }
+                        if (dl.isRunning()) startedLoco = true;
+                    } else if (cart instanceof ElectricLocomotiveEntity el) {
+                        if (!el.isRunning()) {
+                            el.startLocomotiveFromRail();
+                        }
+                        if (el.isRunning()) startedLoco = true;
+                    }
+                    UUID cp = getCartParentUUID(cart);
+                    if (cp != null && !visited.contains(cp)) queue.add(cp);
+                    UUID cc = getCartChildUUID(cart);
+                    if (cc != null && !visited.contains(cc)) queue.add(cc);
+                }
+            }
+        }
+
+        if (!startedLoco) {
+            // Standalone cart or unpowered consist: give a gentle kick along its current facing if stationary
+            for (AbstractMinecart cart : allCarts) {
+                if (cart.getDeltaMovement().horizontalDistanceSqr() < 1.0E-4D) {
+                    Vec3 heading = getCartHeadingVector(cart, 0.0D, 0.0D);
+                    cart.setDeltaMovement(heading.x * 0.08D, cart.getDeltaMovement().y, heading.z * 0.08D);
+                    cart.needsSync = true;
+                }
+            }
+        }
+    }
+
+    public static String getCartIndividualName(Entity cart) {
+        if (cart == null) return "";
+        if (cart instanceof BasicLocomotiveEntity bl) return bl.getTrainName();
+        if (cart instanceof DieselLocomotiveEntity dl) return dl.getTrainName();
+        if (cart instanceof ElectricLocomotiveEntity el) return el.getTrainName();
+        var custom = cart.getCustomName();
+        return custom != null ? custom.getString().trim() : "";
+    }
+
+    public static boolean matchesCartNameFilter(Entity cart, String whitelistCsv, String blacklistCsv) {
+        if (cart == null) return false;
+        String cartName = getCartIndividualName(cart).toLowerCase(java.util.Locale.ROOT);
+        String trainName = BasicLocomotiveEntity.resolveTrainName(cart).toLowerCase(java.util.Locale.ROOT);
+
+        if (blacklistCsv != null && !blacklistCsv.isBlank()) {
+            for (String token : blacklistCsv.split(",")) {
+                String pat = token.trim().toLowerCase(java.util.Locale.ROOT);
+                if (!pat.isEmpty()) {
+                    if ((!cartName.isEmpty() && cartName.contains(pat))
+                            || (!trainName.isEmpty() && trainName.contains(pat))) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if (whitelistCsv != null && !whitelistCsv.isBlank()) {
+            boolean anyPattern = false;
+            for (String token : whitelistCsv.split(",")) {
+                String pat = token.trim().toLowerCase(java.util.Locale.ROOT);
+                if (!pat.isEmpty()) {
+                    anyPattern = true;
+                    if ((!cartName.isEmpty() && cartName.contains(pat))
+                            || (!trainName.isEmpty() && trainName.contains(pat))) {
+                        return true;
+                    }
+                }
+            }
+            if (anyPattern) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static Vec3 applyRollingStockSlowdown(AbstractMinecart cart, Vec3 deltaMovement) {
+        if (isCartOnUnpoweredBrakingRail(cart) || isConsistHeldByBrakingRail(cart)) {
+            cart.setDeltaMovement(Vec3.ZERO);
+            return Vec3.ZERO;
+        }
+        if (isPartOfRunningTrain(cart) || isConsistWithLocomotive(cart)) {
+            cart.setDeltaMovement(Vec3.ZERO);
+            return Vec3.ZERO;
+        }
+
+        if (cart.level() != null && !cart.level().isClientSide()) {
+            long gameTime = cart.level().getGameTime();
+            Long brakeUntil = POST_BUMP_BRAKE_UNTIL.get(cart.getUUID());
+            if (brakeUntil != null) {
+                if (gameTime <= brakeUntil) {
+                    Vec3 braked = deltaMovement.multiply(0.50D, 0.0D, 0.50D);
+                    if (braked.horizontalDistanceSqr() < 4.0E-4D) {
+                        POST_BUMP_BRAKE_UNTIL.remove(cart.getUUID());
+                        cart.setDeltaMovement(Vec3.ZERO);
+                        return Vec3.ZERO;
+                    }
+                    return braked;
+                } else {
+                    POST_BUMP_BRAKE_UNTIL.remove(cart.getUUID());
+                }
+            }
+        }
+
+        double drag = Math.min(Config.ROLLING_STOCK_DRAG_COEFFICIENT.get(), 0.88D);
+        if (cart.isInWater()) {
+            drag *= 0.80D;
+        }
+
+        Vec3 slowed = deltaMovement.multiply(drag, 0.0D, drag);
+        if (slowed.horizontalDistanceSqr() < 2.5E-4D) {
+            return Vec3.ZERO;
+        }
+        return slowed;
+    }
+
+    public static void markConsistPostBumpBrake(AbstractMinecart cart, long durationTicks) {
+        if (cart == null || cart.level() == null || cart.level().isClientSide()) return;
+        long until = cart.level().getGameTime() + durationTicks;
+        if (POST_BUMP_BRAKE_UNTIL.size() > 100) {
+            POST_BUMP_BRAKE_UNTIL.clear();
+        }
+        POST_BUMP_BRAKE_UNTIL.put(cart.getUUID(), until);
+        for (Pair<Entity, AbstractMinecart> link : getOrderedTrainLinks(cart)) {
+            POST_BUMP_BRAKE_UNTIL.put(link.getSecond().getUUID(), until);
+        }
+    }
+
+    public static boolean shouldSkipVanillaServerTick(AbstractMinecart cart) {
+        if (cart.level().isClientSide()) {
+            return false;
+        }
+        if (isConsistWithLocomotive(cart) || isPartOfRunningTrain(cart) || isConsistHeldByBrakingRail(cart)) {
+            if (cart.getHurtTime() > 0) {
+                cart.setHurtTime(cart.getHurtTime() - 1);
+            }
+            if (cart.getDamage() > 0.0F) {
+                cart.setDamage(cart.getDamage() - 1.0F);
+            }
+            cart.setDeltaMovement(Vec3.ZERO);
+            cart.setOnRails(true);
+            Vec3 snap = getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
+            if (snap != null) {
+                cart.setPos(snap.x, snap.y, snap.z);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public static void tickConsistMovement(AbstractMinecart cart) {
+        if (cart.level().isClientSide() || cart.isRemoved()) return;
+
+        if (isConsistHeldByBrakingRail(cart)) {
+            freezeConsistFromBrakingRail(cart);
+            return;
+        }
+
+        if (isPartOfRunningTrain(cart) || isConsistWithLocomotive(cart)) {
+            cart.setDeltaMovement(Vec3.ZERO);
+            cart.setOnRails(true);
+            Vec3 snap = getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
+            if (snap != null) {
+                cart.setPos(snap.x, snap.y, snap.z);
+            }
+            return;
+        }
+
+        UUID parentUUID = getCartParentUUID(cart);
+        UUID childUUID = getCartChildUUID(cart);
+        if (parentUUID == null && childUUID == null) {
+            return;
+        }
+
+        AbstractMinecart head = getTrainHead(cart);
+        if (head == null || head.isRemoved()) head = cart;
+
+        long gameTime = cart.level().getGameTime();
+        Long lastTick = CONSIST_TICK_MAP.get(head.getUUID());
+        if (lastTick != null && lastTick == gameTime) {
+            return;
+        }
+        CONSIST_TICK_MAP.put(head.getUUID(), gameTime);
+
+        if (gameTime % 200 == 0 && CONSIST_TICK_MAP.size() > 50) {
+            CONSIST_TICK_MAP.clear();
+            CONSIST_TICK_MAP.put(head.getUUID(), gameTime);
+        }
+
+        // Find the cart in the consist with the highest active horizontal speed to act as the force driver
+        AbstractMinecart driver = head;
+        double maxSpeedSq = head.getDeltaMovement().horizontalDistanceSqr();
+        Set<UUID> visited = new HashSet<>();
+        AbstractMinecart curr = head;
+        while (curr != null && visited.add(curr.getUUID())) {
+            double spSq = curr.getDeltaMovement().horizontalDistanceSqr();
+            if (spSq > maxSpeedSq) {
+                maxSpeedSq = spSq;
+                driver = curr;
+            }
+            UUID cId = getCartChildUUID(curr);
+            if (cId == null) break;
+            Entity cEnt = cart.level().getEntity(cId);
+            curr = (cEnt instanceof AbstractMinecart mc && !mc.isRemoved()) ? mc : null;
+        }
+
+        Direction dir = driver.getMotionDirection();
+        handleChainedCartsMovement(driver, dir);
+    }
+
+    public static void pushMinecarts(AbstractMinecart a, AbstractMinecart b) {
+        if (a.level().isClientSide() || isConnectedInSameTrain(a, b)) {
+            return;
+        }
+
+        if (a instanceof BasicLocomotiveEntity || a instanceof DieselLocomotiveEntity || a instanceof ElectricLocomotiveEntity) {
+            pushCartFromLocomotiveBumper(a, b);
+            return;
+        }
+        if (b instanceof BasicLocomotiveEntity || b instanceof DieselLocomotiveEntity || b instanceof ElectricLocomotiveEntity) {
+            pushCartFromLocomotiveBumper(b, a);
+            return;
+        }
+
+        double dx = b.getX() - a.getX();
+        double dz = b.getZ() - a.getZ();
+        double distSq = dx * dx + dz * dz;
+        if (distSq < 1.0E-4D) {
+            dx = 0.01;
+            dz = 0.0;
+            distSq = dx * dx;
+        }
+        double dist = Math.sqrt(distSq);
+        double nx = dx / dist;
+        double nz = dz / dist;
+
+        double rA = getCartCouplerRadius(a);
+        double rB = getCartCouplerRadius(b);
+        double minDistance = Math.max(rA + rB - 0.05D, 0.85D);
+
+        if (dist < minDistance) {
+            double overlap = minDistance - dist;
+
+            // Physical bumper separation along track without adding artificial velocity via push()
+            double sep = overlap * 0.45D;
+            a.setPos(a.getX() - nx * sep, a.getY(), a.getZ() - nz * sep);
+            b.setPos(b.getX() + nx * sep, b.getY(), b.getZ() + nz * sep);
+            Vec3 snapA = getRailPosForEntity(a, a.getX(), a.getY(), a.getZ());
+            if (snapA != null) {
+                a.setPos(snapA.x, snapA.y, snapA.z);
+            }
+            Vec3 snapB = getRailPosForEntity(b, b.getX(), b.getY(), b.getZ());
+            if (snapB != null) {
+                b.setPos(snapB.x, snapB.y, snapB.z);
+            }
+
+            Vec3 vA = a.getDeltaMovement();
+            Vec3 vB = b.getDeltaMovement();
+            double dotA = vA.x * nx + vA.z * nz;
+            double dotB = vB.x * nx + vB.z * nz;
+            double relSpeed = dotA - dotB; // Closing speed along collision normal
+
+            // Apply post-bump rapid braking to both carts so they come to a stop very shortly after impact
+            markConsistPostBumpBrake(a, 25L);
+            markConsistPostBumpBrake(b, 25L);
+
+            if (relSpeed > 0.002D) {
+                double transferRatio = Math.min(Config.ROLLING_STOCK_BUMP_TRANSFER.get(), 0.25D);
+                double damping = Math.min(Config.ROLLING_STOCK_BUMP_DAMPING.get(), 0.30D);
+
+                double impulse = Math.min(relSpeed * transferRatio, 0.04D);
+
+                Vec3 newVA = vA.subtract(nx * impulse, 0.0, nz * impulse).scale(damping);
+                Vec3 newVB = vB.add(nx * impulse, 0.0, nz * impulse).scale(damping);
+
+                a.setDeltaMovement(newVA);
+                b.setDeltaMovement(newVB);
+                a.needsSync = true;
+                b.needsSync = true;
+            } else {
+                a.setDeltaMovement(vA.scale(0.30D));
+                b.setDeltaMovement(vB.scale(0.30D));
+                a.needsSync = true;
+                b.needsSync = true;
+            }
+        }
+    }
+
     public static void pushCollidingEntity(AbstractMinecart cart, Entity entity) {
         if (cart.level().isClientSide() || entity.noPhysics || cart.hasPassenger(entity)) {
             return;
@@ -838,10 +1384,48 @@ public final class TrainChainingUtil {
             pushCartFromLocomotiveBumper((AbstractMinecart) entity, cart);
             return;
         }
+        if (entity instanceof AbstractMinecart otherCart) {
+            pushMinecarts(cart, otherCart);
+            return;
+        }
 
         Vec3 motion = cart.getDeltaMovement();
         double horizSpeed = motion.horizontalDistance();
         boolean isRunningTrain = isPartOfRunningTrain(cart);
+
+        // Loose / unpowered carts: only roll from player interaction when the player is running (sprinting or holding shift)
+        if (!isRunningTrain && horizSpeed <= 0.08D) {
+            if (entity instanceof Player player) {
+                boolean holdingCrowbar = player.getMainHandItem().is(MiningTools.CROWBAR_ITEM.get())
+                        || player.getOffhandItem().is(MiningTools.CROWBAR_ITEM.get());
+                boolean canPlayerPush = player.isSprinting() || (player.isShiftKeyDown() && !holdingCrowbar);
+                if (!canPlayerPush) {
+                    return;
+                }
+                if (isCartOnUnpoweredBrakingRail(cart) || isConsistHeldByBrakingRail(cart)) {
+                    return;
+                }
+                double dx = cart.getX() - player.getX();
+                double dz = cart.getZ() - player.getZ();
+                double dist = Math.hypot(dx, dz);
+                if (dist > 1.0E-4D) {
+                    double nx = dx / dist;
+                    double nz = dz / dist;
+                    double pushSpeed = 0.14D;
+                    double targetVx = motion.x * 0.5D + nx * pushSpeed;
+                    double targetVz = motion.z * 0.5D + nz * pushSpeed;
+                    double maxPush = 0.16D;
+                    double mag = Math.hypot(targetVx, targetVz);
+                    if (mag > maxPush) {
+                        targetVx = (targetVx / mag) * maxPush;
+                        targetVz = (targetVz / mag) * maxPush;
+                    }
+                    cart.setDeltaMovement(targetVx, motion.y, targetVz);
+                    cart.needsSync = true;
+                }
+            }
+            return;
+        }
 
         if (entity instanceof LivingEntity living) {
             double dirX;
@@ -912,184 +1496,198 @@ public final class TrainChainingUtil {
             }
             return;
         }
-
-        double dx = entity.getX() - cart.getX();
-        double dz = entity.getZ() - cart.getZ();
-        double distSq = dx * dx + dz * dz;
-        if (distSq >= 1.0E-4D) {
-            double dist = Math.sqrt(distSq);
-            dx /= dist;
-            dz /= dist;
-            double factor = 1.0D / dist;
-            if (factor > 1.0D) {
-                factor = 1.0D;
-            }
-            dx *= factor * 0.1D;
-            dz *= factor * 0.1D;
-            if (entity.isPushable()) {
-                entity.push(dx, 0.0D, dz);
-            }
-        }
     }
 
-    public static @Nullable Vec3 getRailPosForEntity(AbstractMinecart entity, double x, double y, double z) {
+    public static @Nullable BlockPos findRailBlock(Level level, double x, double y, double z) {
         int xt = Mth.floor(x);
         int yt = Mth.floor(y);
         int zt = Mth.floor(z);
-        if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
-            yt--;
-        } else if (!BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt, zt)))) {
-            if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
-                yt -= 2;
-            } else if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
-                yt -= 3;
-            } else if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
-                yt++;
-            }
+
+        // 1. Vanilla check: if yt - 1 has a rail, cart is on an ascending slope from yt - 1
+        BlockPos below = new BlockPos(xt, yt - 1, zt);
+        if (BaseRailBlock.isRail(level.getBlockState(below))) {
+            return below;
         }
 
-        BlockPos railPos = new BlockPos(xt, yt, zt);
-        BlockState state = entity.level().getBlockState(railPos);
-        if (BaseRailBlock.isRail(state)) {
-            RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, entity.level(), railPos, entity);
-            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
-            Vec3i exit0 = exits.getFirst();
-            Vec3i exit1 = exits.getSecond();
-            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
-            if (isCurve) {
-                double circleCenterX = xt + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
-                double circleCenterZ = zt + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
-                double vx = x - circleCenterX;
-                double vz = z - circleCenterZ;
-                double signX = -(exit0.getX() + exit1.getX());
-                double signZ = -(exit0.getZ() + exit1.getZ());
-                if (vx * signX < 0.0) {
-                    vx = 0.0;
-                }
-                if (vz * signZ < 0.0) {
-                    vz = 0.0;
-                }
-                double dist = Math.sqrt(vx * vx + vz * vz);
-                if (dist > 1.0E-5) {
-                    x = circleCenterX + (vx / dist) * 0.5;
-                    z = circleCenterZ + (vz / dist) * 0.5;
-                }
-                y = yt + 0.0625;
-            } else {
-                double x0 = xt + 0.5 + exit0.getX() * 0.5;
-                double y0 = yt + 0.0625 + exit0.getY() * 0.5;
-                double z0 = zt + 0.5 + exit0.getZ() * 0.5;
-                double x1 = xt + 0.5 + exit1.getX() * 0.5;
-                double y1 = yt + 0.0625 + exit1.getY() * 0.5;
-                double z1 = zt + 0.5 + exit1.getZ() * 0.5;
-                double xD = x1 - x0;
-                double yD = (y1 - y0) * 2.0;
-                double zD = z1 - z0;
-                double progress;
-                if (xD == 0.0) {
-                    progress = z - zt;
-                } else if (zD == 0.0) {
-                    progress = x - xt;
-                } else {
-                    double xx = x - x0;
-                    double zz = z - z0;
-                    progress = (xx * xD + zz * zD) * 2.0;
-                }
-
-                x = x0 + xD * progress;
-                y = y0 + yD * progress;
-                z = z0 + zD * progress;
-                if (yD < 0.0) {
-                    y++;
-                } else if (yD > 0.0) {
-                    y += 0.5;
-                }
-            }
-
-            return new Vec3(x, y, z);
+        // 2. Direct block: cart is on rail at yt
+        BlockPos current = new BlockPos(xt, yt, zt);
+        if (BaseRailBlock.isRail(level.getBlockState(current))) {
+            return current;
         }
+
+        // 3. One block above (descending slope or step)
+        BlockPos above = new BlockPos(xt, yt + 1, zt);
+        if (BaseRailBlock.isRail(level.getBlockState(above))) {
+            return above;
+        }
+
+        // 4. Multi-block tolerances (+/- 2)
+        BlockPos below2 = new BlockPos(xt, yt - 2, zt);
+        if (BaseRailBlock.isRail(level.getBlockState(below2))) {
+            return below2;
+        }
+        BlockPos above2 = new BlockPos(xt, yt + 2, zt);
+        if (BaseRailBlock.isRail(level.getBlockState(above2))) {
+            return above2;
+        }
+
         return null;
     }
 
-    public static @Nullable Vec3 getRailPosOffs(AbstractMinecart entity, double x, double y, double z, double offset, Direction facing) {
-        int xt = Mth.floor(x);
-        int yt = Mth.floor(y);
-        int zt = Mth.floor(z);
-        if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 1, zt)))) {
-            yt--;
-        } else if (!BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt, zt)))) {
-            if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 2, zt)))) {
-                yt -= 2;
-            } else if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt - 3, zt)))) {
-                yt -= 3;
-            } else if (BaseRailBlock.isRail(entity.level().getBlockState(new BlockPos(xt, yt + 1, zt)))) {
-                yt++;
-            }
-        }
-
-        BlockPos railPos = new BlockPos(xt, yt, zt);
-        BlockState state = entity.level().getBlockState(railPos);
-        if (BaseRailBlock.isRail(state)) {
-            RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, entity.level(), railPos, entity);
-            y = yt;
-            if (shape.isSlope()) {
-                y = yt + 1;
-            }
-
-            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
-            Vec3i exit0 = exits.getFirst();
-            Vec3i exit1 = exits.getSecond();
-            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
-            double xD;
-            double zD;
-
-            if (isCurve) {
-                double circleCenterX = xt + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
-                double circleCenterZ = zt + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
-                double vx = x - circleCenterX;
-                double vz = z - circleCenterZ;
-                double dist = Math.sqrt(vx * vx + vz * vz);
-                double ux = dist > 1.0E-5 ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
-                double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
-                double tX = -uz;
-                double tZ = ux;
-                boolean movingExit0ToExit1 = (exit0.getX() == -facing.getStepX() && exit0.getZ() == -facing.getStepZ())
-                        || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
-                double exitVecX = (exit1.getX() - exit0.getX()) * (movingExit0ToExit1 ? 1.0 : -1.0);
-                double exitVecZ = (exit1.getZ() - exit0.getZ()) * (movingExit0ToExit1 ? 1.0 : -1.0);
-                if (tX * exitVecX + tZ * exitVecZ < 0.0) {
-                    tX = -tX;
-                    tZ = -tZ;
-                }
-                xD = tX;
-                zD = tZ;
-            } else {
-                xD = exit1.getX() - exit0.getX();
-                zD = exit1.getZ() - exit0.getZ();
-                double dirDot = xD * facing.getStepX() + zD * facing.getStepZ();
-                if (dirDot < 0.0) {
-                    xD = -xD;
-                    zD = -zD;
-                }
-                double dd = Math.sqrt(xD * xD + zD * zD);
-                if (dd > 0.0) {
-                    xD /= dd;
-                    zD /= dd;
-                }
-            }
-
-            x += xD * offset;
-            z += zD * offset;
-            if (exit0.getY() != 0 && Mth.floor(x) - xt == exit0.getX() && Mth.floor(z) - zt == exit0.getZ()) {
-                y += exit0.getY();
-            } else if (exit1.getY() != 0 && Mth.floor(x) - xt == exit1.getX() && Mth.floor(z) - zt == exit1.getZ()) {
-                y += exit1.getY();
-            }
-
-            return getRailPosForEntity(entity, x, y, z);
-        } else {
+    public static @Nullable Vec3 getRailPosForEntity(AbstractMinecart entity, double x, double y, double z) {
+        BlockPos railPos = findRailBlock(entity.level(), x, y, z);
+        if (railPos == null) {
             return null;
         }
+
+        BlockState state = entity.level().getBlockState(railPos);
+        if (!BaseRailBlock.isRail(state)) {
+            return null;
+        }
+
+        RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, entity.level(), railPos, entity);
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
+
+        int xt = railPos.getX();
+        int yt = railPos.getY();
+        int zt = railPos.getZ();
+
+        boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+        if (isCurve) {
+            double circleCenterX = (double) xt + 0.5D + (double) (exit0.getX() + exit1.getX()) * 0.5D;
+            double circleCenterZ = (double) zt + 0.5D + (double) (exit0.getZ() + exit1.getZ()) * 0.5D;
+            double vx = x - circleCenterX;
+            double vz = z - circleCenterZ;
+            double signX = -(exit0.getX() + exit1.getX());
+            double signZ = -(exit0.getZ() + exit1.getZ());
+            if (vx * signX < 0.0D) {
+                vx = 0.0D;
+            }
+            if (vz * signZ < 0.0D) {
+                vz = 0.0D;
+            }
+            double dist = Math.sqrt(vx * vx + vz * vz);
+            if (dist > 1.0E-5D) {
+                x = circleCenterX + (vx / dist) * 0.5D;
+                z = circleCenterZ + (vz / dist) * 0.5D;
+            }
+            y = (double) yt + 0.0625D;
+            return new Vec3(x, y, z);
+        }
+
+        double x0 = (double) xt + 0.5D + (double) exit0.getX() * 0.5D;
+        double y0 = (double) yt + 0.0625D + (double) exit0.getY() * 0.5D;
+        double z0 = (double) zt + 0.5D + (double) exit0.getZ() * 0.5D;
+
+        double x1 = (double) xt + 0.5D + (double) exit1.getX() * 0.5D;
+        double y1 = (double) yt + 0.0625D + (double) exit1.getY() * 0.5D;
+        double z1 = (double) zt + 0.5D + (double) exit1.getZ() * 0.5D;
+
+        double xD = x1 - x0;
+        double yD = (y1 - y0) * 2.0D;
+        double zD = z1 - z0;
+
+        double progress;
+        if (xD == 0.0D) {
+            progress = z - (double) zt;
+        } else if (zD == 0.0D) {
+            progress = x - (double) xt;
+        } else {
+            double dX = x - x0;
+            double dZ = z - z0;
+            progress = (dX * xD + dZ * zD) * 2.0D;
+        }
+        progress = Mth.clamp(progress, 0.0D, 1.0D);
+
+        double resX = x0 + xD * progress;
+        double resY = y0 + yD * progress;
+        double resZ = z0 + zD * progress;
+
+        if (yD < 0.0D) {
+            resY += 1.0D;
+        } else if (yD > 0.0D) {
+            resY += 0.5D;
+        }
+
+        return new Vec3(resX, resY, resZ);
+    }
+
+    public static @Nullable Vec3 getRailPosOffs(AbstractMinecart entity, double x, double y, double z, double offset, Direction facing) {
+        BlockPos railPos = findRailBlock(entity.level(), x, y, z);
+        if (railPos == null) {
+            return null;
+        }
+
+        BlockState state = entity.level().getBlockState(railPos);
+        if (!BaseRailBlock.isRail(state)) {
+            return null;
+        }
+
+        RailShape shape = ((BaseRailBlock) state.getBlock()).getRailDirection(state, entity.level(), railPos, entity);
+        int xt = railPos.getX();
+        int yt = railPos.getY();
+        int zt = railPos.getZ();
+
+        double currentY = yt;
+        if (shape.isSlope()) {
+            currentY = yt + 1.0D;
+        }
+
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
+        boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
+
+        double xD;
+        double zD;
+
+        if (isCurve) {
+            double circleCenterX = (double) xt + 0.5D + (double) (exit0.getX() + exit1.getX()) * 0.5D;
+            double circleCenterZ = (double) zt + 0.5D + (double) (exit0.getZ() + exit1.getZ()) * 0.5D;
+            double vx = x - circleCenterX;
+            double vz = z - circleCenterZ;
+            double dist = Math.sqrt(vx * vx + vz * vz);
+            double ux = dist > 1.0E-5D ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
+            double uz = dist > 1.0E-5D ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+            double tX = -uz;
+            double tZ = ux;
+            boolean movingExit0ToExit1 = (exit0.getX() == -facing.getStepX() && exit0.getZ() == -facing.getStepZ())
+                    || (exit1.getX() == facing.getStepX() && exit1.getZ() == facing.getStepZ());
+            double exitVecX = (exit1.getX() - exit0.getX()) * (movingExit0ToExit1 ? 1.0D : -1.0D);
+            double exitVecZ = (exit1.getZ() - exit0.getZ()) * (movingExit0ToExit1 ? 1.0D : -1.0D);
+            if (tX * exitVecX + tZ * exitVecZ < 0.0D) {
+                tX = -tX;
+                tZ = -tZ;
+            }
+            xD = tX;
+            zD = tZ;
+        } else {
+            xD = (double) (exit1.getX() - exit0.getX());
+            zD = (double) (exit1.getZ() - exit0.getZ());
+            double dirDot = xD * facing.getStepX() + zD * facing.getStepZ();
+            if (dirDot < 0.0D) {
+                xD = -xD;
+                zD = -zD;
+            }
+            double dd = Math.sqrt(xD * xD + zD * zD);
+            if (dd > 0.0D) {
+                xD /= dd;
+                zD /= dd;
+            }
+        }
+
+        x += xD * offset;
+        z += zD * offset;
+
+        if (exit0.getY() != 0 && Mth.floor(x) - xt == exit0.getX() && Mth.floor(z) - zt == exit0.getZ()) {
+            currentY += exit0.getY();
+        } else if (exit1.getY() != 0 && Mth.floor(x) - xt == exit1.getX() && Mth.floor(z) - zt == exit1.getZ()) {
+            currentY += exit1.getY();
+        }
+
+        return getRailPosForEntity(entity, x, currentY, z);
     }
 
     public static class RailPathLink {
@@ -1113,6 +1711,7 @@ public final class TrainChainingUtil {
         Vec3 prevPos = prev.position();
         Vec3 nextPos = next.position();
         double diffX = nextPos.x - prevPos.x;
+        double diffY = nextPos.y - prevPos.y;
         double diffZ = nextPos.z - prevPos.z;
         double horizChord = Math.hypot(diffX, diffZ);
 
@@ -1124,126 +1723,53 @@ public final class TrainChainingUtil {
         if (!BaseRailBlock.isRail(prevState) || !BaseRailBlock.isRail(nextState)) {
             double dirX = horizChord > 1.0E-4D ? diffX / horizChord : 1.0D;
             double dirZ = horizChord > 1.0E-4D ? diffZ / horizChord : 0.0D;
-            double dist = horizChord + 0.41421356D * Math.abs(nextPos.y - prevPos.y);
+            double dist = Math.sqrt(horizChord * horizChord + diffY * diffY);
             return new RailPathLink(dist, dirX, dirZ, false);
         }
 
-        if (prevRail.equals(nextRail)) {
-            RailShape shape = ((BaseRailBlock) nextState.getBlock()).getRailDirection(nextState, level, nextRail, next);
-            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
-            Vec3i exit0 = exits.getFirst();
-            Vec3i exit1 = exits.getSecond();
-            boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
-            double tX;
-            double tZ;
-            double dist;
+        RailShape prevShape = ((BaseRailBlock) prevState.getBlock()).getRailDirection(prevState, level, prevRail, prev instanceof AbstractMinecart pm ? pm : null);
+        RailShape nextShape = ((BaseRailBlock) nextState.getBlock()).getRailDirection(nextState, level, nextRail, next);
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(nextShape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
+        boolean nextIsCurve = !nextShape.isSlope() && nextShape != RailShape.NORTH_SOUTH && nextShape != RailShape.EAST_WEST;
+        boolean prevIsCurve = !prevShape.isSlope() && prevShape != RailShape.NORTH_SOUTH && prevShape != RailShape.EAST_WEST;
 
-            if (isCurve) {
-                double circleCenterX = nextRail.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
-                double circleCenterZ = nextRail.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
-                double vx = nextPos.x - circleCenterX;
-                double vz = nextPos.z - circleCenterZ;
-                double vLen = Math.sqrt(vx * vx + vz * vz);
-                double ux = vLen > 1.0E-5 ? vx / vLen : 0.70710678D * -(exit0.getX() + exit1.getX());
-                double uz = vLen > 1.0E-5 ? vz / vLen : 0.70710678D * -(exit0.getZ() + exit1.getZ());
-                tX = -uz;
-                tZ = ux;
-                if (tX * diffX + tZ * diffZ < 0.0) {
-                    tX = -tX;
-                    tZ = -tZ;
-                }
-                double pvX = prevPos.x - circleCenterX;
-                double pvZ = prevPos.z - circleCenterZ;
-                double anglePrev = Math.atan2(pvZ, pvX);
-                double angleNext = Math.atan2(vz, vx);
-                double deltaAngle = Math.abs(Mth.wrapDegrees((float) Math.toDegrees(angleNext - anglePrev)));
-                dist = Math.toRadians(deltaAngle) * 0.5D;
-            } else {
-                double xD = exit1.getX() - exit0.getX();
-                double zD = exit1.getZ() - exit0.getZ();
-                double length = Math.sqrt(xD * xD + zD * zD);
-                tX = length > 0 ? xD / length : (horizChord > 1.0E-4D ? diffX / horizChord : 1.0D);
-                tZ = length > 0 ? zD / length : (horizChord > 1.0E-4D ? diffZ / horizChord : 0.0D);
-                if (tX * diffX + tZ * diffZ < 0.0) {
-                    tX = -tX;
-                    tZ = -tZ;
-                }
-                dist = shape.isSlope() ? horizChord * 1.41421356D : horizChord;
-            }
-            return new RailPathLink(dist, tX, tZ, true);
+        double tX;
+        double tZ;
+        if (nextIsCurve) {
+            double circleCenterX = nextRail.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
+            double circleCenterZ = nextRail.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+            double vx = nextPos.x - circleCenterX;
+            double vz = nextPos.z - circleCenterZ;
+            double vLen = Math.sqrt(vx * vx + vz * vz);
+            double ux = vLen > 1.0E-5 ? vx / vLen : 0.70710678D * -(exit0.getX() + exit1.getX());
+            double uz = vLen > 1.0E-5 ? vz / vLen : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+            tX = -uz;
+            tZ = ux;
+        } else {
+            double xD = exit1.getX() - exit0.getX();
+            double zD = exit1.getZ() - exit0.getZ();
+            double length = Math.sqrt(xD * xD + zD * zD);
+            tX = length > 0 ? xD / length : (horizChord > 1.0E-4D ? diffX / horizChord : 1.0D);
+            tZ = length > 0 ? zD / length : (horizChord > 1.0E-4D ? diffZ / horizChord : 0.0D);
         }
 
-        // Trace up to 6 rail blocks from prevRail to nextRail
-        List<BlockPos> path = findRailPath(level, prevRail, nextRail, 6);
-        if (path != null && path.size() >= 2) {
-            // Found contiguous rail path!
-            BlockPos lastStep = path.get(path.size() - 2);
-            int stepInX = nextRail.getX() - lastStep.getX();
-            int stepInZ = nextRail.getZ() - lastStep.getZ();
-
-            RailShape nextShape = ((BaseRailBlock) nextState.getBlock()).getRailDirection(nextState, level, nextRail, next);
-            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(nextShape);
-            Vec3i exit0 = exits.getFirst();
-            Vec3i exit1 = exits.getSecond();
-            boolean isCurve = !nextShape.isSlope() && nextShape != RailShape.NORTH_SOUTH && nextShape != RailShape.EAST_WEST;
-            double tX;
-            double tZ;
-
-            if (isCurve) {
-                double circleCenterX = nextRail.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
-                double circleCenterZ = nextRail.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
-                double vx = nextPos.x - circleCenterX;
-                double vz = nextPos.z - circleCenterZ;
-                double vLen = Math.sqrt(vx * vx + vz * vz);
-                double ux = vLen > 1.0E-5 ? vx / vLen : 0.70710678D * -(exit0.getX() + exit1.getX());
-                double uz = vLen > 1.0E-5 ? vz / vLen : 0.70710678D * -(exit0.getZ() + exit1.getZ());
-                tX = -uz;
-                tZ = ux;
-                if (tX * stepInX + tZ * stepInZ < 0.0) {
-                    tX = -tX;
-                    tZ = -tZ;
-                }
-            } else {
-                double xD = exit1.getX() - exit0.getX();
-                double zD = exit1.getZ() - exit0.getZ();
-                double length = Math.sqrt(xD * xD + zD * zD);
-                tX = length > 0 ? xD / length : 1.0;
-                tZ = length > 0 ? zD / length : 0.0;
-                if (tX * stepInX + tZ * stepInZ < 0.0) {
-                    tX = -tX;
-                    tZ = -tZ;
-                }
-            }
-
-            // Path arc length estimation: sum of block arc segments
-            double totalArc = 0.0D;
-            for (int i = 0; i < path.size(); i++) {
-                BlockPos p = path.get(i);
-                BlockState st = level.getBlockState(p);
-                if (BaseRailBlock.isRail(st)) {
-                    RailShape sh = ((BaseRailBlock) st.getBlock()).getRailDirection(st, level, p, null);
-                    if (sh.isSlope()) {
-                        totalArc += 1.41421356D;
-                    } else if (sh != RailShape.NORTH_SOUTH && sh != RailShape.EAST_WEST) {
-                        totalArc += 0.78539816D; // pi/4
-                    } else {
-                        totalArc += 1.0D;
-                    }
-                }
-            }
-            // Adjust end offsets
-            totalArc -= 0.5D; // start and end centered
-            totalArc = Math.max(totalArc, 0.1D);
-            return new RailPathLink(totalArc, tX, tZ, true);
+        // Orient tangent at `next` so it points away from `prev` along the rail path
+        if (tX * diffX + tZ * diffZ < 0.0) {
+            tX = -tX;
+            tZ = -tZ;
         }
 
-        // Corner-aware Manhattan arc fallback
-        double minD = Math.min(Math.abs(diffX), Math.abs(diffZ));
-        double arcAdj = 0.2146D * Math.min(1.0D, minD / 0.5D);
-        double dist = (Math.abs(diffX) + Math.abs(diffZ) - arcAdj) + 0.41421356D * Math.abs(nextPos.y - prevPos.y);
-        double dirX = horizChord > 1.0E-4D ? diffX / horizChord : 1.0D;
-        double dirZ = horizChord > 1.0E-4D ? diffZ / horizChord : 0.0D;
-        return new RailPathLink(dist, dirX, dirZ, false);
+        // Continuous 3D chord distance between carts (never jumps discontinuously at block boundaries)
+        double dist = Math.sqrt(horizChord * horizChord + diffY * diffY);
+        if (nextIsCurve || prevIsCurve) {
+            // Smooth arc-to-chord compensation around 90-degree corners
+            double curveBlend = Math.min(1.0D, Math.abs(diffX) * Math.abs(diffZ) * 1.5D);
+            dist *= (1.0D + 0.045D * curveBlend);
+        }
+
+        return new RailPathLink(dist, tX, tZ, true);
     }
 
     private static @Nullable List<BlockPos> findRailPath(Level level, BlockPos start, BlockPos target, int maxDepth) {
@@ -1320,8 +1846,6 @@ public final class TrainChainingUtil {
             return !cart.horizontalCollision;
         }
 
-        cart.setDeltaMovement(dirX * distance3D, 0.0, dirZ * distance3D);
-
         RailShape shape = ((BaseRailBlock) railState.getBlock()).getRailDirection(railState, cart.level(), railPos, cart);
         Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
         Vec3i exit0 = exits.getFirst();
@@ -1331,78 +1855,48 @@ public final class TrainChainingUtil {
         double initialY = cart.getY();
         double initialZ = cart.getZ();
 
-        Direction cartDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
-                ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
-                : cart.getMotionDirection();
-        boolean uphillAhead = BaseRailBlock.isRail(cart.level().getBlockState(railPos.relative(cartDir).above()));
+        double x = initialX;
+        double y = initialY;
+        double z = initialZ;
 
-        double x0 = railPos.getX() + 0.5 + exit0.getX() * 0.5;
-        double z0 = railPos.getZ() + 0.5 + exit0.getZ() * 0.5;
-        double x1 = railPos.getX() + 0.5 + exit1.getX() * 0.5;
-        double z1 = railPos.getZ() + 0.5 + exit1.getZ() * 0.5;
-        double xD = x1 - x0;
-        double zD = z1 - z0;
-        double progress;
-        if (xD == 0.0) {
-            progress = cart.getZ() - railPos.getZ();
-        } else if (zD == 0.0) {
-            progress = cart.getX() - railPos.getX();
-        } else {
-            double xx = cart.getX() - x0;
-            double zz = cart.getZ() - z0;
-            progress = (xx * xD + zz * zD) * 2.0;
+        // Ensure cart is precisely on rail before computing velocity
+        Vec3 railSnap = getRailPosForEntity(cart, x, y, z);
+        if (railSnap != null) {
+            x = railSnap.x;
+            y = railSnap.y;
+            z = railSnap.z;
         }
 
         boolean isCurve = !shape.isSlope() && shape != RailShape.NORTH_SOUTH && shape != RailShape.EAST_WEST;
-        double x;
-        double z;
-        if (isCurve) {
-            Vec3 railPosVec = getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
-            if (railPosVec != null) {
-                x = railPosVec.x;
-                z = railPosVec.z;
-            } else {
-                x = x0 + xD * progress;
-                z = z0 + zD * progress;
-            }
-        } else {
-            x = x0 + xD * progress;
-            z = z0 + zD * progress;
-        }
-
-        double y = railPos.getY();
-        if (shape.isSlope() || uphillAhead) {
-            y = railPos.getY() + 1.0;
-        }
-        cart.setPos(x, y, z);
-
         double horizStep = shape.isSlope() ? distance3D * 0.70710678D : distance3D;
         double alignedVx;
         double alignedVz;
 
         if (isCurve) {
-            double circleCenterX = railPos.getX() + 0.5 + (exit0.getX() + exit1.getX()) * 0.5;
-            double circleCenterZ = railPos.getZ() + 0.5 + (exit0.getZ() + exit1.getZ()) * 0.5;
+            double circleCenterX = (double) railPos.getX() + 0.5D + (double) (exit0.getX() + exit1.getX()) * 0.5D;
+            double circleCenterZ = (double) railPos.getZ() + 0.5D + (double) (exit0.getZ() + exit1.getZ()) * 0.5D;
             double vx = x - circleCenterX;
             double vz = z - circleCenterZ;
             double dist = Math.sqrt(vx * vx + vz * vz);
-            double ux = dist > 1.0E-5 ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
-            double uz = dist > 1.0E-5 ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
+            double ux = dist > 1.0E-5D ? vx / dist : 0.70710678D * -(exit0.getX() + exit1.getX());
+            double uz = dist > 1.0E-5D ? vz / dist : 0.70710678D * -(exit0.getZ() + exit1.getZ());
             double tX = -uz;
             double tZ = ux;
-            if (tX * dirX + tZ * dirZ < 0.0) {
+            if (tX * dirX + tZ * dirZ < 0.0D) {
                 tX = -tX;
                 tZ = -tZ;
             }
             alignedVx = horizStep * tX;
             alignedVz = horizStep * tZ;
         } else {
+            double xD = (double) (exit1.getX() - exit0.getX());
+            double zD = (double) (exit1.getZ() - exit0.getZ());
             double length = Math.sqrt(xD * xD + zD * zD);
             alignedVx = dirX * horizStep;
             alignedVz = dirZ * horizStep;
-            if (length > 0.0) {
+            if (length > 0.0D) {
                 double flip = dirX * xD + dirZ * zD;
-                if (flip < 0.0) {
+                if (flip < 0.0D) {
                     xD = -xD;
                     zD = -zD;
                 }
@@ -1411,7 +1905,11 @@ public final class TrainChainingUtil {
             }
         }
 
-        cart.setDeltaMovement(alignedVx, 0.0, alignedVz);
+        // Pre-lift Y on slopes before horizontal move() so cart cleanly clears stair-step roadbed collisions
+        if (shape.isSlope()) {
+            y = (double) railPos.getY() + 1.0D;
+        }
+        cart.setPos(x, y, z);
 
         // Suppress same-consist carts' bounding boxes temporarily during cart.move() so they never bind on corners
         List<Pair<AbstractMinecart, AABB>> savedBoxes = new ArrayList<>();
@@ -1431,19 +1929,14 @@ public final class TrainChainingUtil {
             }
         }
 
-        if (shape.isSlope()) {
-            Vec3i lowerExit = exit0.getY() == 0 ? exit0 : exit1;
-            Vec3i upperExit = exit0.getY() > 0 ? exit0 : exit1;
-            if (Mth.floor(cart.getX()) - railPos.getX() == upperExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == upperExit.getZ()) {
-                cart.setPos(cart.getX(), cart.getY() + 1.0, cart.getZ());
-            } else if (Mth.floor(cart.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == lowerExit.getZ()) {
-                BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
-                if (BaseRailBlock.isRail(cart.level().getBlockState(lowerRail))) {
-                    cart.setPos(cart.getX(), cart.getY() - 1.0, cart.getZ());
-                }
-            }
+        // Vanilla slope step-up / step-down check
+        if (exit0.getY() != 0 && Mth.floor(cart.getX()) - railPos.getX() == exit0.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == exit0.getZ()) {
+            cart.setPos(cart.getX(), cart.getY() + (double) exit0.getY(), cart.getZ());
+        } else if (exit1.getY() != 0 && Mth.floor(cart.getX()) - railPos.getX() == exit1.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == exit1.getZ()) {
+            cart.setPos(cart.getX(), cart.getY() + (double) exit1.getY(), cart.getZ());
         }
 
+        // Snap precisely onto the rail surface
         Vec3 newRailPos = getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
         if (newRailPos != null) {
             cart.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
@@ -1452,10 +1945,37 @@ public final class TrainChainingUtil {
         double actualDx = cart.getX() - initialX;
         double actualDy = cart.getY() - initialY;
         double actualDz = cart.getZ() - initialZ;
-        double actual3D = Math.sqrt(actualDx * actualDx + actualDy * actualDy + actualDz * actualDz);
 
-        if (actualDx * actualDx + actualDz * actualDz > 1.0E-5D) {
-            float yaw = (float) (Mth.atan2(-actualDz, -actualDx) * 180.0 / Math.PI);
+        // Pivot cart yaw around corners using its Front and Rear Connection Points on the rail
+        double moveDistSq = actualDx * actualDx + actualDz * actualDz;
+        if (moveDistSq > 1.0E-5D) {
+            double moveLen = Math.sqrt(moveDistSq);
+            double mDirX = actualDx / moveLen;
+            double mDirZ = actualDz / moveLen;
+            double pivotRadius = getCartCouplerRadius(cart);
+            Direction moveFacing = Direction.getApproximateNearest(mDirX, 0.0, mDirZ);
+
+            float yaw;
+            if (isCurve) {
+                Vec3 frontPivot = getRailPosOffs(cart, cart.getX(), cart.getY(), cart.getZ(), pivotRadius, moveFacing);
+                Vec3 rearPivot = getRailPosOffs(cart, cart.getX(), cart.getY(), cart.getZ(), -pivotRadius, moveFacing);
+
+                double chordDx = actualDx;
+                double chordDz = actualDz;
+                if (frontPivot != null && rearPivot != null) {
+                    double pDx = frontPivot.x - rearPivot.x;
+                    double pDz = frontPivot.z - rearPivot.z;
+                    if (pDx * pDx + pDz * pDz > 1.0E-4D) {
+                        chordDx = pDx;
+                        chordDz = pDz;
+                    }
+                }
+                yaw = (float) (Mth.atan2(chordDz, chordDx) * 180.0 / Math.PI) - 90.0F;
+            } else {
+                // Slopes and straight rails are strictly aligned to the track axis direction
+                yaw = moveFacing.toYRot();
+            }
+
             if (cart.isFlipped()) {
                 yaw += 180.0F;
             }
@@ -1465,24 +1985,33 @@ public final class TrainChainingUtil {
             cart.setYRot(yaw);
         }
 
-        cart.setDeltaMovement(Vec3.ZERO);
+        // Set cart pitch on slope rails
+        float targetPitch = 0.0F;
+        if (shape.isSlope()) {
+            Vec3i upper = exit0.getY() > 0 ? exit0 : exit1;
+            Direction moveFacing = (moveDistSq > 1.0E-5D)
+                    ? Direction.getApproximateNearest(actualDx, 0.0, actualDz)
+                    : cart.getMotionDirection();
+            boolean movingUphill = (upper.getX() == moveFacing.getStepX() && upper.getZ() == moveFacing.getStepZ());
+            targetPitch = movingUphill ? -45.0F : 45.0F;
+        }
+        cart.setXRot(targetPitch);
+        cart.xRotO = targetPitch;
+
+        if (isPartOfRunningTrain(cart) || isConsistWithLocomotive(cart)) {
+            cart.setDeltaMovement(Vec3.ZERO);
+        } else {
+            cart.setDeltaMovement(actualDx, actualDy, actualDz);
+        }
+        cart.needsSync = true;
 
         boolean offRails = (newRailPos == null);
-        boolean blocked = false;
-        if (offRails) {
-            blocked = true;
-        } else {
-            boolean madeProgress = actual3D >= distance3D * 0.3D || actual3D > 0.03D;
-            if (!madeProgress && BasicLocomotiveEntity.isPathBlockedByObstacle(cart.level(), railPos, cartDir, cart)) {
-                blocked = true;
-            }
-        }
-        return !blocked;
+        return !offRails && !cart.horizontalCollision;
     }
 
     /**
-     * Unified consist cart movement handler supporting all locomotive types.
-     * Handles center-to-center arc coupling, corner curve alignment, and atomic stall rollback.
+     * Unified consist cart movement handler supporting all locomotive types and unpowered rolling stock.
+     * Propagates push/pull forces neighbor-to-neighbor through each cart's Front and Rear Connection Points.
      */
     public static List<Pair<Entity, AbstractMinecart>> getOrderedTrainLinks(AbstractMinecart root) {
         List<Pair<Entity, AbstractMinecart>> result = new ArrayList<>();
@@ -1537,8 +2066,8 @@ public final class TrainChainingUtil {
         }
 
         boolean moving = isLocomotiveActive(loco) || loco.getDeltaMovement().horizontalDistanceSqr() > 1.0E-4D;
-        double locoSpeed = getLocomotiveSpeed(loco);
-        double maxStep = moving ? Math.max(locoSpeed * 1.6D, 0.25D) : 0.15D;
+        double locoSpeed = isLocomotiveActive(loco) ? getLocomotiveSpeed(loco) : loco.getDeltaMovement().horizontalDistance();
+        double maxStep = moving ? Math.max(locoSpeed * 3.0D, 1.20D) : 0.50D;
 
         List<AbstractMinecart> consistCarts = new ArrayList<>();
         consistCarts.add(loco);
@@ -1554,15 +2083,17 @@ public final class TrainChainingUtil {
             RailPathLink railLink = traceRailLink(loco.level(), prev, cart);
             double trackDist = railLink.distance;
 
+            // Target distance between cart centers = prev's connection point radius + cart's connection point radius + COUPLER_GAP
             double targetDist = getTargetCouplingDistance(prev, cart, cart.getX() - prev.getX(), cart.getZ() - prev.getZ());
-            double minAllowed = moving ? (targetDist - 0.08D) : (targetDist - 0.12D);
-            double maxAllowed = moving ? (targetDist + 0.08D) : (targetDist + 0.12D);
+            double deadband = 0.025D;
+            double minAllowed = targetDist - deadband;
+            double maxAllowed = targetDist + deadband;
 
             double tangentX = railLink.tangentX;
             double tangentZ = railLink.tangentZ;
 
             if (trackDist > maxAllowed) {
-                // Cart is lagging behind prev -> pull cart along rails toward prev
+                // Pull force transmitted through connection points: pull cart along rails toward prev
                 double needed = Math.min(trackDist - targetDist, maxStep);
                 boolean success = moveConsistCartAlongRails(cart, -tangentX, -tangentZ, needed, consistCarts);
                 if (!success && moving && isLocomotiveRunning(loco)) {
@@ -1570,7 +2101,7 @@ public final class TrainChainingUtil {
                     break;
                 }
             } else if (trackDist < minAllowed) {
-                // Cart is too close to prev -> push cart along rails away from prev
+                // Push force transmitted through connection points: push cart along rails away from prev
                 double needed = Math.min(targetDist - trackDist, maxStep);
                 boolean success = moveConsistCartAlongRails(cart, tangentX, tangentZ, needed, consistCarts);
                 if (!success && moving && isLocomotiveRunning(loco)) {
@@ -1582,7 +2113,9 @@ public final class TrainChainingUtil {
                 if (snapped != null) {
                     cart.setPos(snapped.x, snapped.y, snapped.z);
                 }
-                cart.setDeltaMovement(Vec3.ZERO);
+                if (!moving) {
+                    cart.setDeltaMovement(Vec3.ZERO);
+                }
             }
         }
 
@@ -1616,7 +2149,6 @@ public final class TrainChainingUtil {
 
         return false;
     }
-
     public static void pushCartFromLocomotiveBumper(AbstractMinecart loco, AbstractMinecart otherCart) {
         if (loco.level().isClientSide() || isConnectedInSameTrain(loco, otherCart)) {
             return;
@@ -1637,10 +2169,10 @@ public final class TrainChainingUtil {
         double locoSpeed = getLocomotiveSpeed(loco);
 
         if (penetration > -0.05D) {
-            double pushDist = Math.max(penetration + 0.05D, Math.max(locoSpeed, 0.2D));
+            double pushDist = Math.max(penetration + 0.05D, Math.max(locoSpeed, 0.05D));
             moveCartAlongRails(otherCart, bumperDirX, bumperDirZ, pushDist);
 
-            double pushSpeed = Math.max(locoSpeed, 0.35D);
+            double pushSpeed = Math.max(locoSpeed, 0.05D);
             otherCart.setDeltaMovement(
                     bumperDirX * pushSpeed,
                     otherCart.getDeltaMovement().y,
@@ -1718,7 +2250,7 @@ public final class TrainChainingUtil {
         double penetration = contactDist - distAlongTravel;
 
         if (penetration > -0.05D) {
-            double pushDist = Math.max(penetration + 0.05D, Math.max(locoSpeed, 0.2D));
+            double pushDist = Math.max(penetration + 0.05D, Math.max(locoSpeed, 0.05D));
             boolean allMoved = true;
 
             for (AbstractMinecart cart : unlinkedCarts) {
@@ -1729,7 +2261,7 @@ public final class TrainChainingUtil {
                 if (!ok) {
                     allMoved = false;
                 }
-                double pushSpeed = Math.max(locoSpeed, 0.35D);
+                double pushSpeed = Math.max(locoSpeed, 0.05D);
                 cart.setDeltaMovement(pDirX * pushSpeed, cart.getDeltaMovement().y, pDirZ * pushSpeed);
                 cart.needsSync = true;
             }
@@ -1740,17 +2272,27 @@ public final class TrainChainingUtil {
             double postDist = postDx * travelDir.getStepX() + postDz * travelDir.getStepZ();
             double postPenetration = contactDist - postDist;
 
-            if (postPenetration > 0.15D && !allMoved) {
-                // Cart chain blocked by obstacle/buffer stop: revert locomotive to prevent merging and halt
-                loco.setPos(initialLocoX, initialLocoY, initialLocoZ);
-                Vec3 railPos = getRailPosForEntity(loco, initialLocoX, initialLocoY, initialLocoZ);
-                if (railPos != null) {
-                    loco.setPos(railPos.x, railPos.y, railPos.z);
+            if (postPenetration > 0.01D) {
+                if (!allMoved || postPenetration > 0.25D) {
+                    // Cart chain blocked by obstacle/buffer stop: revert locomotive to prevent merging and halt
+                    loco.setPos(initialLocoX, initialLocoY, initialLocoZ);
+                    Vec3 railPos = getRailPosForEntity(loco, initialLocoX, initialLocoY, initialLocoZ);
+                    if (railPos != null) {
+                        loco.setPos(railPos.x, railPos.y, railPos.z);
+                    }
+                    loco.setDeltaMovement(Vec3.ZERO);
+                    stopLocomotive(loco);
+                    syncTrainConsist(loco, false, getLocomotiveSpeedLevel(loco), isLocomotiveReversed(loco));
+                    loco.level().playSound(null, loco.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.7F, 1.2F);
+                } else {
+                    // Prevent phasing: clamp locomotive position so it pushes exactly from connection bumper
+                    double clampX = closestCart.getX() - travelDir.getStepX() * contactDist;
+                    double clampZ = closestCart.getZ() - travelDir.getStepZ() * contactDist;
+                    Vec3 clampedRail = getRailPosForEntity(loco, clampX, loco.getY(), clampZ);
+                    if (clampedRail != null) {
+                        loco.setPos(clampedRail.x, clampedRail.y, clampedRail.z);
+                    }
                 }
-                loco.setDeltaMovement(Vec3.ZERO);
-                stopLocomotive(loco);
-                syncTrainConsist(loco, false, getLocomotiveSpeedLevel(loco), isLocomotiveReversed(loco));
-                loco.level().playSound(null, loco.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.7F, 1.2F);
             }
         }
     }

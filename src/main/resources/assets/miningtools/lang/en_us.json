@@ -88,5 +88,20 @@
   "item.miningtools.remote_detonator": "Remote Detonator",
   "item.miningtools.hopper_cart": "Aggregate Hopper Car",
   "entity.miningtools.hopper_cart": "Aggregate Hopper Car",
-  "container.miningtools.hopper_cart": "Aggregate Hopper Car"
+  "container.miningtools.hopper_cart": "Aggregate Hopper Car",
+  "block.miningtools.braking_rail": "Braking & Holding Rail",
+  "item.miningtools.braking_rail": "Braking & Holding Rail",
+  "block.miningtools.cargo_loader": "Trackside Cargo Loader",
+  "item.miningtools.cargo_loader": "Trackside Cargo Loader",
+  "block.miningtools.cargo_unloader": "Trackside Cargo Unloader",
+  "item.miningtools.cargo_unloader": "Trackside Cargo Unloader",
+  "block.miningtools.fluid_unloader": "Trackside Fluid Unloader",
+  "item.miningtools.fluid_unloader": "Trackside Fluid Unloader",
+  "block.miningtools.coal_fueler": "Locomotive Coaling Station",
+  "item.miningtools.coal_fueler": "Locomotive Coaling Station",
+  "block.miningtools.diesel_fueler": "Locomotive Diesel Fueling Station",
+  "item.miningtools.diesel_fueler": "Locomotive Diesel Fueling Station",
+  "item.miningtools.generator_cart": "Generator Train Cart",
+  "entity.miningtools.generator_cart": "Generator Train Cart",
+  "container.miningtools.generator_cart": "Generator Train Cart"
 }

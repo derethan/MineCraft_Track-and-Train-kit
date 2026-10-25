@@ -120,7 +120,7 @@ public class CrowbarItem extends Item {
             clearSelectedCart(stack);
             serverLevel.playSound(null, cart.blockPosition(), SoundEvents.DISPENSER_FAIL, SoundSource.PLAYERS, 0.7F, 1.2F);
             player.sendOverlayMessage(
-                    Component.literal("Cannot attach carts to the back of a Caboose! It must remain the end of the train.")
+                    Component.literal("Could not couple these carts.")
                             .withStyle(ChatFormatting.RED)
             );
             return InteractionResult.SUCCESS;

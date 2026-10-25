@@ -1,5 +1,7 @@
 package com.example.miningtools.entity;
 
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+
 import net.minecraft.core.BlockPos;
 
 import com.example.miningtools.util.TrainChainingUtil;
@@ -421,6 +423,9 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         updateStoredCount();
     }
 
+
+
+
     @Override
     public boolean canCollideWith(Entity entity) {
         if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
@@ -430,15 +435,33 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
     }
 
     @Override
-    public void push(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
         }
-        super.push(entity);
+        return super.canBeCollidedWith(other);
     }
 
     @Override
-    public BlockPos getCurrentBlockPosOrRailBelow() {
+    public net.minecraft.core.BlockPos getCurrentBlockPosOrRailBelow() {
         return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
+    @Override
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public void tick() {
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
+    }
+
+    @Override
+    protected Vec3 applyNaturalSlowdown(Vec3 deltaMovement) {
+        return TrainChainingUtil.applyRollingStockSlowdown(this, deltaMovement);
     }
 }

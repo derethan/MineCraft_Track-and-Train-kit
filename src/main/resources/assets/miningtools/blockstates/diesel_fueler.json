@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "miningtools:block/diesel_fueler", "y": 0 },
+    "facing=east":  { "model": "miningtools:block/diesel_fueler", "y": 90 },
+    "facing=south": { "model": "miningtools:block/diesel_fueler", "y": 180 },
+    "facing=west":  { "model": "miningtools:block/diesel_fueler", "y": 270 }
+  }
+}

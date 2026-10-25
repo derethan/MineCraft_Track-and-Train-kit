@@ -87,7 +87,16 @@ public class LivestockCartEntity extends AbstractMinecart {
         }
 
         if (player.isSecondaryUseActive()) {
-            return InteractionResult.PASS;
+            if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+                int count = this.getPassengers().size();
+                String statusStr = "Occupancy: " + count + " / 2 Animals";
+                String existing = this.getCustomName() != null ? this.getCustomName().getString().trim() : "";
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
+                        sp,
+                        new com.example.miningtools.network.CartRenameOpenPayload(this.getId(), existing, "Livestock Cart", statusStr)
+                );
+            }
+            return InteractionResult.SUCCESS;
         }
 
         Level level = this.level();
@@ -116,33 +125,7 @@ public class LivestockCartEntity extends AbstractMinecart {
         return InteractionResult.SUCCESS;
     }
 
-    @Override
-    public boolean canCollideWith(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return false;
-        }
-        return super.canCollideWith(entity);
-    }
 
-    @Override
-    public void push(Entity entity) {
-        if (!this.level().isClientSide()) {
-            if (!entity.noPhysics && !this.noPhysics) {
-                if (!this.hasPassenger(entity)) {
-                    if (this.canFitMorePassengers()
-                            && entity instanceof LivingEntity
-                            && !(entity instanceof Player)
-                            && entity.getBbWidth() <= 1.5F) {
-                        entity.startRiding(this);
-                    }
-                }
-            }
-        }
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
-        }
-        super.push(entity);
-    }
 
     @Override
     protected void positionRider(Entity passenger, Entity.MoveFunction moveFunction) {
@@ -178,8 +161,43 @@ public class LivestockCartEntity extends AbstractMinecart {
         }
     }
 
+
     @Override
-    public BlockPos getCurrentBlockPosOrRailBelow() {
+    public boolean canCollideWith(Entity entity) {
+        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
+            return false;
+        }
+        return super.canCollideWith(entity);
+    }
+
+    @Override
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
+        }
+        return super.canBeCollidedWith(other);
+    }
+
+    @Override
+    public net.minecraft.core.BlockPos getCurrentBlockPosOrRailBelow() {
         return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
+    @Override
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public void tick() {
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
+    }
+
+    @Override
+    protected Vec3 applyNaturalSlowdown(Vec3 deltaMovement) {
+        return TrainChainingUtil.applyRollingStockSlowdown(this, deltaMovement);
     }
 }

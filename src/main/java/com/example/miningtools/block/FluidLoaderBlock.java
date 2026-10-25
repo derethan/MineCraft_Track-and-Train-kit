@@ -4,6 +4,7 @@ import org.jspecify.annotations.Nullable;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.block.entity.FluidLoaderBlockEntity;
+import com.example.miningtools.network.FluidLoaderSyncPayload;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -31,24 +32,48 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.transfer.fluid.FluidUtil;
 
 public class FluidLoaderBlock extends Block implements EntityBlock {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
+    public static final int ROLE_LOADER = 0;
+    public static final int ROLE_UNLOADER = 1;
+    public static final int ROLE_DIESEL_FUELER = 2;
+
+    private final int stationRole;
+
     public FluidLoaderBlock(BlockBehaviour.Properties properties) {
+        this(ROLE_LOADER, properties);
+    }
+
+    public FluidLoaderBlock(int stationRole, BlockBehaviour.Properties properties) {
         super(properties);
+        this.stationRole = stationRole;
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
-                .setValue(POWERED, false));
+                .setValue(POWERED, true));
+    }
+
+    public int getStationRole() {
+        return this.stationRole;
+    }
+
+    public boolean isDieselFueler() {
+        return this.stationRole == ROLE_DIESEL_FUELER;
+    }
+
+    public boolean isDefaultUnloader() {
+        return this.stationRole == ROLE_UNLOADER;
     }
 
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         return this.defaultBlockState()
                 .setValue(FACING, context.getHorizontalDirection().getOpposite())
-                .setValue(POWERED, false);
+                .setValue(POWERED, true);
     }
 
     @Override
@@ -88,6 +113,16 @@ public class FluidLoaderBlock extends Block implements EntityBlock {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof FluidLoaderBlockEntity loader && player instanceof ServerPlayer serverPlayer) {
                 serverPlayer.openMenu(loader, pos);
+                PacketDistributor.sendToPlayer(
+                        serverPlayer,
+                        new FluidLoaderSyncPayload(
+                                loader.getStationRole(),
+                                loader.getFluidWhitelist(),
+                                loader.getFluidBlacklist(),
+                                loader.getCartWhitelist(),
+                                loader.getCartBlacklist()
+                        )
+                );
             }
         }
         return InteractionResult.SUCCESS;

@@ -39,6 +39,7 @@ public class LivestockCartRenderer extends AbstractMinecartRenderer<LivestockCar
     @Override
     public void extractRenderState(LivestockCartEntity entity, LivestockCartRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
+        CartRenderHelper.updateRailRenderState(entity, state);
     }
 
     @Override

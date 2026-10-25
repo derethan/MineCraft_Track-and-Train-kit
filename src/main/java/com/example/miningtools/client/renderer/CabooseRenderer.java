@@ -39,6 +39,7 @@ public class CabooseRenderer extends AbstractMinecartRenderer<CabooseMinecartEnt
     @Override
     public void extractRenderState(CabooseMinecartEntity entity, CabooseRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
+        CartRenderHelper.updateRailRenderState(entity, state);
         state.isAnchoring = entity.isAnchorActive();
         state.forcedChunkCount = entity.getForcedChunkCount();
     }

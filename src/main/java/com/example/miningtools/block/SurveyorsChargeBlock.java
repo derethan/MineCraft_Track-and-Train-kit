@@ -53,6 +53,7 @@ public class SurveyorsChargeBlock extends Block {
             "minecraft:red_sandstone",
             "minecraft:gravel",
             "minecraft:water",
+            "minecraft:lava",
             "minecraft:bedrock",
             "minecraft:netherrack",
             "minecraft:basalt",
@@ -197,7 +198,7 @@ public class SurveyorsChargeBlock extends Block {
             lowestBlastedY = y;
         }
 
-        // 2. Perform geological scan in configured radius around charge
+        // 2. Perform geological column scan in configured radius from charge down to bedrock
         int radius = getScanRadius();
         Set<String> ignored = getIgnoredBlocks();
         Set<String> extraReport = getExtraReportBlocks();
@@ -207,13 +208,16 @@ public class SurveyorsChargeBlock extends Block {
         int oilSourceBlocks = 0;
         int rSq = radius * radius;
 
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
+        int topY = pos.getY();
+        int bottomY = level.getMinY();
+
+        for (int y = topY; y >= bottomY; y--) {
+            for (int dx = -radius; dx <= radius; dx++) {
                 for (int dz = -radius; dz <= radius; dz++) {
-                    if (dx * dx + dy * dy + dz * dz > rSq) {
+                    if (dx * dx + dz * dz > rSq) {
                         continue;
                     }
-                    BlockPos scanPos = pos.offset(dx, dy, dz);
+                    BlockPos scanPos = new BlockPos(pos.getX() + dx, y, pos.getZ() + dz);
                     BlockState scanState = level.getBlockState(scanPos);
                     FluidState fluidState = level.getFluidState(scanPos);
 
@@ -245,15 +249,16 @@ public class SurveyorsChargeBlock extends Block {
 
         // 3. Format Geological Survey Report
         List<Component> report = new ArrayList<>();
-        report.add(Component.literal("§6§m============================================="));
-        report.add(Component.literal("§6§l[Surveyor's Charge] §eGeological Survey Report"));
-        report.add(Component.literal(String.format("§7Location: §f[%d, %d, %d] §8| §7Scan Radius: §f%d blocks",
+        report.add(Component.literal("\u00a76\u00a7m============================================="));
+        report.add(Component.literal("\u00a76\u00a7l[Surveyor's Charge] \u00a7eGeological Survey Report"));
+        report.add(Component.literal(String.format("\u00a77Location: \u00a7f[%d, %d, %d] \u00a78| \u00a77Column Radius: \u00a7f%d blocks",
                 pos.getX(), pos.getY(), pos.getZ(), radius)));
         int depth = Math.max(0, startY - lowestBlastedY + 1);
-        report.add(Component.literal(String.format("§7Borehole blasted from Y=§f%d §7down to Y=§f%d §8(%d blocks deep)",
+        report.add(Component.literal(String.format("\u00a77Borehole blasted from Y=\u00a7f%d \u00a77down to Y=\u00a7f%d \u00a78(%d blocks deep)",
                 startY, lowestBlastedY, depth)));
-        report.add(Component.literal("§6§m---------------------------------------------"));
-
+        report.add(Component.literal(String.format("\u00a77Survey Column: Y=\u00a7f%d \u00a77down to bedrock Y=\u00a7f%d \u00a78(%d blocks tall)",
+                topY, bottomY, (topY - bottomY + 1))));
+        report.add(Component.literal("\u00a76\u00a7m---------------------------------------------"));
         // Oil findings
         if (totalOilBlocks > 0) {
             report.add(Component.literal(String.format("§6★ §e§lOil Deposits Detected: §a%d block(s) §r§7(%d source reservoir(s))",

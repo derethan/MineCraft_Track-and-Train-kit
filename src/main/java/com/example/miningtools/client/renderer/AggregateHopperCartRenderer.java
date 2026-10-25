@@ -51,6 +51,7 @@ public class AggregateHopperCartRenderer extends AbstractMinecartRenderer<Aggreg
     @Override
     public void extractRenderState(AggregateHopperCartEntity entity, AggregateHopperCartRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
+        CartRenderHelper.updateRailRenderState(entity, state);
         state.storedCount = entity.getStoredCount();
         state.aggregateType = entity.getAggregateType();
         state.filterItem = entity.getFilterItem();

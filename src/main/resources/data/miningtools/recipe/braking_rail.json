@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "S": "minecraft:stick",
+    "R": "minecraft:redstone",
+    "C": "minecraft:cobblestone"
+  },
+  "pattern": [
+    "ICI",
+    "ISI",
+    "IRI"
+  ],
+  "result": {
+    "count": 6,
+    "id": "miningtools:braking_rail"
+  }
+}

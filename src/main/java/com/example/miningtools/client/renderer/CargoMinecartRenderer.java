@@ -47,6 +47,7 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
     @Override
     public void extractRenderState(CargoMinecartEntity entity, CargoMinecartRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
+        CartRenderHelper.updateRailRenderState(entity, state);
         state.filterItem = entity.getFilterItem();
         state.filterType = entity.getFilterType();
         state.storedCount = entity.getStoredCount();

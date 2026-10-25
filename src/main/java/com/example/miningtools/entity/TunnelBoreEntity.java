@@ -368,6 +368,16 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     }
 
     @Override
+    public boolean canPlaceItem(int index, ItemStack stack) {
+        return false;
+    }
+
+    @Override
+    public boolean canTakeItem(net.minecraft.world.Container target, int index, ItemStack stack) {
+        return false;
+    }
+
+    @Override
     public boolean isPushable() {
         return false;
     }

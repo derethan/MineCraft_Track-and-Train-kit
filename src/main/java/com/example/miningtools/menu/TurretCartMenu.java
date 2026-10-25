@@ -63,6 +63,10 @@ public class TurretCartMenu extends AbstractContainerMenu {
         this.addStandardInventorySlots(playerInventory, 8, 84);
     }
 
+    public Container getContainer() {
+        return this.container;
+    }
+
     @Override
     public boolean stillValid(Player player) {
         return this.container.stillValid(player);

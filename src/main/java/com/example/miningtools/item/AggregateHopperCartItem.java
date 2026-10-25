@@ -60,6 +60,9 @@ public class AggregateHopperCartItem extends Item {
             Vec3 spawnPos = new Vec3(targetPos.getX() + 0.5, targetPos.getY() + 0.0625 + offset, targetPos.getZ() + 0.5);
 
             AggregateHopperCartEntity cart = new AggregateHopperCartEntity(level, spawnPos.x, spawnPos.y, spawnPos.z);
+            float initialYaw = (shape == RailShape.EAST_WEST || shape == RailShape.ASCENDING_EAST || shape == RailShape.ASCENDING_WEST) ? 90.0F : 0.0F;
+            cart.setYRot(initialYaw);
+            cart.yRotO = initialYaw;
             ItemStack itemStack = context.getItemInHand();
             if (itemStack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
                 cart.setCustomName(itemStack.getHoverName());

@@ -88,8 +88,16 @@ public class CabooseMinecartEntity extends AbstractMinecart {
     }
 
     @Override
+    public BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
+    @Override
     public void tick() {
-        super.tick();
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
 
         if (this.level().isClientSide()) {
             // Visual client effects: gentle transparent stove smoke rising from the rooftop chimney
@@ -226,11 +234,15 @@ public class CabooseMinecartEntity extends AbstractMinecart {
         }
 
         if (player.isSecondaryUseActive()) {
-            // Shift right click displays chunk anchor status
-            if (!this.level().isClientSide()) {
+            // Shift right click opens Caboose Rename & Chunk Anchor GUI
+            if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
                 int count = this.getForcedChunkCount();
-                Component msg = Component.literal("Caboose Chunk Anchor: ACTIVE (" + count + " Chunks Forced - Train Protected)");
-                player.sendOverlayMessage(msg);
+                String statusStr = "Chunk Anchor: ACTIVE (" + count + " Chunks Forced)";
+                String existing = this.getCustomName() != null ? this.getCustomName().getString().trim() : "";
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
+                        sp,
+                        new com.example.miningtools.network.CartRenameOpenPayload(this.getId(), existing, "Train Caboose", statusStr)
+                );
             }
             return InteractionResult.SUCCESS;
         }
@@ -262,6 +274,9 @@ public class CabooseMinecartEntity extends AbstractMinecart {
         return 0;
     }
 
+
+
+
     @Override
     public boolean canCollideWith(Entity entity) {
         if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
@@ -271,15 +286,20 @@ public class CabooseMinecartEntity extends AbstractMinecart {
     }
 
     @Override
-    public void push(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
         }
-        super.push(entity);
+        return super.canBeCollidedWith(other);
     }
 
     @Override
-    public BlockPos getCurrentBlockPosOrRailBelow() {
-        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    protected Vec3 applyNaturalSlowdown(Vec3 deltaMovement) {
+        return TrainChainingUtil.applyRollingStockSlowdown(this, deltaMovement);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.miningtools.menu;
 
 import com.example.miningtools.MiningTools;
+import com.example.miningtools.block.FluidLoaderBlock;
 import com.example.miningtools.block.entity.FluidLoaderBlockEntity;
 
 import net.minecraft.world.Container;
@@ -15,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class FluidLoaderMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = FluidLoaderBlockEntity.CONTAINER_SIZE; // 2
-    public static final int DATA_COUNT = 8;
+    public static final int DATA_COUNT = 9;
 
     private final Container container;
     private final ContainerData data;
@@ -35,21 +36,25 @@ public class FluidLoaderMenu extends AbstractContainerMenu {
         container.startOpen(playerInventory.player);
 
         // Slot 0: Bucket Input slot
-        this.addSlot(new Slot(container, FluidLoaderBlockEntity.SLOT_INPUT, 88, 59));
+        this.addSlot(new Slot(container, FluidLoaderBlockEntity.SLOT_INPUT, 88, 57));
 
         // Slot 1: Bucket Output slot
-        this.addSlot(new Slot(container, FluidLoaderBlockEntity.SLOT_OUTPUT, 142, 59) {
+        this.addSlot(new Slot(container, FluidLoaderBlockEntity.SLOT_OUTPUT, 142, 57) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
             }
         });
 
-        // Player Inventory & Hotbar (3 rows at y=84, hotbar at y=142)
-        this.addStandardInventorySlots(playerInventory, 8, 84);
+        // Player Inventory & Hotbar (3 rows at y=140, hotbar at y=198)
+        this.addStandardInventorySlots(playerInventory, 8, 140);
 
         // Data slots
         this.addDataSlots(data);
+    }
+
+    public Container getContainer() {
+        return this.container;
     }
 
     public int getStationFluidAmount() {
@@ -82,21 +87,33 @@ public class FluidLoaderMenu extends AbstractContainerMenu {
         return this.data.get(6) != 0;
     }
 
-    public boolean isRedstonePowered() {
+    public boolean isHoldingCart() {
         return this.data.get(7) != 0;
+    }
+
+    public int getStationRole() {
+        return this.data.get(8);
+    }
+
+    public boolean isDieselFueler() {
+        return this.getStationRole() == FluidLoaderBlock.ROLE_DIESEL_FUELER;
     }
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
         if (id == 0) {
-            // Cycle Transfer Mode: UNLOAD -> LOAD -> AUTO -> UNLOAD
-            int current = getTransferMode();
-            this.data.set(2, (current + 1) % 3);
+            if (!this.isDieselFueler()) {
+                int current = getTransferMode();
+                this.data.set(2, (current + 1) % 3);
+            }
             return true;
         } else if (id == 1) {
-            // Cycle Redstone Mode: WHEN_EMPTY -> WHEN_FULL -> WHEN_DONE -> DISABLED -> WHEN_EMPTY
             int current = getRedstoneMode();
-            this.data.set(3, (current + 1) % 4);
+            int next = (current + 1) % 4;
+            if (this.isDieselFueler() && next == FluidLoaderBlockEntity.REDSTONE_WHEN_EMPTY) {
+                next = FluidLoaderBlockEntity.REDSTONE_WHEN_FULL;
+            }
+            this.data.set(3, next);
             return true;
         }
         return false;
@@ -117,12 +134,10 @@ public class FluidLoaderMenu extends AbstractContainerMenu {
             itemstack = stackInSlot.copy();
 
             if (slotIndex < CONTAINER_SIZE) {
-                // Moving from machine to player inventory
                 if (!this.moveItemStackTo(stackInSlot, CONTAINER_SIZE, this.slots.size(), true)) {
                     return ItemStack.EMPTY;
                 }
             } else {
-                // Moving from player inventory to machine input slot
                 if (!this.moveItemStackTo(stackInSlot, 0, 1, false)) {
                     return ItemStack.EMPTY;
                 }

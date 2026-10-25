@@ -305,6 +305,25 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
         super.addAdditionalSaveData(output);
     }
 
+
+
+
+    @Override
+    public net.minecraft.core.BlockPos getCurrentBlockPosOrRailBelow() {
+        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
+    @Override
+    public void tick() {
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
+        if (!this.level().isClientSide() && this.tickCount % 20 == 0) {
+            updateStoredCountAndType();
+        }
+    }
+
     @Override
     public boolean canCollideWith(Entity entity) {
         if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
@@ -314,22 +333,20 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
     }
 
     @Override
-    public void push(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
         }
-        super.push(entity);
-    }
-
-    public BlockPos getCurrentBlockPosOrRailBelow() {
-        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+        return super.canBeCollidedWith(other);
     }
 
     @Override
-    public void tick() {
-        super.tick();
-        if (!this.level().isClientSide() && this.tickCount % 20 == 0) {
-            updateStoredCountAndType();
-        }
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    protected Vec3 applyNaturalSlowdown(Vec3 deltaMovement) {
+        return TrainChainingUtil.applyRollingStockSlowdown(this, deltaMovement);
     }
 }

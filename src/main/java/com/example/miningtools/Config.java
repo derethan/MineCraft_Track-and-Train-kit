@@ -33,6 +33,16 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> SURVEYOR_CHARGE_IGNORED_BLOCKS;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> SURVEYOR_CHARGE_EXTRA_REPORT_BLOCKS;
 
+    public static final ModConfigSpec.DoubleValue ROLLING_STOCK_DRAG_COEFFICIENT;
+    public static final ModConfigSpec.DoubleValue ROLLING_STOCK_BUMP_TRANSFER;
+    public static final ModConfigSpec.DoubleValue ROLLING_STOCK_BUMP_DAMPING;
+
+    public static final ModConfigSpec.IntValue GENERATOR_CART_ENERGY_RATE;
+    public static final ModConfigSpec.IntValue GENERATOR_CART_ENERGY_CAPACITY;
+    public static final ModConfigSpec.IntValue GENERATOR_CART_WATER_CAPACITY;
+    public static final ModConfigSpec.IntValue GENERATOR_CART_TRANSFER_RATE;
+    public static final ModConfigSpec.IntValue GENERATOR_CART_BROADCAST_RADIUS;
+
     static {
         BUILDER.push("locomotive");
 
@@ -115,10 +125,34 @@ public class Config {
 
         BUILDER.pop();
 
+        BUILDER.push("generator_cart");
+
+        GENERATOR_CART_ENERGY_RATE = BUILDER
+                .comment("Energy generated in FE per tick while the Generator Cart is actively burning coal with water.")
+                .defineInRange("energyRate", 100, 10, 5000);
+
+        GENERATOR_CART_ENERGY_CAPACITY = BUILDER
+                .comment("Internal battery/energy buffer capacity in FE of the Generator Cart.")
+                .defineInRange("energyCapacity", 100000, 1000, 10000000);
+
+        GENERATOR_CART_WATER_CAPACITY = BUILDER
+                .comment("Internal water tank capacity in mB (millibuckets) of the Generator Cart.")
+                .defineInRange("waterCapacity", 8000, 1000, 64000);
+
+        GENERATOR_CART_TRANSFER_RATE = BUILDER
+                .comment("Maximum FE per tick transferred into adjacent energy blocks, cables, or connected electric locomotives.")
+                .defineInRange("transferRate", 500, 10, 10000);
+
+        GENERATOR_CART_BROADCAST_RADIUS = BUILDER
+                .comment("Radius in blocks around the Generator Cart to wirelessly power nearby energy receivers/cables.")
+                .defineInRange("broadcastRadius", 3, 1, 16);
+
+        BUILDER.pop();
+
         BUILDER.push("surveyor_charge");
 
         SURVEYOR_CHARGE_RADIUS = BUILDER
-                .comment("Detection radius in blocks in all directions around the Surveyor's Charge.")
+                .comment("Horizontal detection radius in blocks for the column scanned from the Surveyor's Charge down to bedrock.")
                 .defineInRange("radius", 10, 1, 32);
 
         SURVEYOR_CHARGE_DROP_BOREHOLE_BLOCKS = BUILDER
@@ -152,6 +186,7 @@ public class Config {
                                 "minecraft:red_sandstone",
                                 "minecraft:gravel",
                                 "minecraft:water",
+                                "minecraft:lava",
                                 "minecraft:bedrock",
                                 "minecraft:netherrack",
                                 "minecraft:basalt",
@@ -173,6 +208,25 @@ public class Config {
                         List::of,
                         () -> "",
                         obj -> obj instanceof String);
+
+        BUILDER.pop();
+
+        BUILDER.push("rolling_stock");
+
+        ROLLING_STOCK_DRAG_COEFFICIENT = BUILDER
+                .comment("Drag/friction coefficient applied to rolling stock carts per tick when unpowered or rolling free.",
+                         "0.88 = 12% speed loss per tick. Lower numbers stop carts faster and eliminate jitter; 0.98 is vanilla.")
+                .defineInRange("dragCoefficient", 0.88D, 0.50D, 0.999D);
+
+        ROLLING_STOCK_BUMP_TRANSFER = BUILDER
+                .comment("Ratio of relative momentum transferred between uncoupled carts when bumping on tracks.",
+                         "Default 0.25 provides gentle shunting bumps without setting carts flying down the track.")
+                .defineInRange("bumpTransferRatio", 0.25D, 0.05D, 1.0D);
+
+        ROLLING_STOCK_BUMP_DAMPING = BUILDER
+                .comment("Kinetic energy retention factor applied to colliding carts after a bump.",
+                         "Default 0.30 dampens impact energy so both carts come to a stop shortly after bumping.")
+                .defineInRange("bumpDamping", 0.30D, 0.10D, 1.0D);
 
         BUILDER.pop();
     }

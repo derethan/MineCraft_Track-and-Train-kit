@@ -125,6 +125,20 @@ public class LiquidMinecartEntity extends AbstractMinecart {
         if (held.is(MiningTools.CROWBAR_ITEM.get())) {
             return InteractionResult.PASS;
         }
+
+        if (player.isSecondaryUseActive() && held.isEmpty()) {
+            if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+                FluidStack stored = getStoredFluid();
+                String fluidDesc = stored.isEmpty() ? "Empty (0 / " + getCapacity() + " mB)" : stored.getHoverName().getString() + " (" + stored.getAmount() + " / " + getCapacity() + " mB)";
+                String existing = this.getCustomName() != null ? this.getCustomName().getString().trim() : "";
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(
+                        sp,
+                        new com.example.miningtools.network.CartRenameOpenPayload(this.getId(), existing, getCartDisplayName(), fluidDesc)
+                );
+            }
+            return InteractionResult.SUCCESS;
+        }
+
         if (!held.isEmpty()) {
             boolean success = FluidUtil.interactWithFluidHandler(player, hand, this.blockPosition(), this.tank, null);
             if (success) {
@@ -179,6 +193,9 @@ public class LiquidMinecartEntity extends AbstractMinecart {
         syncFluidData();
     }
 
+
+
+
     @Override
     public boolean canCollideWith(Entity entity) {
         if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
@@ -188,15 +205,33 @@ public class LiquidMinecartEntity extends AbstractMinecart {
     }
 
     @Override
-    public void push(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
         }
-        super.push(entity);
+        return super.canBeCollidedWith(other);
     }
 
     @Override
-    public BlockPos getCurrentBlockPosOrRailBelow() {
+    public net.minecraft.core.BlockPos getCurrentBlockPosOrRailBelow() {
         return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    }
+
+    @Override
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public void tick() {
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
+    }
+
+    @Override
+    protected Vec3 applyNaturalSlowdown(Vec3 deltaMovement) {
+        return TrainChainingUtil.applyRollingStockSlowdown(this, deltaMovement);
     }
 }

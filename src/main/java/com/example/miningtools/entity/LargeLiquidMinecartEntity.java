@@ -1,5 +1,7 @@
 package com.example.miningtools.entity;
 
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+
 import net.minecraft.core.BlockPos;
 
 import com.example.miningtools.util.TrainChainingUtil;
@@ -49,6 +51,9 @@ public class LargeLiquidMinecartEntity extends LiquidMinecartEntity {
         return new ItemStack(MiningTools.LARGE_LIQUID_MINECART_ITEM.get());
     }
 
+
+
+
     @Override
     public boolean canCollideWith(Entity entity) {
         if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
@@ -58,15 +63,23 @@ public class LargeLiquidMinecartEntity extends LiquidMinecartEntity {
     }
 
     @Override
-    public void push(Entity entity) {
-        if (TrainChainingUtil.isConnectedInSameTrain(this, entity)) {
-            return;
+    public boolean canBeCollidedWith(@org.jspecify.annotations.Nullable Entity other) {
+        if (other != null && TrainChainingUtil.isConnectedInSameTrain(this, other)) {
+            return false;
         }
-        super.push(entity);
+        return super.canBeCollidedWith(other);
     }
 
     @Override
-    public BlockPos getCurrentBlockPosOrRailBelow() {
-        return TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+    public void push(Entity entity) {
+        TrainChainingUtil.pushCollidingEntity(this, entity);
+    }
+
+    @Override
+    public void tick() {
+        if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
+            super.tick();
+        }
+        TrainChainingUtil.tickConsistMovement(this);
     }
 }

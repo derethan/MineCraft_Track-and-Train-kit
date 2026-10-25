@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "miningtools:block/diesel_fueler_side",
+    "up": "miningtools:block/diesel_fueler_top",
+    "down": "miningtools:block/diesel_fueler_bottom",
+    "north": "miningtools:block/diesel_fueler_front",
+    "south": "miningtools:block/diesel_fueler_side",
+    "east": "miningtools:block/diesel_fueler_side",
+    "west": "miningtools:block/diesel_fueler_side"
+  }
+}

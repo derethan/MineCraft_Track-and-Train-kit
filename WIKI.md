@@ -1,22 +1,28 @@
-# 🚂 Mining Tools (Track & Train Kit) — Official Wiki & Walkthrough
+# ðŸš‚ Mining Tools (Track & Train Kit) â€” Official Wiki & Walkthrough
 
 Welcome to the comprehensive player manual, engineering walkthrough, and crafting compendium for **Mining Tools** on Minecraft 26.3 (NeoForge).
 
 ---
 
-## 📑 Table of Contents
+## ðŸ“‘ Table of Contents
 
 1. [Quick-Start Guide: Your First Train](#1-quick-start-guide-your-first-train)
 2. [Locomotives & Motive Power](#2-locomotives--motive-power)
    - [Basic Steam Locomotive](#basic-steam-locomotive)
    - [CN Diesel Locomotive (#3087)](#cn-diesel-locomotive-3087)
+   - [Diesel Fuel Tender Siphoning](#diesel-fuel-tender-siphoning)
    - [Electric Bullet Train](#electric-bullet-train)
    - [Locomotive Controls & HUD Dashboard](#locomotive-controls--hud-dashboard)
-3. [Train Chaining & Railroad Crowbar](#3-train-chaining--railroad-crowbar)
+3. [Train Chaining, Physics & Railroad Crowbar](#3-train-chaining-physics--railroad-crowbar)
    - [Coupling & Uncoupling Mechanics](#coupling--uncoupling-mechanics)
+   - [Universal Consist Kinematics & Manual Yard Shunting](#universal-consist-kinematics--manual-yard-shunting)
+   - [Solid Bumper Collisions & Anti-Phasing Physics](#solid-bumper-collisions--anti-phasing-physics)
+   - [Multi-Block Slope Tracking & Continuous Descent](#multi-block-slope-tracking--continuous-descent)
+   - [Universal Caboose Placement](#universal-caboose-placement)
    - [Traction, Drag & Multiple-Unit (MU) Consists](#traction-drag--multiple-unit-mu-consists)
 4. [Rolling Stock Catalog](#4-rolling-stock-catalog)
    - [Adaptive Cargo Minecart](#adaptive-cargo-minecart)
+   - [Loose Aggregate Hopper Car (Hopper Minecart)](#loose-aggregate-hopper-car-hopper-minecart)
    - [Livestock Cart (Railroad Stock Car)](#livestock-cart-railroad-stock-car)
    - [Liquid Minecarts (Small & Large)](#liquid-minecarts-small--large)
    - [Arrow Turret Cart](#arrow-turret-cart)
@@ -35,7 +41,17 @@ Welcome to the comprehensive player manual, engineering walkthrough, and craftin
    - [Industrial Chunk Anchor](#industrial-chunk-anchor)
 7. [Heavy Machinery: The Automated Tunnel Bore](#7-heavy-machinery-the-automated-tunnel-bore)
    - [Excavation, Ballast Bridging & Track Laying](#excavation-ballast-bridging--track-laying)
-8. [Complete Crafting Recipe Compendium](#8-complete-crafting-recipe-compendium)
+8. [Geological Prospecting & Survey System](#8-geological-prospecting--survey-system)
+   - [Surveyor's Charge](#surveyors-charge)
+   - [Remote Detonator](#remote-detonator)
+   - [Configuration Options](#configuration-options)
+9. [Complete Crafting Recipe Compendium](#9-complete-crafting-recipe-compendium)
+   - [Locomotives & Motive Power](#locomotives--motive-power-1)
+   - [Rolling Stock & Defense Carts](#rolling-stock--defense-carts)
+   - [Specialty Rails & Tools](#specialty-rails--tools)
+   - [Trackside Facilities & Heavy Machinery](#trackside-facilities--heavy-machinery)
+   - [Geological Prospecting & Surveying Tools](#geological-prospecting--surveying-tools)
+10. [Version History & Changelog](#10-version-history--changelog)
 
 ---
 
@@ -52,8 +68,8 @@ flowchart LR
 1. **Craft a Railroad Crowbar**: The essential tool for all railway engineers (`1 Iron Ingot + 1 Iron Nugget`).
 2. **Build a Locomotive**: Start with the **Basic Steam Locomotive** (`Furnace + Minecart + Iron Ingots + Redstone`).
 3. **Lay Tracks**: Standard rails, powered rails, or custom **Control Rails**.
-4. **Assemble the Consist**: Place your locomotive in front, followed by your rolling stock (e.g., Cargo Carts, Livestock Carts, Turret Carts, or an Anchor Caboose).
-5. **Couple the Cars**: Hold the **Railroad Crowbar** in hand, right-click the Locomotive, then right-click the cart directly behind it. Repeat down the length of the train.
+4. **Assemble the Consist**: Place your locomotive in front, followed by your rolling stock (e.g., Cargo Carts, Hopper Cars, Livestock Carts, Turret Carts, or an Anchor Caboose).
+5. **Couple the Cars**: Hold the **Railroad Crowbar** in hand, right-click the Locomotive, then right-click the cart directly behind it. Repeat down the length of the train. Cars can also be coupled together freely without a locomotive!
 6. **Fuel Up & Board**: Right-click the locomotive to board, press `C` to open the fuel inventory, deposit Coal or Charcoal, and tap `W` to throttle up!
 
 ---
@@ -85,19 +101,27 @@ The reliable workhorse of standard industrial railroads.
 ### CN Diesel Locomotive (#3087)
 A heavy-haul mainline road-switcher modeled after classic Canadian National diesel engines.
 
-* **Top Speed**: **2× the speed of steam** (`0.70` blocks/tick, `~14 m/s` or `50 km/h`).
+* **Top Speed**: **2Ã— the speed of steam** (`0.70` blocks/tick, `~14 m/s` or `50 km/h`).
 * **Fuel Source**: Liquid Diesel Fuel. Holds an internal **16,000 mB (16-bucket)** tank.
   - Native support for `#c:diesel`, `#c:biofuel`, and `#c:biodiesel` (compatible with Industrial Refinery, Ultimate Car Mod, etc.).
   - Equipped with a quick bucket-draining slot directly in its cockpit menu.
 * **Pulling Allowance**: Heavy-duty prime mover pulls up to **10 carts** with zero drag penalty.
-* **Multiple-Unit (MU) Synergy**: Designed to be coupled with additional diesel engines to haul 20–30+ freight car trains across continental distances.
+* **Multiple-Unit (MU) Synergy**: Designed to be coupled with additional diesel engines to haul 20â€“30+ freight car trains across continental distances.
+
+---
+
+### Diesel Fuel Tender Siphoning
+The **CN Diesel Locomotive** features automated fuel tender wagon siphoning:
+* **Coupled Tender Detection**: Hitching a **Liquid Minecart** (8,000 mB) or **Large Liquid Minecart** (16,000 mB) directly behind or ahead of the locomotive turns the tanker into a functional fuel tender wagon.
+* **Continuous Siphoning**: The locomotive automatically scans its coupled consist and draws compatible diesel, biofuel, or oil from the tanker at up to **100 mB per game tick** whenever internal fuel reserves drop below full capacity.
+* **Long-Distance Hauling**: Enables fully automated, long-haul continental rail routes without manual refueling stops.
 
 ---
 
 ### Electric Bullet Train
 Ultra-high-speed, zero-emission passenger and express transit.
 
-* **Top Speed**: **5× the speed of steam** (`1.75` blocks/tick, `~35 m/s` or `126 km/h`).
+* **Top Speed**: **5Ã— the speed of steam** (`1.75` blocks/tick, `~35 m/s` or `126 km/h`).
 * **Power Source**: Forge Energy (FE). Equipped with an onboard **100,000 FE** internal battery.
 * **Third-Rail Continuous Power**: When traveling along track segments equipped with **Electric Rails**, the pantograph/shoe draws electricity directly from the grid on the fly without stopping!
 * **Pulling Allowance**: Pulls up to **10 carts** at maximum velocity.
@@ -128,22 +152,7 @@ While driving, the lower-left overlay displays:
 
 ---
 
-### Train Collision & Deflection Physics
-The fleet uses specialized physics tuned for both heavy locomotives and nimble rolling stock:
-* **Locomotive Cowcatcher Deflection**: Operating locomotives feature solid presence and cowcatcher deflection. When moving forward, a locomotive shoves wandering mobs and players safely forward and to the side with an upward hop without stalling or losing momentum.
-* **Rolling Stock Yard Maneuvering**: Uncoupled rolling stock cars (Cargo, Caboose, Liquid Tankers, Livestock, Turret) feature player-pushable physics. Players can walk into carts to push them by hand down the rails, making yard work and aligning cars for crowbar coupling easy and responsive.
-* **Elastic Bumping Physics**: When bumped by a locomotive or another rolling cart, carts smoothly exchange momentum along the rails without clipping or becoming wedged inside each other.
-* **Chained Car Pass-Through**: Coupled cars automatically ignore push collisions against each other, ensuring long consists navigate tight turns and switches without binding or jitter while maintaining exact coupler distance.
-
-### Multi-Block Slope Tracking & Descent Physics
-All locomotives and rolling stock cars now feature seamless multi-block vertical grade navigation:
-* **Continuous Multi-Block Descent**: Overcomes the vanilla vertical detection boundary (-1$ limitation) by scanning 5 vertical blocks (, Y-1, Y-2, Y-3, Y+1$). Trains smoothly navigate multi-block 45Â° descending cliffside tracks, mountain switchbacks, and deep spiral mine shafts without freezing or floating in mid-air.
-* **True Slope Interpolation**: Dynamic height calculation smoothly transitions vehicles between upper (+1.0$) and lower (+0.0$) grade elevations, eliminating visual floating and collision clipping against upper ledge blocks.
-* **Automatic Downward Grade Step**: As trains traverse off the lower exit of descending slope rails, elevation instantly steps down and snaps onto the descending track bed below without loss of momentum or engine stalls.
-* **Consist-Wide Slope Tracking**: Chained freight, tank, livestock, caboose, and turret cars track the exact slope contours behind the locomotive at full speed.
-
----
-## 3. Train Chaining & Railroad Crowbar
+## 3. Train Chaining, Physics & Railroad Crowbar
 
 ```
  [Locomotive] <===Chain===> [Cargo Cart] <===Chain===> [Caboose]
@@ -155,20 +164,49 @@ The **Railroad Crowbar** transforms isolated vanilla minecarts into coordinated,
 1. **Coupling**:
    - Hold the **Railroad Crowbar** in your main hand.
    - Right-click the first cart (a metal clicking sound confirms selection).
-   - Right-click an adjacent cart within coupling distance (approx. 2–3 blocks).
+   - Right-click an adjacent cart within coupling distance (approx. 2â€“3 blocks).
    - A heavy steel chain appears connecting the two cars.
 2. **Uncoupling**:
    - Sneak + Right-click (`Shift + Right-Click`) any coupled car with the Crowbar to break the link.
 3. **Train Direction & Reversing**:
-   - Trains maintain synchronized physics. Pulling in reverse pulls the rear cars backward smoothly without jarring 180° visual rotations.
+   - Trains maintain synchronized physics. Pulling in reverse pulls the rear cars backward smoothly without jarring 180Â° visual rotations.
+
+---
+
+### Universal Consist Kinematics & Manual Yard Shunting
+- **Locomotive-Free Consist Coupling**: Rolling stock carts can be coupled together using the Railroad Crowbar even before a locomotive is attached.
+- **Synchronized Unpowered Motion**: Pushing or gravity-rolling any individual car in an unpowered consist moves the entire linked train along the rails at exact coupler spacing, allowing players to shunt strings of cars by hand in rail yards.
+- **Elastic Hand Pushing**: Players can walk directly into uncoupled rolling stock or consists to push them down the track to assemble trains.
+
+---
+
+### Solid Bumper Collisions & Anti-Phasing Physics
+- **Anti-Phasing Collision Engine**: Vanilla Minecraft minecart collision logic suffers from a bug where carts with opposing or unaligned yaw vectors cancel push physics (`vec3.dot(vec31) < 0.8`), causing loose carts to phase straight through each other. Mining Tools overrides this with custom physical bumper separation (`TrainChainingUtil.pushMinecarts`).
+- **Momentum Transfer**: When a rolling cart strikes a stationary cart, they make solid bumper contact and exchange along-track momentum smoothly, pushing the stationary cart forward realistically.
+- **Coupled Car Bypassing**: Cars that are already coupled in the same consist bypass internal push collisions, ensuring long trains navigate tight switch curves without binding or jittering.
+
+---
+
+### Multi-Block Slope Tracking & Continuous Descent
+- **True Continuous Elevation Tracking**: Overcomes vanilla slope clipping by continuously interpolating vertical height across ascending and descending grades. Eliminates cart shaking, bouncing forward/backward, and refusal to roll down slopes.
+- **Multi-Block Grade Steps**: Scans 5 vertical blocks ($Y, Y-1, Y-2, Y-3, Y+1$) to smoothly navigate steep mountain switchbacks, stepped descents, and deep spiral mine shafts without getting stuck against ceiling blocks or stalling on inclines.
+- **Consist Tracking**: All coupled cars track the exact incline contours of the rails behind the lead car at full operational speed.
+
+---
+
+### Universal Caboose Placement
+- **Flexible Consist Positioning**: The **Anchor Caboose** is no longer restricted to the rear of the train! It can now be coupled at the front, middle, or rear of any train consist.
+- **Continuous Mobile Chunk Loading**: Regardless of its position in the consist, the Caboose maintains a continuous 3Ã—3 active chunk perimeter around itself and keeps all chunks occupied by the entire linked train loaded simultaneously.
+
+---
 
 ### Traction, Drag & Multiple-Unit (MU) Consists
 
 Each locomotive adds its **Pulling Allowance** to the entire train:
 - **1 Steam Locomotive**: 5 cars maximum without penalty.
-- **2 Steam Locomotives**: $5 + 5 = 10$ cars maximum without penalty.
-- **1 Diesel Locomotive + 1 Steam Locomotive**: $10 + 5 = 15$ cars maximum without penalty.
-- **2 Diesel Locomotives**: $10 + 10 = 20$ cars maximum without penalty.
+- **2 Steam Locomotives**: 5 + 5 = 10 cars maximum without penalty.
+- **1 Diesel Locomotive + 1 Steam Locomotive**: 10 + 5 = 15 cars maximum without penalty.
+- **2 Diesel Locomotives**: 10 + 10 = 20 cars maximum without penalty.
 
 > [!TIP]
 > Locomotives do **not** all need to be at the front! You can place one engine at the front (lead), one in the middle (mid-train helper), or one at the rear (pusher/banking engine). All connected locomotives automatically share throttle commands and combine their pulling power.
@@ -192,6 +230,27 @@ A heavy-duty freight wagon with **27 storage slots** plus a dedicated **Filter S
 
 ---
 
+### Loose Aggregate Hopper Car (Hopper Minecart)
+A heavy-duty open-top hopper car designed for hauling bulk loose aggregates such as ballast gravel, sand, dirt, raw ores, and coal (modeled after North American TIMX and Herzog ballast hoppers).
+
+#### 3D Visual Aggregate Heaps
+- **Empty State**: Renders as an authentic hollow open hopper container showing interior sloped bottom discharge chutes.
+- **Loaded State**: Dynamically renders 3 mounded aggregate heaps piled inside the container whenever loose materials are loaded.
+- **Dynamic Textures**: Automatically selects and renders the exact texture matching the stored aggregate:
+  - **Coal**: Rich black coal mounds.
+  - **Gravel / Ballast**: Crushed ballast stone heaps (gravel, cobblestone, andesite, diorite, granite, tuff).
+  - **Sand**: Clean yellow sand mounds.
+  - **Red Sand**: Terracotta red sand heaps.
+  - **Dirt**: Soil / clay mounds.
+  - **Raw Ore**: Metal raw ore aggregates (`#c:raw_materials`, `#c:ores`).
+
+#### Inventory & Filter Slot
+- **27 Storage Slots**: High-capacity bulk cargo storage.
+- **Dedicated Filter Slot**: Located with a custom hopper funnel icon. Placing a sample material into this slot locks the car to only accept that aggregate type from hoppers and trackside loaders.
+- **Track-Aligned Placement**: Automatically aligns initial yaw to the track upon placement, preventing rotation anomalies on curves or switches.
+
+---
+
 ### Livestock Cart (Railroad Stock Car)
 An authentic North American railroad stock car modeled to scale with rolling stock:
 
@@ -210,6 +269,7 @@ Rugged railroad tank cars built for pressurized fluid transport across your logi
 * **Large Liquid Minecart**: Heavy-haul DOT-111 style dual-bogie rail tanker holding **16,000 mB (16 Buckets)**.
 * **Inspection Glass**: Transparent liquid gauge tube shows exact fluid type and fill level from the outside.
 * **Direct Fluid Transfer**: Seamlessly interacts with the **Trackside Fluid Station** or accepts manual filling via buckets.
+* **Fuel Tender Capability**: Couples directly to the CN Diesel Locomotive to act as an automated fuel tender wagon.
 
 ---
 
@@ -239,14 +299,12 @@ An armored rolling-stock defense wagon styled to match the Caboose and freight w
 ---
 
 ### Anchor Caboose
-The ultimate train-preservation device hitched to the rear of your consist.
+The ultimate train-preservation device hitched to your consist.
 
-* **Mobile Chunk Loading**: Keeps a **3×3 chunk zone** centered on itself permanently active in memory as it travels.
+* **Mobile Chunk Loading**: Keeps a **3Ã—3 chunk zone** centered on itself permanently active in memory as it travels.
 * **Consist Anchor**: Keeps every chunk occupied by the entire linked train loaded simultaneously, eliminating runaway cars, desyncs, and trains separating at chunk boundaries.
 * **Atmospheric Visuals**: Detailed rear observation porch with handrails and a smoking coal-stove chimney pipe.
-
-> [!IMPORTANT]
-> The Caboose is strictly designed as the **tail** car of a train. The Railroad Crowbar will not permit attaching other rolling stock behind a Caboose.
+* **Universal Coupling**: Can be placed at the front, middle, or rear of the train consist.
 
 ---
 
@@ -313,7 +371,7 @@ Placed directly underneath tracks to automate livestock, villager, and mob trans
 
 * **Entity Loader**:
   - Automatically boards nearby entities into passing empty minecarts or Livestock Carts.
-  - Built-in GUI with configurable search radius (`1–16 blocks`).
+  - Built-in GUI with configurable search radius (`1â€“16 blocks`).
   - **Filter Controls**: Whitelist or Blacklist specific mob IDs (e.g. `minecraft:cow`, `minecraft:sheep`), baby/adult filter, or custom nametags.
 * **Entity Unloader**:
   - Safely dismounts passengers from passing carts.
@@ -359,7 +417,7 @@ A heavy-duty end-of-track railway barrier modeled after industrial railroad buff
 ### Industrial Chunk Anchor
 A stationary, heavy-duty chunk loader block for factories, automated quarries, tree farms, and station hubs:
 
-* **Configurable Radius**: Cycle between **1×1 Chunk (Single)**, **3×3 Chunks (9 Chunks)**, or **5×5 Chunks (25 Chunks)**.
+* **Configurable Radius**: Cycle between **1Ã—1 Chunk (Single)**, **3Ã—3 Chunks (9 Chunks)**, or **5Ã—5 Chunks (25 Chunks)**.
 * **Redstone Modes**: Toggle between **Always Active** and **Redstone Required**.
 * **Visual Status**: Glowing cyan energy core, green status LED, and subtle portal particles.
 
@@ -367,7 +425,7 @@ A stationary, heavy-duty chunk loader block for factories, automated quarries, t
 
 ## 7. Heavy Machinery: The Automated Tunnel Bore
 
-The **Tunnel Bore** is a massive automated subterranean excavation machine that carves 3×3 subway tunnels through solid mountain rock.
+The **Tunnel Bore** is a massive automated subterranean excavation machine that carves 3Ã—3 subway tunnels through solid mountain rock.
 
 ```
        [ Top-Down Excavator Head ]
@@ -378,7 +436,7 @@ The **Tunnel Bore** is a massive automated subterranean excavation machine that 
 
 ### Key Engineering Features:
 
-1. **3×3 Frontal Excavation**:
+1. **3Ã—3 Frontal Excavation**:
    - Pulverizes stone, deepslate, granite, ores, and dirt in a 3-block-wide by 3-block-tall cross-section.
    - Harvested block drops are deposited directly into the bore's internal storage inventory.
 2. **Top-Down Drilling Sequence**:
@@ -396,9 +454,50 @@ The **Tunnel Bore** is a massive automated subterranean excavation machine that 
 
 ---
 
-## 8. Complete Crafting Recipe Compendium
+## 8. Geological Prospecting & Survey System
 
-All recipes are crafted in a standard 3×3 Crafting Table:
+### Surveyor's Charge
+A specialized seismic explosive designed for subterranean resource prospecting and rapid vertical borehole excavation.
+- **Crafting Recipe (Shapeless)**:
+  - 1 Redstone Dust + 1 TNT + 1 Arrow
+- **Detonation Triggers**:
+  - Direct Redstone Signal (lever, button, pressure plate, wire).
+  - Wireless trigger via **Remote Detonator**.
+- **Blast Mechanics**:
+  - Self-destructs instantly with a loud explosion sound and smoke plumes.
+  - Blasts a clean 1Ã—1 vertical borehole directly downward from its placement coordinate until bedrock or indestructible blocks (`destroySpeed < 0.0F`) are reached.
+  - Configurable option to drop excavated borehole blocks as items or cleanly destroy them to eliminate item lag.
+- **Geological Survey Scan & Oil Detection**:
+  - Scans a cylindrical column of configurable horizontal radius (default 10 blocks) extending from the charge's placement level all the way down to bedrock.
+  - Detects and counts all oil fluids and oil blocks (`#c:oil`, `#c:crude_oil`, and registry identifiers containing `crude`, `oil`, `petroleum`, `diesel`, or `fuel`).
+  - Filters out common mundane blocks by default (stone, deepslate, dirt, sand, gravel, lava, water, etc.) while tallying and sorting all ores, minerals, and valuable deposits by quantity.
+  - Transmits a comprehensive **Geological Survey Report** directly to the player in chat.
+
+---
+
+### Remote Detonator
+A handheld wireless detonator keyed to trigger Surveyor's Charges.
+- **Crafting Recipe (Shapeless)**:
+  - 1 Redstone Dust + 1 Lever + 1 Iron Ingot
+- **Operation**:
+  - Right-click anywhere to detonate all Surveyor's Charges within a 12-block radius.
+  - Immediately relays each charge's geological survey report directly into your chat.
+
+---
+
+### Configuration Options
+Located in `config/miningtools-common.toml`:
+- `surveyor_charge.radius` (Default: 10): Horizontal radius for the geological column scan from charge level down to bedrock.
+- `surveyor_charge.dropBoreholeBlocks` (Default: false): Toggle item drops from the vertical borehole shaft.
+- `surveyor_charge.remoteDetonatorRange` (Default: 12.0): Maximum activation distance for the Remote Detonator.
+- `surveyor_charge.ignoredBlocks`: List of block IDs to omit from the survey tally (e.g. `["minecraft:stone", "minecraft:lava", ...]`).
+- `surveyor_charge.extraReportBlocks`: List of specific modded block IDs to explicitly display in the report.
+
+---
+
+## 9. Complete Crafting Recipe Compendium
+
+All recipes are crafted in a standard 3Ã—3 Crafting Table:
 
 ### Locomotives & Motive Power
 
@@ -430,6 +529,13 @@ All recipes are crafted in a standard 3×3 Crafting Table:
 #### Adaptive Cargo Minecart *(Shapeless)*
 ```
 [ Minecart ] + [ Chest ] + [ Iron Ingot ]
+```
+
+#### Loose Aggregate Hopper Car
+```
+[ I ] [ . ] [ I ]    I = Iron Ingot
+[ I ] [ H ] [ I ]    H = Hopper
+[ . ] [ C ] [ . ]    C = Chest Minecart
 ```
 
 #### Livestock Cart (Railroad Stock Car)
@@ -575,72 +681,31 @@ All recipes are crafted in a standard 3×3 Crafting Table:
 
 ---
 
+### Geological Prospecting & Surveying Tools
+
+#### Surveyor's Charge *(Shapeless)*
+```
+[ Redstone Dust ] + [ TNT ] + [ Arrow ]
+```
+
+#### Remote Detonator *(Shapeless)*
+```
+[ Redstone Dust ] + [ Lever ] + [ Iron Ingot ]
+```
 
 ---
 
-## 9. Geological Prospecting & Survey System
+## 10. Version History & Changelog
 
-### Surveyor's Charge
-A specialized seismic explosive designed for subterranean resource prospecting and rapid vertical borehole excavation.
-- **Crafting Recipe (Shapeless)**:
-  - 1 Redstone Dust + 1 TNT + 1 Arrow
-- **Detonation Triggers**:
-  - Direct Redstone Signal (lever, button, pressure plate, wire).
-  - Wireless trigger via **Remote Detonator**.
-- **Blast Mechanics**:
-  - Self-destructs instantly with a loud explosion sound and smoke plumes.
-  - Blasts a clean 1x1 vertical borehole directly downward from its placement coordinate until bedrock or indestructible blocks (destroySpeed < 0.0F) are reached.
-  - Configurable option to drop excavated borehole blocks as items or cleanly destroy them to eliminate item lag.
-- **Geological Survey Scan & Oil Detection**:
-  - Scans a spherical 10-block radius in all directions around the blast site.
-  - Detects and counts all oil fluids and oil blocks (c:oil, c:crude_oil, registry matches for crude, oil, petroleum, diesel, fuel).
-  - Filters out common mundane blocks by default (stone, deepslate, dirt, sand, gravel, water, etc.) while tallying and sorting all ores, minerals, and valuable deposits by quantity.
-  - Transmits a comprehensive **Geological Survey Report** directly to the player.
+For the complete, version-by-version release history and technical changes, see **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Remote Detonator
-A handheld wireless detonator keyed to trigger Surveyor's Charges.
-- **Crafting Recipe (Shapeless)**:
-  - 1 Redstone Dust + 1 Lever + 1 Iron Ingot
-- **Operation**:
-  - Right-click anywhere to detonate all Surveyor's Charges within a 12-block radius.
-  - Immediately relays each charge's geological survey report directly into your chat.
-
-### Configuration (config/miningtools-common.toml)
-- surveyor_charge.radius (Default: 10): Sphere radius for geological scanning.
-- surveyor_charge.dropBoreholeBlocks (Default: alse): Toggle item drops from the vertical borehole shaft.
-- surveyor_charge.remoteDetonatorRange (Default: 12.0): Maximum activation distance for the Remote Detonator.
-- surveyor_charge.ignoredBlocks: List of block IDs to omit from the survey tally (e.g. ["minecraft:stone", ...]).
-- surveyor_charge.extraReportBlocks: List of specific modded block IDs (e.g. modid:custom_ore) to explicitly display in the report.
+### Summary of Recent Updates (v1.0.1):
+- **Loose Aggregate Hopper Car**: 3D visual bulk aggregate heap mounds (Coal, Sand, Red Sand, Gravel/Ballast, Dirt, Raw Ore), hollow empty chutes, and filter GUI.
+- **Surveyor's Charge & Remote Detonator**: Full-depth cylindrical column survey down to bedrock with crude oil detection, borehole blasting, and wireless detonation.
+- **Diesel Fuel Tender Siphoning**: CN Diesel Locomotive siphons fuel from directly coupled liquid tanker cars.
+- **Universal Consist Coupling & Kinematics**: Couple rolling stock without a locomotive, shunt unpowered consists by hand, and place Cabooses anywhere in the train.
+- **Physics & Anti-Phasing**: Resolved cart phasing bugs, continuous slope elevation tracking, and smooth momentum transfer.
+- **Recipe Codec Fix**: Server-compatible recipe parsing for 1.21.4 / 26.3 NeoForge.
 
 ---
-*Mining Tools — Built for heavy rail engineering and automated logistics.*
-
----
-
-## Loose Aggregate Hopper Car (Hopper Minecart)
-A heavy-duty open-top hopper car designed for hauling bulk loose aggregates such as ballast gravel, sand, dirt, raw ores, and coal (modeled after TIMX and Herzog ballast hoppers).
-
-### Visual Heap Features
-- **Empty State**: Renders as a hollow open hopper container showing internal sloped bottom discharge chutes.
-- **Loaded State**: Dynamically renders 3 piled aggregate mounds heaped inside the car when containing bulk aggregates.
-- **Dynamic Textures**: Automatically applies custom textures corresponding to the loaded aggregate:
-  - **Coal**: Rich black coal mounds.
-  - **Gravel**: Ballast stone heaps (gravel, cobblestone, andesite, diorite, granite, tuff).
-  - **Sand**: Clean yellow sand mounds.
-  - **Red Sand**: Terracotta red sand heaps.
-  - **Dirt**: Soil / clay mounds.
-  - **Raw Ore**: Metal raw ore aggregates (c:raw_materials, c:ores).
-
-### Inventory & Filter Configuration
-- **27 Storage Slots**: High-capacity storage for bulk materials.
-- **Dedicated Filter Slot**: Slot positioned with a hopper funnel icon. Placing a sample aggregate into this slot locks the car to only accept that aggregate type.
-- **Crafting Recipe**:
-  - 5 Iron Ingots + 1 Hopper + 1 Chest Minecart.
-
----
-
-## Diesel Fuel Tender Siphoning
-The **CN Diesel Locomotive** now acts as a smart fuel consumer with tender wagon support:
-- Hitching a **Liquid Minecart** or **Large Liquid Minecart** directly behind (or ahead of) the locomotive turns it into a functional fuel tender.
-- The locomotive automatically detects the coupled tender and siphons compatible diesel fuel (crude oil, diesel, bio-diesel, etc.) at up to 100 mB per tick.
-- Allows locomotives to run for extensive distances without player intervention.
+*Mining Tools â€” Built for heavy rail engineering and automated logistics.*

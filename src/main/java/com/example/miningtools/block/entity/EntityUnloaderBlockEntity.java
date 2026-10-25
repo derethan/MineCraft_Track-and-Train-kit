@@ -3,6 +3,11 @@ package com.example.miningtools.block.entity;
 import java.util.List;
 
 import com.example.miningtools.MiningTools;
+import com.example.miningtools.block.EntityUnloaderBlock;
+import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,46 +31,82 @@ public class EntityUnloaderBlockEntity extends AbstractEntityTransferBlockEntity
     public static void serverTick(Level level, BlockPos pos, BlockState state, EntityUnloaderBlockEntity be) {
         if (be.cooldown > 0) {
             be.cooldown--;
-            return;
         }
 
-        // Check for a minecart with passengers on the rail above
         BlockPos trackPos = pos.above();
-        AABB trackBox = new AABB(trackPos).inflate(0.6, 0.4, 0.6);
+        AABB trackBox = new AABB(trackPos).inflate(0.85, 0.5, 0.85);
         List<AbstractMinecart> carts = level.getEntitiesOfClass(
                 AbstractMinecart.class,
                 trackBox,
-                c -> c.isAlive() && !c.isRemoved() && !c.getPassengers().isEmpty()
+                c -> c.isAlive()
+                        && !c.isRemoved()
+                        && !(c instanceof BasicLocomotiveEntity)
+                        && !(c instanceof DieselLocomotiveEntity)
+                        && !(c instanceof ElectricLocomotiveEntity)
+                        && !c.getPassengers().isEmpty()
         );
 
         if (carts.isEmpty()) {
+            setRailPower(level, pos, state, true);
             return;
         }
 
         AbstractMinecart cart = carts.get(0);
         List<Entity> passengers = List.copyOf(cart.getPassengers());
+        Entity matchingPassenger = null;
+        int matchingCount = 0;
 
         for (Entity passenger : passengers) {
             if (be.matchesFilters(passenger)) {
-                // Dismount
-                passenger.stopRiding();
-
-                // Find a safe landing spot nearby within range
-                BlockPos safePos = findSafeUnloadPosition(level, trackPos, be.getRange());
-                passenger.teleportTo(safePos.getX() + 0.5, safePos.getY(), safePos.getZ() + 0.5);
-
-                level.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 1.0F, 1.2F);
-                if (level instanceof ServerLevel sl) {
-                    sl.sendParticles(ParticleTypes.POOF, safePos.getX() + 0.5, safePos.getY() + 0.5, safePos.getZ() + 0.5, 6, 0.2, 0.2, 0.2, 0.05);
+                if (matchingPassenger == null) {
+                    matchingPassenger = passenger;
                 }
-                be.cooldown = 20; // 1 second cooldown
-                break;
+                matchingCount++;
             }
+        }
+
+        if (matchingPassenger == null) {
+            boolean wasHolding = !state.getValue(EntityUnloaderBlock.POWERED);
+            setRailPower(level, pos, state, true);
+            if (wasHolding) {
+                TrainChainingUtil.releaseConsistFromBrakingRail(cart);
+            }
+            return;
+        }
+
+        // Depower rail above and hold consist until all matching passengers are unloaded
+        setRailPower(level, pos, state, false);
+        TrainChainingUtil.freezeConsistFromBrakingRail(cart);
+
+        if (be.cooldown > 0) {
+            return;
+        }
+
+        matchingPassenger.stopRiding();
+        BlockPos safePos = findSafeUnloadPosition(level, trackPos, be.getRange());
+        matchingPassenger.teleportTo(safePos.getX() + 0.5, safePos.getY(), safePos.getZ() + 0.5);
+
+        level.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 1.0F, 1.2F);
+        if (level instanceof ServerLevel sl) {
+            sl.sendParticles(ParticleTypes.POOF, safePos.getX() + 0.5, safePos.getY() + 0.5, safePos.getZ() + 0.5, 6, 0.2, 0.2, 0.2, 0.05);
+        }
+        be.cooldown = 15;
+
+        if (matchingCount <= 1) {
+            setRailPower(level, pos, state, true);
+            TrainChainingUtil.releaseConsistFromBrakingRail(cart);
+        }
+    }
+
+    private static void setRailPower(Level level, BlockPos pos, BlockState state, boolean powered) {
+        if (state.hasProperty(EntityUnloaderBlock.POWERED) && state.getValue(EntityUnloaderBlock.POWERED) != powered) {
+            level.setBlock(pos, state.setValue(EntityUnloaderBlock.POWERED, powered), 3);
+            level.updateNeighborsAt(pos, state.getBlock());
+            level.updateNeighborsAt(pos.above(), state.getBlock());
         }
     }
 
     public static BlockPos findSafeUnloadPosition(Level level, BlockPos trackPos, int range) {
-        // 1. Try immediate horizontal neighbors of the track (left, right, etc.)
         for (Direction dir : Direction.Plane.HORIZONTAL) {
             BlockPos target = trackPos.relative(dir);
             if (isSafeLanding(level, target)) {
@@ -73,7 +114,6 @@ public class EntityUnloaderBlockEntity extends AbstractEntityTransferBlockEntity
             }
         }
 
-        // 2. Expand search within range
         int maxR = Math.min(range, 8);
         for (int r = 2; r <= maxR; r++) {
             for (int dx = -r; dx <= r; dx++) {
@@ -90,7 +130,6 @@ public class EntityUnloaderBlockEntity extends AbstractEntityTransferBlockEntity
             }
         }
 
-        // Fallback: 1 block to the side of track
         return trackPos.relative(Direction.EAST);
     }
 
@@ -100,7 +139,7 @@ public class EntityUnloaderBlockEntity extends AbstractEntityTransferBlockEntity
         BlockState ground = level.getBlockState(pos.below());
 
         if (BaseRailBlock.isRail(feet) || BaseRailBlock.isRail(ground)) {
-            return false; // Don't dump onto rails
+            return false;
         }
         boolean feetPassable = feet.isAir() || feet.canBeReplaced();
         boolean headPassable = head.isAir() || head.canBeReplaced();

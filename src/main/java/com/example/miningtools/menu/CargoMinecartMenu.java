@@ -134,6 +134,10 @@ public class CargoMinecartMenu extends AbstractContainerMenu {
         return this.container.getItem(FILTER_SLOT);
     }
 
+    public Container getContainer() {
+        return this.container;
+    }
+
     @Override
     public boolean stillValid(Player player) {
         return this.container.stillValid(player);

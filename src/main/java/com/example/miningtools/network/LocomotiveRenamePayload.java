@@ -4,9 +4,14 @@ import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.menu.AggregateHopperCartMenu;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
+import com.example.miningtools.menu.CargoMinecartMenu;
 import com.example.miningtools.menu.DieselLocomotiveMenu;
 import com.example.miningtools.menu.ElectricLocomotiveMenu;
+import com.example.miningtools.menu.GeneratorMinecartMenu;
+import com.example.miningtools.menu.TunnelBoreMenu;
+import com.example.miningtools.menu.TurretCartMenu;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -15,6 +20,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record LocomotiveRenamePayload(String trainName) implements CustomPacketPayload {
@@ -54,6 +60,41 @@ public record LocomotiveRenamePayload(String trainName) implements CustomPacketP
                     && !loco.isRemoved()
                     && loco.stillValid(player)) {
                 loco.setTrainName(payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof CargoMinecartMenu menu
+                    && menu.getContainer() instanceof AbstractMinecart cart
+                    && !cart.isRemoved()
+                    && menu.stillValid(player)) {
+                CartRenamePayload.applyCustomNameToCart(cart, payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof AggregateHopperCartMenu menu
+                    && menu.getContainer() instanceof AbstractMinecart cart
+                    && !cart.isRemoved()
+                    && menu.stillValid(player)) {
+                CartRenamePayload.applyCustomNameToCart(cart, payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof TurretCartMenu menu
+                    && menu.getContainer() instanceof AbstractMinecart cart
+                    && !cart.isRemoved()
+                    && menu.stillValid(player)) {
+                CartRenamePayload.applyCustomNameToCart(cart, payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof GeneratorMinecartMenu menu
+                    && menu.getContainer() instanceof AbstractMinecart cart
+                    && !cart.isRemoved()
+                    && menu.stillValid(player)) {
+                CartRenamePayload.applyCustomNameToCart(cart, payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof TunnelBoreMenu menu
+                    && menu.getContainer() instanceof AbstractMinecart cart
+                    && !cart.isRemoved()
+                    && menu.stillValid(player)) {
+                CartRenamePayload.applyCustomNameToCart(cart, payload.trainName());
                 return;
             }
             Entity vehicle = player.getVehicle();

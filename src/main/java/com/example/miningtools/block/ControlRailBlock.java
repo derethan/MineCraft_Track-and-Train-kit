@@ -4,8 +4,12 @@ import java.util.List;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
+import com.example.miningtools.entity.DieselLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.PoweredRailBlock;
@@ -23,7 +27,7 @@ public class ControlRailBlock extends PoweredRailBlock {
     @Override
     protected boolean isSameRailWithPower(Level level, BlockPos pos, boolean searchForward, int distance, RailShape shape) {
         BlockState state = level.getBlockState(pos);
-        if (!state.is(this) && !state.is(MiningTools.HORN_RAIL.get())) {
+        if (!state.is(this) && !state.is(MiningTools.HORN_RAIL.get()) && !state.is(MiningTools.BRAKING_RAIL.get())) {
             return false;
         }
         return super.isSameRailWithPower(level, pos, searchForward, distance, shape);
@@ -42,17 +46,13 @@ public class ControlRailBlock extends PoweredRailBlock {
                 level.updateNeighborsAt(pos.above(), this);
             }
             if (!level.isClientSide()) {
-                AABB box = new AABB(pos).inflate(0.2, 0.8, 0.2);
-                List<BasicLocomotiveEntity> locos = level.getEntitiesOfClass(BasicLocomotiveEntity.class, box);
-                for (BasicLocomotiveEntity loco : locos) {
+                AABB box = new AABB(pos).inflate(0.3, 0.8, 0.3);
+                List<AbstractMinecart> carts = level.getEntitiesOfClass(AbstractMinecart.class, box);
+                for (AbstractMinecart cart : carts) {
                     if (shouldPower) {
-                        if (!loco.isRunning()) {
-                            loco.startLocomotiveFromRail();
-                        }
+                        TrainChainingUtil.releaseConsistFromBrakingRail(cart);
                     } else {
-                        if (loco.isRunning()) {
-                            loco.stopLocomotiveFromRail();
-                        }
+                        TrainChainingUtil.freezeConsistFromBrakingRail(cart);
                     }
                 }
             }

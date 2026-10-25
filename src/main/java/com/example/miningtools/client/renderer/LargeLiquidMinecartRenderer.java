@@ -39,6 +39,7 @@ public class LargeLiquidMinecartRenderer extends AbstractMinecartRenderer<LargeL
     @Override
     public void extractRenderState(LargeLiquidMinecartEntity entity, LiquidMinecartRenderState state, float partialTicks) {
         super.extractRenderState(entity, state, partialTicks);
+        CartRenderHelper.updateRailRenderState(entity, state);
         state.fluidName = entity.getFluidName();
         state.fluidAmount = entity.getFluidAmount();
         state.fillRatio = entity.getFillRatio();

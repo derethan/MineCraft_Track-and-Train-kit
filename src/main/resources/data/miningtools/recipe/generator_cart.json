@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": "minecraft:copper_ingot",
+    "F": "minecraft:blast_furnace",
+    "I": "minecraft:iron_ingot",
+    "M": "minecraft:minecart",
+    "R": "minecraft:redstone"
+  },
+  "pattern": [
+    "CRC",
+    "IFI",
+    "IMI"
+  ],
+  "result": {
+    "count": 1,
+    "id": "miningtools:generator_cart"
+  }
+}
