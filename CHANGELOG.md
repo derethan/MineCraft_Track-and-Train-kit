@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Introduced randomized shipping container paint schemes (Intermodal Ocean Blue, Freight Crimson Red, and Military Forest Green) across Cargo Carts while maintaining authentic Caboose-style flanged steel wheels.
 
 ### Fixed
+- **Junction Rail Wooden Tie Continuity**:
+  - Extended the three middle wooden ties horizontally across the full track width (X=1 to X=15) in the junction rail 3D model ([junction_rail.json](file:///src/main/resources/assets/miningtools/models/block/junction_rail.json)) and 2D block texture ([junction_rail.png](file:///src/main/resources/assets/miningtools/textures/block/junction_rail.png)), ensuring clean visual alignment with the top and bottom ties and removing redundant stub geometry.
 - **Track Paver Speedometer & Off-State Calibration**:
   - Fixed the speedometer overlay displaying maximum speed (8.0 m/s / full bar) when the paver was powered off or out of fuel.
   - Calibrated reference max speed for Track Pavers to 1.0 m/s in `SpeedometerOverlay`.
