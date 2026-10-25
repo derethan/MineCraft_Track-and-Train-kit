@@ -5,6 +5,8 @@ import java.util.Locale;
 import com.example.miningtools.Config;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
+import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.entity.TrackPaverEntity;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -84,7 +86,12 @@ public class SpeedometerOverlay {
 
         BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
         DieselLocomotiveEntity dieselLoco = DieselLocomotiveEntity.getConnectedLocomotive(vehicle);
-        if (((loco != null && !loco.isActive()) || (dieselLoco != null && !dieselLoco.isActive())) && windowBps < 0.08F) {
+        ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(vehicle);
+        TrackPaverEntity paver = (vehicle instanceof TrackPaverEntity p) ? p : null;
+
+        if (paver != null && (!paver.isActive() || paver.getRunMode() == TrackPaverEntity.MODE_STOPPED)) {
+            targetBps = 0.0F;
+        } else if (((loco != null && !loco.isActive()) || (dieselLoco != null && !dieselLoco.isActive()) || (elecLoco != null && !elecLoco.isActive())) && windowBps < 0.08F) {
             targetBps = 0.0F;
         }
 
@@ -256,6 +263,9 @@ public class SpeedometerOverlay {
             } catch (Throwable ignored) {
             }
             return (float) (cfgMax * 20.0D);
+        }
+        if (vehicle instanceof TrackPaverEntity) {
+            return 1.0F;
         }
         if (vehicle instanceof AbstractMinecart) {
             return 8.0F;

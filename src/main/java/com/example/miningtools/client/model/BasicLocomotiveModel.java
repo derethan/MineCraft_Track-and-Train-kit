@@ -40,14 +40,12 @@ public class BasicLocomotiveModel extends EntityModel<BasicLocomotiveRenderState
                         .texOffs(49, 43).addBox(-9.0F, -16.0F, -2.0F, 4.0F, 6.0F, 4.0F)
                         // Steam Dome (6 x 2 x 6)
                         .texOffs(23, 43).addBox(-3.0F, -12.0F, -3.0F, 6.0F, 2.0F, 6.0F)
-                        // Headlight bracket attached to front of boiler
-                        .texOffs(72, 0).addBox(-12.5F, -7.0F, -1.0F, 1.0F, 2.0F, 2.0F)
+                        // Headlight bracket attached to front of boiler (moved up to cover textured light)
+                        .texOffs(72, 0).addBox(-12.5F, -9.0F, -1.0F, 1.0F, 2.0F, 2.0F)
                         // Headlight lantern housing
-                        .texOffs(72, 0).addBox(-14.5F, -8.0F, -2.5F, 2.0F, 4.0F, 5.0F)
+                        .texOffs(72, 0).addBox(-14.5F, -10.0F, -2.5F, 2.0F, 4.0F, 5.0F)
                         // Headlight glowing lantern lens at the front
-                        .texOffs(88, 0).addBox(-14.6F, -7.5F, -2.0F, 0.2F, 3.0F, 4.0F)
-                        // Whistle on roof near cab
-                        .texOffs(98, 0).addBox(2.0F, -14.0F, -1.0F, 1.5F, 3.0F, 2.0F),
+                        .texOffs(88, 0).addBox(-14.6F, -9.5F, -2.0F, 0.2F, 3.0F, 4.0F),
                 PartPose.ZERO
         );
 

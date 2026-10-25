@@ -212,6 +212,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             this.isMoving = false;
             this.moveTicks = 0;
             this.targetStepPos = null;
+            this.setDeltaMovement(Vec3.ZERO);
         }
     }
 
@@ -344,7 +345,26 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     }
 
     @Override
+    public Vec3 getDeltaMovement() {
+        if (this.isActive() && this.isMoving && this.getRunMode() != MODE_STOPPED) {
+            Direction dir = this.getRunMode() == MODE_REVERSE ? this.getFacing().getOpposite() : this.getFacing();
+            double speed = this.getRunMode() == MODE_REVERSE ? (1.0 / REVERSE_TICKS_PER_BLOCK) : (1.0 / MOVE_TICKS_PER_BLOCK);
+            return new Vec3(dir.getStepX() * speed, 0.0, dir.getStepZ() * speed);
+        }
+        return Vec3.ZERO;
+    }
+
+    @Override
+    public boolean isSilent() {
+        return super.isSilent() || !this.isActive();
+    }
+
+    @Override
     public void tick() {
+        if (!this.isActive() || this.getRunMode() == MODE_STOPPED || !this.isMoving) {
+            this.setDeltaMovement(Vec3.ZERO);
+        }
+
         // Update client-side animations
         if (this.level().isClientSide()) {
             if (this.isActive()) {

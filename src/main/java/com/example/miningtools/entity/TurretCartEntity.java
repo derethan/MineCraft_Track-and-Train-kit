@@ -63,8 +63,11 @@ public class TurretCartEntity extends AbstractMinecartContainer {
     public static final int FIRST_ARROW_SLOT = BOW_SLOTS;
     public static final int TOTAL_SLOTS = BOW_SLOTS + ARROW_SLOTS;
 
-    /** Detection / engagement radius in blocks. */
-    public static final double RANGE = 16.0D;
+    public static final int FILTER_MODE_WHITELIST = 0;
+    public static final int FILTER_MODE_BLACKLIST = 1;
+
+    /** Detection / engagement radius in blocks. Calibrated 32.0 (2x previous 16.0). */
+    public static final double RANGE = 32.0D;
     /** Ticks between shots of the same bow. The two bows are staggered by half this period. */
     public static final int FIRE_INTERVAL = 24;
     /** Ticks between target scans (also drives turret aiming). */
@@ -76,8 +79,14 @@ public class TurretCartEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(TurretCartEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Byte> DATA_BOW_MASK =
             SynchedEntityData.defineId(TurretCartEntity.class, EntityDataSerializers.BYTE);
+    private static final EntityDataAccessor<Integer> DATA_FILTER_MODE =
+            SynchedEntityData.defineId(TurretCartEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_WHITELIST =
+            SynchedEntityData.defineId(TurretCartEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<String> DATA_BLACKLIST =
+            SynchedEntityData.defineId(TurretCartEntity.class, EntityDataSerializers.STRING);
 
-    private @Nullable Mob currentTarget;
+    private @Nullable LivingEntity currentTarget;
 
     // Client-side smoothed turret yaw (world-space degrees, atan2(dz, dx) convention)
     public float clientTurretYaw = 0.0F;
@@ -101,6 +110,33 @@ public class TurretCartEntity extends AbstractMinecartContainer {
         super.defineSynchedData(builder);
         builder.define(DATA_TURRET_YAW, 0.0F);
         builder.define(DATA_BOW_MASK, (byte) 0);
+        builder.define(DATA_FILTER_MODE, FILTER_MODE_WHITELIST);
+        builder.define(DATA_WHITELIST, "");
+        builder.define(DATA_BLACKLIST, "");
+    }
+
+    public int getFilterMode() {
+        return this.entityData.get(DATA_FILTER_MODE);
+    }
+
+    public void setFilterMode(int mode) {
+        this.entityData.set(DATA_FILTER_MODE, mode == FILTER_MODE_BLACKLIST ? FILTER_MODE_BLACKLIST : FILTER_MODE_WHITELIST);
+    }
+
+    public String getWhitelist() {
+        return this.entityData.get(DATA_WHITELIST);
+    }
+
+    public void setWhitelist(String whitelist) {
+        this.entityData.set(DATA_WHITELIST, whitelist != null ? whitelist.trim() : "");
+    }
+
+    public String getBlacklist() {
+        return this.entityData.get(DATA_BLACKLIST);
+    }
+
+    public void setBlacklist(String blacklist) {
+        this.entityData.set(DATA_BLACKLIST, blacklist != null ? blacklist.trim() : "");
     }
 
     // ---------------------------------------------------------------------
@@ -248,51 +284,115 @@ public class TurretCartEntity extends AbstractMinecartContainer {
         return new Vec3(this.getX(), this.getY() + MUZZLE_HEIGHT, this.getZ());
     }
 
-    /**
-     * Valid targets: living hostile mobs (implementing {@link Enemy}), never players,
-     * never tamed/owned mobs, never neutral mobs that are not currently angry,
-     * never mobs riding in a minecart (e.g. being transported by the train).
-     */
-    private boolean isValidTarget(Mob mob) {
-        if (!(mob instanceof Enemy)) {
-            return false;
+    public boolean isPlayerWhitelisted(Player player) {
+        if (player == null) return false;
+        String pName = player.getName().getString();
+        String wl = this.getWhitelist();
+        if (wl == null || wl.isBlank()) return false;
+        for (String entry : wl.split(",")) {
+            if (entry.trim().equalsIgnoreCase(pName)) {
+                return true;
+            }
         }
-        if (!mob.isAlive() || mob.isDeadOrDying() || mob.isRemoved() || !mob.canBeSeenAsEnemy()) {
-            return false;
-        }
-        if (mob instanceof OwnableEntity ownable && ownable.getOwnerReference() != null) {
-            return false;
-        }
-        if (mob instanceof NeutralMob neutral && !neutral.isAngry()) {
-            return false;
-        }
-        Entity vehicle = mob.getVehicle();
-        if (vehicle instanceof AbstractMinecart) {
-            return false;
-        }
-        return mob.distanceToSqr(this) <= RANGE * RANGE;
+        return false;
     }
 
-    private @Nullable Mob findTarget() {
+    public boolean isPlayerBlacklisted(Player player) {
+        if (player == null) return false;
+        String pName = player.getName().getString();
+        String bl = this.getBlacklist();
+        if (bl == null || bl.isBlank()) return false;
+        for (String entry : bl.split(",")) {
+            if (entry.trim().equalsIgnoreCase(pName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isNameInList(String name, String list) {
+        if (name == null || list == null || list.isBlank()) return false;
+        for (String entry : list.split(",")) {
+            if (entry.trim().equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Valid targets:
+     * - In Whitelist mode: any hostile Enemy mob (unless whitelisted), plus any Player NOT on the whitelist
+     *   (when a whitelist is configured). Whitelisted players/allies are never targeted.
+     * - In Blacklist mode: any hostile Enemy mob, plus any Player explicitly on the blacklist.
+     * Never mobs riding in a minecart (train cargo/passengers).
+     */
+    private boolean isValidTarget(LivingEntity entity) {
+        if (!entity.isAlive() || entity.isDeadOrDying() || entity.isRemoved() || entity.isSpectator()) {
+            return false;
+        }
+        if (entity.getVehicle() instanceof AbstractMinecart) {
+            return false;
+        }
+        if (entity.distanceToSqr(this) > RANGE * RANGE) {
+            return false;
+        }
+
+        if (entity instanceof Player player) {
+            if (player.isCreative() || player.isSpectator()) {
+                return false;
+            }
+            if (this.getFilterMode() == FILTER_MODE_WHITELIST) {
+                // In whitelist mode: if whitelist is specified, non-whitelisted players are targeted!
+                return !this.getWhitelist().isBlank() && !this.isPlayerWhitelisted(player);
+            } else {
+                // In blacklist mode: target players explicitly on the blacklist!
+                return this.isPlayerBlacklisted(player);
+            }
+        }
+
+        if (entity instanceof Enemy) {
+            if (entity instanceof Mob mob && !mob.canBeSeenAsEnemy()) {
+                return false;
+            }
+            if (entity instanceof OwnableEntity ownable && ownable.getOwnerReference() != null) {
+                return false;
+            }
+            String typeName = entity.getType().getDescription().getString();
+            if (this.getFilterMode() == FILTER_MODE_WHITELIST && this.isNameInList(typeName, this.getWhitelist())) {
+                return false;
+            }
+            return true;
+        }
+
+        if (entity instanceof NeutralMob neutral && neutral.isAngry()) {
+            return true;
+        }
+
+        String typeName = entity.getType().getDescription().getString();
+        return this.getFilterMode() == FILTER_MODE_BLACKLIST && this.isNameInList(typeName, this.getBlacklist());
+    }
+
+    private @Nullable LivingEntity findTarget() {
         AABB area = this.getBoundingBox().inflate(RANGE, RANGE * 0.5D, RANGE);
-        List<Mob> candidates = this.level().getEntitiesOfClass(Mob.class, area, this::isValidTarget);
+        List<LivingEntity> candidates = this.level().getEntitiesOfClass(LivingEntity.class, area, this::isValidTarget);
         if (candidates.isEmpty()) {
             return null;
         }
         candidates.sort(Comparator.comparingDouble(m -> m.distanceToSqr(this)));
         Vec3 muzzle = this.getMuzzleBase();
-        for (Mob mob : candidates) {
-            Vec3 aim = new Vec3(mob.getX(), mob.getY(0.5D), mob.getZ());
-            if (this.hasClearShot(muzzle, aim, mob)) {
-                return mob;
+        for (LivingEntity target : candidates) {
+            Vec3 aim = new Vec3(target.getX(), target.getY(0.5D), target.getZ());
+            if (this.hasClearShot(muzzle, aim, target)) {
+                return target;
             }
         }
         return null;
     }
 
     /**
-     * Line-of-sight check against blocks, plus a friendly-fire check: refuse the shot if a
-     * player, villager-like non-enemy, or any minecart (other train cars) is in the way.
+     * Line-of-sight check against blocks, plus friendly-fire safety: refuse shot if a
+     * whitelisted player, train cart, or neutral/friendly entity is in the way.
      */
     private boolean hasClearShot(Vec3 from, Vec3 to, Entity target) {
         HitResult blockHit = this.level().clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this));
@@ -302,7 +402,7 @@ public class TurretCartEntity extends AbstractMinecartContainer {
         AABB sweep = new AABB(from, to).inflate(1.0D);
         List<Entity> blockers = this.level().getEntities(this, sweep, e -> e != target
                 && !e.isSpectator()
-                && (e instanceof Player || e instanceof AbstractMinecart || (e instanceof LivingEntity && !(e instanceof Enemy))));
+                && (e instanceof AbstractMinecart || (e instanceof Player p && this.isPlayerWhitelisted(p)) || (e instanceof LivingEntity le && !this.isValidTarget(le))));
         for (Entity e : blockers) {
             if (e.getBoundingBox().inflate(0.3D).clip(from, to).isPresent()) {
                 return false;
@@ -316,7 +416,7 @@ public class TurretCartEntity extends AbstractMinecartContainer {
         if (!isBow(bow)) {
             return;
         }
-        Mob target = this.currentTarget;
+        LivingEntity target = this.currentTarget;
         if (target == null || !this.isValidTarget(target)) {
             return;
         }
@@ -423,12 +523,18 @@ public class TurretCartEntity extends AbstractMinecartContainer {
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
         output.putFloat("TurretYaw", this.getTurretYaw());
+        output.putInt("FilterMode", this.getFilterMode());
+        output.putString("Whitelist", this.getWhitelist());
+        output.putString("Blacklist", this.getBlacklist());
     }
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
         this.entityData.set(DATA_TURRET_YAW, input.getFloatOr("TurretYaw", 0.0F));
+        this.setFilterMode(input.getIntOr("FilterMode", FILTER_MODE_WHITELIST));
+        this.setWhitelist(input.getStringOr("Whitelist", ""));
+        this.setBlacklist(input.getStringOr("Blacklist", ""));
         this.updateBowMask();
     }
 

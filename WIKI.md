@@ -101,7 +101,7 @@ The reliable workhorse of standard industrial railroads.
 * **Speed Profile**: 5 forward gears. **Gear 1 is calibrated to a precise Crawl Speed of 1.0 m/s (0.05 blocks/tick)** for precision switching and coupling maneuvers, scaling up to Gear 5 at `0.35` blocks/tick (`~7 m/s` or `25 km/h`).
 * **Cruise Control**: Gear 3 runs at **50% of maximum speed** (`~0.175` blocks/tick).
 * **Pulling Allowance**: Pulls up to **5 carts** with zero friction penalty. Pulling 6+ carts causes progressive drag slowdown.
-* **Cowcatcher**: Deflects and pushes wandering animals and minor obstacles out of the rail path.
+* **Cowcatcher & Headlight**: Deflects and pushes wandering animals and minor obstacles out of the rail path. Features a flush-mounted high-intensity forward headlight housing aligned directly over the boiler door.
 * **Steam Whistle**: Emits a loud piercing whistle that causes nearby mobs to flee the tracks.
 
 ---
@@ -243,12 +243,12 @@ Each locomotive adds its **Pulling Allowance** to the entire train:
 ## 4. Rolling Stock Catalog
 
 ### Adaptive Cargo Minecart
-A heavy-duty freight wagon with **27 storage slots** plus a dedicated **Filter Slot**. The cart's 3D exterior model dynamically changes based on what you filter:
+A heavy-duty freight wagon with **27 storage slots**, authentic Caboose-matching flanged steel wheels, plus a dedicated **Filter Slot**. The cart's 3D exterior model dynamically changes based on what you filter:
 
 | Filter Mode | Items Accepted | 3D Visual Appearance |
 | :--- | :--- | :--- |
 | **Log Mode** | Any wooden logs (`#minecraft:logs`) | Heavy upright log stakes loaded with rustic timber logs |
-| **Container Mode** | General items, tools, ingots, food | Enclosed, corrugated industrial shipping container |
+| **Container Mode** | General items, tools, ingots, food | Enclosed industrial shipping container rendered dynamically in **Industrial Red**, **Forest Green**, or **Deep Blue** |
 | **Ore Mode** | Raw iron, copper, gold, coal, lapis, redstone | Open hopper filled with towering mounds of raw mineral ores |
 | **Ingot Mode** | Refined metal ingots | Neatly stacked precious metal bars |
 
@@ -258,12 +258,13 @@ A heavy-duty freight wagon with **27 storage slots** plus a dedicated **Filter S
 ---
 
 ### Loose Aggregate Hopper Car (Hopper Minecart)
-A heavy-duty open-top hopper car designed for hauling bulk loose aggregates such as ballast gravel, sand, dirt, raw ores, and coal (modeled after North American TIMX and Herzog ballast hoppers).
+A heavy-duty open-top hopper car designed for hauling bulk loose aggregates such as ballast gravel, sand, dirt, raw ores, and coal (modeled after North American TIMX and Herzog ballast hoppers) with Caboose-matching flanged steel wheels.
 
-#### 3D Visual Aggregate Heaps
+#### Solid Smooth Metallic Finish & 3D Visual Aggregate Heaps
+- **Smooth Metallic Exterior**: Uniform, non-weathered solid steel livery (`#737A84`) across the car body and chassis for a clean, heavy-industrial aesthetic.
 - **Empty State**: Renders as an authentic hollow open hopper container showing interior sloped bottom discharge chutes.
 - **Loaded State**: Dynamically renders 3 mounded aggregate heaps piled inside the container whenever loose materials are loaded.
-- **Dynamic Textures**: Automatically selects and renders the exact texture matching the stored aggregate:
+- **Dynamic Heaps**: Automatically renders the exact 3D heap model matching the stored aggregate:
   - **Coal**: Rich black coal mounds.
   - **Gravel / Ballast**: Crushed ballast stone heaps (gravel, cobblestone, andesite, diorite, granite, tuff).
   - **Sand**: Clean yellow sand mounds.
@@ -279,7 +280,7 @@ A heavy-duty open-top hopper car designed for hauling bulk loose aggregates such
 ---
 
 ### Generator Train Cart (Mobile Steam Dynamo)
-An industrial steam dynamo and Forge Energy (FE/RF) generator cart styled with a detailed 3D dynamo model (under 1.5 blocks tall).
+An industrial steam dynamo and Forge Energy (FE/RF) generator cart styled with flanged steel wheels and a detailed 3D dynamo model (under 1.5 blocks tall).
 
 ```
       [ Dynamo Generator ]
@@ -309,6 +310,8 @@ An industrial steam dynamo and Forge Energy (FE/RF) generator cart styled with a
 ### Livestock Cart (Railroad Stock Car)
 An authentic North American railroad stock car modeled to scale with rolling stock:
 
+* **Flicker-Free Geometry**: Overhauled model dimensions eliminate coplanar face Z-fighting across doorway frames, wooden slats, and corner bulkheads.
+* **Caboose-Matching Wheels**: Equipped with matching heavy flanged steel wheel assemblies.
 * **Dual Stall Capacity**: Accommodates up to **2 entities** simultaneously across distinct front and rear stalls.
 * **Open Slatted Wooden Construction**: Built with horizontal wooden slats, keeping livestock well-ventilated and clearly visible as the train travels.
 * **Leash Hitching**: Right-clicking the cart while leading an animal on a Lead instantly unleashes and boards the animal inside.
@@ -329,13 +332,25 @@ Specialized tanker wagons designed to safely transport fluids across rail lines:
 ---
 
 ### Arrow Turret Cart
-An armored rolling-stock defense wagon styled after the Caboose and heavy freight cars to protect trains from hostiles.
+An armored rolling-stock defense wagon built for protecting trains, cargo, and passenger rail lines from hostile creatures and raiders.
 
-* **Dual Weapon Slots**: Mount up to **2 Bows** into dedicated gun ports on the rotating turret.
-* **9-Slot Ammo Magazine**: Carries up to 9 stacks of arrows (standard, tipped, or spectral arrows).
-* **Automated Hostile Defense**: Scans within a **16-block radius** for hostile mobs (`Enemy`) and fires alternate staggered volleys from its dual bow mounts.
-* **Target Filtering**: Automatically ignores players, animals, villagers, and passenger mobs on trains.
-* **Dynamic Turret Rotation**: The armored cupola smoothly tracks and swivels towards active targets.
+#### Visual Styling & Livery
+- **Tactical Woodland Camo**: High-resolution (1024×1024) woodland camouflage livery with reinforced steel structural plating and rivets.
+- **Flanged Steel Wheels**: Fitted with standard heavy flanged steel rail wheels matching the Caboose.
+- **Dynamic Cupola Swivel**: The armored cupola smoothly turns and tilts in 3D to acquire targets.
+
+#### Combat & Weaponry
+* **2× Extended Engagement Range**: Engages threats within a **32-block radius** (expanded from 16m), providing long-range anti-sniper and area defense.
+* **Dual Weapon Slots**: Mount up to **2 Bows** into dedicated gun ports on the rotating turret. Bow durability is consumed per shot fired.
+* **9-Slot Ammo Magazine**: Carries up to 9 stacks of arrows (standard, tipped, or spectral arrows). Staggered dual volleys launch rapidly from alternating bow ports.
+
+#### Interactive Player Whitelist / Blacklist Filter
+The Turret Cart GUI includes an interactive filtering panel located directly above the inventory:
+* **Mode Toggle Button (`[Whitelist]` / `[Blacklist]`)**: Click to cycle between Whitelist and Blacklist modes.
+* **Player Filter Input Box**: Type comma-separated player usernames (e.g. `EngineerBob, ConductorJane`).
+  - **Whitelist Mode (Default)**: The turret attacks all hostile mobs (`Enemy`) and any players **not** listed in the whitelist. Whitelisted players and their trains are completely safe.
+  - **Blacklist Mode**: The turret attacks all hostile mobs plus any specific players listed in the blacklist.
+* **Automated Exclusions**: The turret never fires upon friendly farm animals, pets, villagers, or passengers riding in the same train consist.
 
 ---
 
@@ -448,9 +463,11 @@ Placed underneath tracks to automate fluid logistics:
 
 ---
 
-### In-GUI Custom Cart & Train Naming
+### In-GUI Custom Cart & Train Naming & JourneyMap Integration
 All locomotives and rolling stock carts feature editable name fields inside their interactive GUIs:
 * Name your rolling stock (e.g. `"Ore-Express-1"`, `"Fuel-Tender-A"`, `"Shuttle-South"`).
+* **Live JourneyMap Tracking**: Active locomotives and cars display their custom names rendered directly above the train icon on JourneyMap (`-20px` Y-offset).
+* **Far-Distance Server Synchronization**: Active train locations are synchronized from server to clients over network packets (`TrainMapSyncPayload`), allowing trains to be tracked across the continent without vanishing outside client entity render range.
 * **Track Switch Integration**: The Mechanical Track Signal Switch automatically inspects cart names and switches routes based on your rules.
 * **Station Filter Integration**: Cargo and fluid stations can be set to only load or unload carts bearing specific custom names.
 
@@ -525,9 +542,11 @@ A heavy-duty industrial caterpillar track paver machine inspired by the CAT AP10
 
 #### Key Operational Capabilities:
 
-1. **Calibrated 1.0 m/s Paving Speed**:
+1. **Calibrated 1.0 m/s Paving Speed & Flush Alignment**:
    - Advanced movement system moves forward at an exact **1.0 m/s** (20 ticks per 1-block step).
    - Replaces blocks across a **1-block deep by 3-block wide transverse strip** (Left, Center, Right) across the rear hydraulic leveling screed.
+   - **Flush Ground Clearance**: Positioned flush with the ground and rail ties, eliminating ground hovering off-rail and on-rail.
+   - **Idle Speedometer & Sound**: HUD speedometer registers 0.0 m/s when idle, and engine audio cleanly silences when stopped or out of fuel.
 2. **Trackbed Preservation Under Railway Tracks**:
    - When paving across or underneath existing railway tracks, the paver detects rails directly above the target block.
    - Replaces the underlying ballast/foundation block **without popping, breaking, or disturbing the track** on top!
@@ -834,7 +853,31 @@ All recipes are crafted in a standard 3×3 Crafting Table:
 
 For the complete, version-by-version release history and technical changes, see **[CHANGELOG.md](CHANGELOG.md)**.
 
-### Summary of Recent Updates (v1.0.1):
+### Summary of Recent Updates:
+
+#### Version 1.0.2:
+- **Arrow Turret Cart Overhaul**:
+  - **In-GUI Player Whitelist / Blacklist**: Toggle between `[Whitelist]` and `[Blacklist]` mode directly in the turret menu. Comma-separated player usernames allow defending friendly players or targeting specific rivals.
+  - **2× Engagement Range**: Target acquisition radius doubled to **32 blocks** (formerly 16 blocks).
+  - **Tactical Woodland Camo Livery**: Crisp, ultra-high-resolution 1024×1024 tactical military finish with heavy structural rivets.
+  - **Caboose-Matching Wheels**: Replaced legacy wheel texture with standardized flanged steel wheels.
+- **JourneyMap Live Tracking & Train Names**:
+  - Train/cart custom names are now rendered directly above the map marker icons.
+  - Implemented server-side map synchronization (`TrainMapSyncPayload`) so trains and consists remain visible across continental distances and no longer disappear off the map outside client chunk render distance.
+- **Rolling Stock Visual Overhaul & Textures**:
+  - **Hopper Cars**: Standardized to 1 solid color smooth metallic finish (`#737A84`) across all 7 aggregate variations with Caboose-matching flanged steel wheels.
+  - **Adaptive Cargo Minecarts**: Render with random dynamic container colors (**Industrial Red**, **Forest Green**, or **Deep Blue**) based on cart identity, with Caboose-matching wheels.
+  - **Livestock Cart**: Resolved model face Z-fighting / flickering across doorway posts, slats, corner bulkheads, and roof eaves.
+  - **Wheel Consistency**: All rolling stock (Hopper, Cargo, Livestock, Generator, Ore, Ingot, Wood, Logging) equipped with Caboose-matching wheels.
+- **Basic Steam Locomotive Fixes**:
+  - Removed yellow roof whistle ornament for a sleek cab roofline.
+  - Elevated front headlight assembly up by 2 pixels to properly align with and cover the boiler door circular lens graphic.
+- **Track Paver (AP1055F) Polishing**:
+  - Adjusted renderer translation offset so crawler tracks sit flush against terrain and rails without hovering.
+  - Speedometer HUD now displays 0.0 m/s when out of fuel or stopped.
+  - Engine audio silenced when stopped or idle.
+
+#### Version 1.0.1:
 - **Heavy Track & Road Paver (`track_paver`)**: CAT AP1055F-inspired industrial crawler paver. Moves forward at 1.0 m/s paving 1×3 wide strips with selected paver blocks, preserves tracks intact under rails, supports off-rails & on-rails operation, cardinal lock (N/S/E/W), manual riding, and 27-slot material hopper.
 - **Generator Train Cart (`generator_cart`)**: Mobile steam dynamo & RF generator. Consumes coal + water, generates 100 FE/t, powers coupled electric trains, trackside cables, and broadcasts power within 3 blocks.
 - **Braking / Holding Rail (`braking_rail`)**: Unpowered clamps and freezes rolling stock in place; powered releases and launches. Integrates with loaders/unloaders.

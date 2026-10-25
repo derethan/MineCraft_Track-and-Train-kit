@@ -12,4 +12,5 @@ public class CargoMinecartRenderState extends MinecartRenderState {
     public ItemStack filterItem = ItemStack.EMPTY;
     public CargoMinecartEntity.FilterType filterType = CargoMinecartEntity.FilterType.NONE;
     public int storedCount = 0;
+    public int containerColorIndex = 0;
 }

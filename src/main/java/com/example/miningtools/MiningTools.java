@@ -1,5 +1,8 @@
 package com.example.miningtools;
 
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.world.entity.Entity;
 import org.slf4j.Logger;
 
 import com.example.miningtools.block.BufferStopBlock;
@@ -12,6 +15,7 @@ import com.example.miningtools.block.CargoTransferBlock;
 import com.example.miningtools.block.entity.CargoTransferBlockEntity;
 import com.example.miningtools.menu.CargoTransferMenu;
 import com.example.miningtools.network.CargoTransferFilterPayload;
+import com.example.miningtools.network.TurretCartFilterPayload;
 import com.example.miningtools.network.CargoTransferSyncPayload;
 import com.example.miningtools.network.FluidLoaderFilterPayload;
 import com.example.miningtools.network.FluidLoaderSyncPayload;
@@ -801,6 +805,11 @@ public class MiningTools {
                 CargoTransferFilterPayload.STREAM_CODEC,
                 CargoTransferFilterPayload::handle
         );
+        registrar.playToServer(
+                TurretCartFilterPayload.TYPE,
+                TurretCartFilterPayload.STREAM_CODEC,
+                TurretCartFilterPayload::handle
+        );
         registrar.playToClient(
                 CargoTransferSyncPayload.TYPE,
                 CargoTransferSyncPayload.STREAM_CODEC,
@@ -815,6 +824,11 @@ public class MiningTools {
                 FluidLoaderSyncPayload.TYPE,
                 FluidLoaderSyncPayload.STREAM_CODEC,
                 FluidLoaderSyncPayload::handle
+        );
+        registrar.playToClient(
+                com.example.miningtools.network.TrainMapSyncPayload.TYPE,
+                com.example.miningtools.network.TrainMapSyncPayload.STREAM_CODEC,
+                com.example.miningtools.network.TrainMapSyncPayload::handle
         );
     }
 
@@ -902,6 +916,56 @@ public class MiningTools {
         }
     }
 
+
+    private int trainMapTick = 0;
+
+    @SubscribeEvent
+    public void onServerTick(net.neoforged.neoforge.event.tick.ServerTickEvent.Post event) {
+        if (++this.trainMapTick % 20 != 0) return;
+        net.minecraft.server.MinecraftServer server = event.getServer();
+        if (server == null) return;
+
+        List<com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry> entries = new ArrayList<>();
+        for (ServerLevel level : server.getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity instanceof AbstractMinecart cart && cart.isAlive()) {
+                    String iconType = getTrainMapIconType(cart);
+                    if (iconType != null) {
+                        String name = com.example.miningtools.compat.journeymap.JourneyMapTrainPlugin.getBestTrainName(cart);
+                        entries.add(new com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry(
+                                cart.getId(),
+                                cart.blockPosition(),
+                                (int) cart.getYRot(),
+                                level.dimension().identifier().toString(),
+                                name,
+                                iconType,
+                                false
+                        ));
+                    }
+                }
+            }
+        }
+        if (!entries.isEmpty()) {
+            PacketDistributor.sendToAllPlayers(new com.example.miningtools.network.TrainMapSyncPayload(entries));
+        }
+    }
+
+    private static @org.jspecify.annotations.Nullable String getTrainMapIconType(AbstractMinecart cart) {
+        if (cart instanceof BasicLocomotiveEntity) return "locomotive";
+        if (cart instanceof DieselLocomotiveEntity) return "diesel";
+        if (cart instanceof ElectricLocomotiveEntity) return "electric";
+        if (cart instanceof CabooseMinecartEntity) return "caboose";
+        if (cart instanceof TunnelBoreEntity) return "bore";
+        if (cart instanceof TrackPaverEntity) return "paver";
+        if (cart instanceof TurretCartEntity) return "turret";
+        if (cart instanceof AggregateHopperCartEntity) return "hopper";
+        if (cart instanceof LivestockCartEntity) return "livestock";
+        if (cart instanceof GeneratorMinecartEntity) return "generator";
+        if (cart instanceof LargeLiquidMinecartEntity || cart instanceof LiquidMinecartEntity) return "tanker";
+        if (cart instanceof CargoMinecartEntity) return "cargo";
+        if (BasicLocomotiveEntity.getConnectedLocomotive(cart) != null || ElectricLocomotiveEntity.getConnectedLocomotive(cart) != null) return "cart";
+        return null;
+    }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {

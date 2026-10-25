@@ -53,7 +53,7 @@ public class TrackPaverRenderer extends EntityRenderer<TrackPaverEntity, TrackPa
         super.submit(state, poseStack, submitNodeCollector, camera);
         poseStack.pushPose();
 
-        poseStack.translate(0.0F, 0.375F, 0.0F);
+        poseStack.translate(0.0F, state.onRails ? 0.0625F : 0.0F, 0.0F);
         poseStack.rotateDegrees(Axis.YP, 180.0F - state.facing.toYRot());
 
         if (state.hurtTime > 0.0F) {

@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.2] - 2026-10-25
+
+### Added
+- **Turret Cart Whitelist & Blacklist Targeting Controls**:
+  - Added an integrated Whitelist / Blacklist toggle button and text input box directly in the Turret Cart GUI with full server synchronization and NBT persistence.
+  - Allows whitelisting friendly players and allies (comma-separated, e.g. `Steve, Alex`) to safeguard them from turret fire and protect line-of-sight friendly fire.
+  - In Whitelist mode, automatically targets hostile mobs and non-whitelisted players when a player list is configured.
+  - In Blacklist mode, allows explicitly blacklisting players or specific entity types for turret defense.
+- **2x Turret Cart Engagement Range**:
+  - Doubled effective turret detection and firing radius from 16.0 blocks to **32.0 blocks**.
+- **JourneyMap Live Train Name Displays & Far-Distance Map Persistence**:
+  - Live train names and custom cart names are now rendered directly above the train icon markers on JourneyMap with high-contrast, shadowed text badges.
+  - Added real-time server-side train position broadcasting (`TrainMapSyncPayload`) so trains and consists remain visible and moving across the entire world map, eliminating train markers disappearing when traveling beyond client render distance.
+- **Random Freight Container Colors for Cargo Carts**:
+  - Introduced randomized shipping container paint schemes (Intermodal Ocean Blue, Freight Crimson Red, and Military Forest Green) across Cargo Carts while maintaining authentic Caboose-style flanged steel wheels.
+
+### Fixed
+- **Track Paver Speedometer & Off-State Calibration**:
+  - Fixed the speedometer overlay displaying maximum speed (8.0 m/s / full bar) when the paver was powered off or out of fuel.
+  - Calibrated reference max speed for Track Pavers to 1.0 m/s in `SpeedometerOverlay`.
+- **Track Paver Persistent Audio Loop**:
+  - Fixed Track Paver sound continuously playing and getting louder when off/out of fuel by resetting client and server delta movement to zero and enforcing silence when stopped.
+- **Track Paver Ground Hovering**:
+  - Fixed Track Paver hovering 6 pixels (0.375 blocks) in mid-air above the terrain by setting ground translation flush to the surface when running off-rails.
+- **Livestock Cart Z-Fighting & Flickering**:
+  - Fixed visual polygon flickering and Z-fighting across the Livestock Cart model by eliminating overlapping coplanar faces between doorway posts, horizontal wooden slats, end bulkheads, and roof eaves.
+- **Steam Locomotive (Basic Locomotive) Roof & Headlight Alignment**:
+  - Removed the yellow whistle from the roof of the cab.
+  - Elevated the front 3D headlight housing and bracket to align with and cover the circular light texture painted onto the front of the boiler door.
+
+### Changed
+- **Texture Overhauls & Caboose-Matched Wheels**:
+  - **Turret Cart**: Completely remastered the texture from 128×128 to an ultra-crisp 1024×1024 high-definition military woodland camouflage livery with steel rivets, eliminating blurriness, and added flanged steel wheels matching the Caboose.
+  - **Hopper Carts**: Standardized all Hopper Carts (empty, coal, dirt, gravel, ore, red sand, sand) to 1 solid color smooth metallic finish with Caboose-matching flanged steel wheels.
+  - **Livestock Cart & Generator Cart**: Updated wheels to match the flanged steel Caboose style.
+  - **Cargo Minecarts**: Updated flatbed undercarriage and container variants with Caboose-matching flanged steel wheels.
+
+---
+
 ## [1.0.1] - 2026-10-24
 
 ### Added

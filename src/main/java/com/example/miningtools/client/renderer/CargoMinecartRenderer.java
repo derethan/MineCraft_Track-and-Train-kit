@@ -31,6 +31,12 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/ingot_cart.png");
     private static final Identifier TEXTURE_CONTAINER_CART =
             Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/container_cart.png");
+    private static final Identifier TEXTURE_CONTAINER_CART_RED =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/container_cart_red.png");
+    private static final Identifier TEXTURE_CONTAINER_CART_GREEN =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/container_cart_green.png");
+    private static final Identifier TEXTURE_CONTAINER_CART_BLUE =
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/entity/container_cart_blue.png");
 
     private final LoggingCartModel loggingCartModel;
 
@@ -51,6 +57,7 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
         state.filterItem = entity.getFilterItem();
         state.filterType = entity.getFilterType();
         state.storedCount = entity.getStoredCount();
+        state.containerColorIndex = Math.abs(entity.getUUID().hashCode()) % 3;
     }
 
     @Override
@@ -107,7 +114,11 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
         } else if (state.filterType == CargoMinecartEntity.FilterType.INGOT) {
             texture = TEXTURE_INGOT_CART;
         } else if (state.storedCount > 0) {
-            texture = TEXTURE_CONTAINER_CART;
+            texture = switch (state.containerColorIndex) {
+                case 1 -> TEXTURE_CONTAINER_CART_GREEN;
+                case 2 -> TEXTURE_CONTAINER_CART_BLUE;
+                default -> TEXTURE_CONTAINER_CART_RED;
+            };
         } else {
             texture = TEXTURE_WOOD_CART;
         }
