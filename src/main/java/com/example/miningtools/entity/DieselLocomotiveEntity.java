@@ -777,11 +777,12 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 }
             }
 
-            // Pre-lift Y on slopes before horizontal move() so locomotive cleanly clears stair-step roadbed collisions
+            // On slopes, set Y to base rail elevation + 1.0 (matching vanilla OldMinecartBehavior) before horizontal move()
+            double moveY = (double) railPos.getY();
             if (shape.isSlope()) {
-                y = (double) railPos.getY() + 1.0D;
+                moveY += 1.0D;
             }
-            this.setPos(x, y, z);
+            this.setPos(x, moveY, z);
             this.setDeltaMovement(newVx, 0.0, newVz);
             this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
 
@@ -792,10 +793,16 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 this.setPos(this.getX(), this.getY() + (double) exit1.getY(), this.getZ());
             }
 
-            // Snap X, Y, Z precisely to the rail surface
+            // Snap Y precisely to the rail surface, and center lateral axis on straight rails
             Vec3 newRailPos = this.getRailPos(this.getX(), this.getY(), this.getZ());
             if (newRailPos != null) {
-                this.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
+                if (isCurve) {
+                    this.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
+                } else {
+                    double finalX = (shape == RailShape.NORTH_SOUTH || shape == RailShape.ASCENDING_NORTH || shape == RailShape.ASCENDING_SOUTH) ? newRailPos.x : this.getX();
+                    double finalZ = (shape == RailShape.EAST_WEST || shape == RailShape.ASCENDING_EAST || shape == RailShape.ASCENDING_WEST) ? newRailPos.z : this.getZ();
+                    this.setPos(finalX, newRailPos.y, finalZ);
+                }
             }
 
             double actualDx = this.getX() - initialX;
@@ -810,8 +817,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
             this.setDeltaMovement(actualMovement);
 
-            double forwardProgress = actualDx * travelDir.getStepX() + actualDz * travelDir.getStepZ();
-            boolean hitObstacle = pathBlocked || (this.horizontalCollision && forwardProgress < 0.005D);
+            boolean hitObstacle = pathBlocked;
             if (hitObstacle) {
                 this.setRunning(false);
                 this.setActive(false);

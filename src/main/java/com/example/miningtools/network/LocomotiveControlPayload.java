@@ -74,6 +74,10 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
                     bore.handleHotkeyAction(player, payload.action());
                     return;
                 }
+                if (vehicle instanceof com.example.miningtools.entity.TrackPaverEntity paver && !paver.isRemoved()) {
+                    paver.handleHotkeyAction(player, payload.action());
+                    return;
+                }
                 BasicLocomotiveEntity loco = BasicLocomotiveEntity.getConnectedLocomotive(vehicle);
                 if (loco != null && !loco.isRemoved()) {
                     loco.handleHotkeyAction(player, payload.action());

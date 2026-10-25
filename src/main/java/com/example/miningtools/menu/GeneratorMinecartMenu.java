@@ -15,8 +15,11 @@ import net.minecraft.world.inventory.SimpleContainerData;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.transfer.access.ItemAccess;
+import net.neoforged.neoforge.transfer.fluid.FluidUtil;
 
 public class GeneratorMinecartMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = 4;
@@ -43,23 +46,25 @@ public class GeneratorMinecartMenu extends AbstractContainerMenu {
         container.startOpen(playerInventory.player);
 
         // Slot 0: Fuel Slot (Center)
-        this.addSlot(new Slot(container, FUEL_SLOT, 80, 42) {
+        this.addSlot(new Slot(container, FUEL_SLOT, 80, 44) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK);
+                return GeneratorMinecartEntity.getFuelBurnDuration(stack) > 0;
             }
         });
 
         // Slot 1: Water In Container Slot (Left top)
-        this.addSlot(new Slot(container, WATER_IN_SLOT, 28, 24) {
+        this.addSlot(new Slot(container, WATER_IN_SLOT, 34, 22) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return stack.is(Items.WATER_BUCKET);
+                if (stack.is(Items.WATER_BUCKET)) return true;
+                FluidStack fluid = FluidUtil.getFirstStackContained(stack);
+                return fluid != null && !fluid.isEmpty() && fluid.getFluid() == Fluids.WATER;
             }
         });
 
         // Slot 2: Empty Bucket Out Slot (Left bottom)
-        this.addSlot(new Slot(container, BUCKET_OUT_SLOT, 28, 54) {
+        this.addSlot(new Slot(container, BUCKET_OUT_SLOT, 34, 50) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return false;
@@ -67,7 +72,7 @@ public class GeneratorMinecartMenu extends AbstractContainerMenu {
         });
 
         // Slot 3: Battery / Energy Item Slot (Right)
-        this.addSlot(new Slot(container, ENERGY_ITEM_SLOT, 134, 42) {
+        this.addSlot(new Slot(container, ENERGY_ITEM_SLOT, 126, 44) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return ItemAccess.forStack(stack.copyWithCount(1)).getCapability(Capabilities.Energy.ITEM) != null;
@@ -171,11 +176,11 @@ public class GeneratorMinecartMenu extends AbstractContainerMenu {
                 }
             } else {
                 // Move from player into cart
-                if (stackInSlot.is(ItemTags.COALS) || stackInSlot.is(Items.COAL_BLOCK)) {
+                if (GeneratorMinecartEntity.getFuelBurnDuration(stackInSlot) > 0) {
                     if (!this.moveItemStackTo(stackInSlot, FUEL_SLOT, FUEL_SLOT + 1, false)) {
                         return ItemStack.EMPTY;
                     }
-                } else if (stackInSlot.is(Items.WATER_BUCKET)) {
+                } else if (stackInSlot.is(Items.WATER_BUCKET) || (FluidUtil.getFirstStackContained(stackInSlot) != null && FluidUtil.getFirstStackContained(stackInSlot).getFluid() == Fluids.WATER)) {
                     if (!this.moveItemStackTo(stackInSlot, WATER_IN_SLOT, WATER_IN_SLOT + 1, false)) {
                         return ItemStack.EMPTY;
                     }

@@ -25,7 +25,7 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 @OnlyIn(Dist.CLIENT)
 public class GeneratorMinecartScreen extends AbstractContainerScreen<GeneratorMinecartMenu> {
     private static final Identifier TEXTURE =
-            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/gui/basic_locomotive.png");
+            Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/gui/generator_cart.png");
 
     private @Nullable EditBox nameBox;
     private boolean initializedName = false;
@@ -111,50 +111,44 @@ public class GeneratorMinecartScreen extends AbstractContainerScreen<GeneratorMi
         // Base GUI container texture
         graphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, xo, yo, 0.0F, 0.0F, this.imageWidth, this.imageHeight, 256, 256);
 
-        // 1. Water Tank Column (Left side, x=10, y=20, w=14, h=52)
-        int tankX = xo + 10;
-        int tankY = yo + 20;
+        // 1. Water Tank Column (Left side, x=11, y=19, w=14, h=52)
+        int tankX = xo + 11;
+        int tankY = yo + 19;
         int tankW = 14;
         int tankH = 52;
-        graphics.fill(tankX, tankY, tankX + tankW, tankY + tankH, 0xFF0B192C);
         float waterPct = this.menu.getWaterPercent();
         int waterFillH = Mth.clamp((int) (tankH * waterPct), 0, tankH);
         if (waterFillH > 0) {
-            graphics.fill(tankX + 1, tankY + tankH - waterFillH + 1, tankX + tankW - 1, tankY + tankH - 1, 0xFF0284C7);
+            graphics.fill(tankX, tankY + tankH - waterFillH, tankX + tankW, tankY + tankH, 0xFF0284C7);
         }
-        graphics.outline(tankX, tankY, tankW, tankH, 0xFF38BDF8);
 
-        // 2. RF / Energy Storage Column (Right side, x=152, y=20, w=14, h=52)
-        int energyX = xo + 152;
-        int energyY = yo + 20;
+        // 2. RF / Energy Storage Column (Right side, x=151, y=19, w=14, h=52)
+        int energyX = xo + 151;
+        int energyY = yo + 19;
         int energyW = 14;
         int energyH = 52;
-        graphics.fill(energyX, energyY, energyX + energyW, energyY + energyH, 0xFF180A0A);
         float energyPct = this.menu.getEnergyPercent();
         int energyFillH = Mth.clamp((int) (energyH * energyPct), 0, energyH);
         if (energyFillH > 0) {
             int col = this.menu.isGenerating() ? 0xFFEF4444 : 0xFFB91C1C;
-            graphics.fill(energyX + 1, energyY + energyH - energyFillH + 1, energyX + energyW - 1, energyY + energyH - 1, col);
+            graphics.fill(energyX, energyY + energyH - energyFillH, energyX + energyW, energyY + energyH, col);
         }
-        graphics.outline(energyX, energyY, energyW, energyH, 0xFFEF4444);
 
-        // 3. Flame indicator above fuel slot (x=80, y=26, w=16, h=14)
+        // 3. Flame indicator above fuel slot (x=80, y=24, w=16, h=14)
         int flameX = xo + 80;
-        int flameY = yo + 26;
+        int flameY = yo + 24;
         int flameW = 16;
         int flameH = 14;
-        graphics.fill(flameX, flameY, flameX + flameW, flameY + flameH, 0xFF1C1917);
         float burnPct = this.menu.getBurnPercent();
         if (burnPct > 0.0F) {
             int fillH = Mth.clamp((int) (flameH * burnPct), 0, flameH);
-            graphics.fill(flameX + 1, flameY + flameH - fillH + 1, flameX + flameW - 1, flameY + flameH - 1, 0xFFF97316);
+            graphics.fill(flameX, flameY + flameH - fillH, flameX + flameW, flameY + flameH, 0xFFF97316);
             graphics.text(this.font, Component.literal("🔥"), flameX + 3, flameY + 2, 0xFFFFEDD5, false);
         } else {
             graphics.text(this.font, Component.literal("·"), flameX + 6, flameY + 2, 0xFF78716C, false);
         }
-        graphics.outline(flameX, flameY, flameW, flameH, 0xFF78716C);
 
-        // Status text below slots
+        // Status text centered below slots
         Component status;
         int statusColor;
         if (this.menu.isGenerating()) {
@@ -170,20 +164,30 @@ public class GeneratorMinecartScreen extends AbstractContainerScreen<GeneratorMi
             status = Component.literal("IDLE (BUFFER FULL)").withStyle(ChatFormatting.GRAY);
             statusColor = 0xFF64748B;
         }
-        graphics.text(this.font, status, xo + 48, yo + 64, statusColor, false);
+        int textWidth = this.font.width(status);
+        int textX = xo + (this.imageWidth - textWidth) / 2;
+        graphics.text(this.font, status, textX, yo + 66, statusColor, false);
 
         // Tooltips
-        if (mouseX >= tankX && mouseX <= tankX + tankW && mouseY >= tankY && mouseY <= tankY + tankH) {
+        if (mouseX >= xo + 10 && mouseX <= xo + 26 && mouseY >= yo + 18 && mouseY <= yo + 72) {
             Component tip = Component.literal("Water: " + this.menu.getFluidAmount() + " / " + this.menu.getWaterCapacity() + " mB")
                     .withStyle(ChatFormatting.AQUA);
             graphics.setTooltipForNextFrame(tip, mouseX, mouseY);
-        } else if (mouseX >= energyX && mouseX <= energyX + energyW && mouseY >= energyY && mouseY <= energyY + energyH) {
+        } else if (mouseX >= xo + 150 && mouseX <= xo + 166 && mouseY >= yo + 18 && mouseY <= yo + 72) {
             Component tip = Component.literal("RF Energy: " + this.menu.getEnergyStored() + " / " + this.menu.getEnergyCapacity() + " FE")
                     .withStyle(ChatFormatting.RED);
             graphics.setTooltipForNextFrame(tip, mouseX, mouseY);
-        } else if (mouseX >= flameX && mouseX <= flameX + flameW && mouseY >= flameY && mouseY <= flameY + flameH) {
+        } else if (mouseX >= xo + 79 && mouseX <= xo + 97 && mouseY >= yo + 23 && mouseY <= yo + 39) {
             Component tip = Component.literal("Burn Time: " + this.menu.getBurnTime() + " ticks")
                     .withStyle(ChatFormatting.GOLD);
+            graphics.setTooltipForNextFrame(tip, mouseX, mouseY);
+        } else if (mouseX >= xo + 125 && mouseX <= xo + 143 && mouseY >= yo + 43 && mouseY <= yo + 61) {
+            Component tip = Component.literal("Battery Slot: Place FE items to recharge")
+                    .withStyle(ChatFormatting.YELLOW);
+            graphics.setTooltipForNextFrame(tip, mouseX, mouseY);
+        } else if (mouseX >= xo + 33 && mouseX <= xo + 51 && mouseY >= yo + 21 && mouseY <= yo + 39) {
+            Component tip = Component.literal("Water Bucket Slot: Insert water buckets")
+                    .withStyle(ChatFormatting.AQUA);
             graphics.setTooltipForNextFrame(tip, mouseX, mouseY);
         }
     }

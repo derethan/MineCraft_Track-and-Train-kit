@@ -51,6 +51,7 @@ import net.neoforged.neoforge.transfer.energy.SimpleEnergyHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import net.neoforged.neoforge.transfer.fluid.FluidStacksResourceHandler;
 import net.neoforged.neoforge.transfer.fluid.FluidUtil;
+import net.neoforged.neoforge.transfer.transaction.Transaction;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
@@ -399,7 +400,10 @@ public class GeneratorMinecartEntity extends AbstractMinecartContainer implement
                     } catch (Throwable ignored) {}
                 }
                 int rate = Config.GENERATOR_CART_ENERGY_RATE.get();
-                this.energyStorage.insert(rate, null);
+                try (var tx = Transaction.open(null)) {
+                    this.energyStorage.insert(rate, tx);
+                    tx.commit();
+                } catch (Throwable ignored) {}
                 this.setGenerating(true);
             } else {
                 // Throttled: preserve fuel when battery is full or water is dry
@@ -527,7 +531,9 @@ public class GeneratorMinecartEntity extends AbstractMinecartContainer implement
             return getFuelBurnDuration(stack) > 0;
         }
         if (slot == WATER_IN_SLOT) {
-            return stack.is(Items.WATER_BUCKET);
+            if (stack.is(Items.WATER_BUCKET)) return true;
+            FluidStack fluid = FluidUtil.getFirstStackContained(stack);
+            return fluid != null && !fluid.isEmpty() && fluid.getFluid() == Fluids.WATER;
         }
         if (slot == ENERGY_ITEM_SLOT) {
             return ItemAccess.forStack(stack.copyWithCount(1)).getCapability(Capabilities.Energy.ITEM) != null;
@@ -561,6 +567,7 @@ public class GeneratorMinecartEntity extends AbstractMinecartContainer implement
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
+        this.energyStorage.serialize(output);
         output.putInt("EnergyStored", this.energyStorage.getAmountAsInt());
         output.putInt("WaterAmount", this.getFluidAmount());
         output.putInt("BurnTime", this.burnTime);
@@ -571,17 +578,21 @@ public class GeneratorMinecartEntity extends AbstractMinecartContainer implement
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+        this.energyStorage.deserialize(input);
         int energy = input.getIntOr("EnergyStored", 0);
+        if (energy > 0 && this.energyStorage.getAmountAsInt() == 0) {
+            try (var tx = Transaction.open(null)) {
+                this.energyStorage.insert(energy, tx);
+                tx.commit();
+            } catch (Throwable ignored) {}
+        }
         int water = input.getIntOr("WaterAmount", 0);
         this.burnTime = input.getIntOr("BurnTime", 0);
         this.burnTotal = input.getIntOr("BurnTotal", 0);
         this.setTrainName(input.getStringOr("TrainName", ""));
 
-        if (energy > 0) {
-            this.energyStorage.insert(energy, null);
-        }
         if (water > 0) {
-            try (var tx = net.neoforged.neoforge.transfer.transaction.Transaction.open(null)) {
+            try (var tx = Transaction.open(null)) {
                 this.tank.insert(FluidResource.of(Fluids.WATER), water, tx);
                 tx.commit();
             } catch (Throwable ignored) {}

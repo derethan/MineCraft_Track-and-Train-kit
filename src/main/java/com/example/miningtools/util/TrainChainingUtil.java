@@ -1599,8 +1599,7 @@ public final class TrainChainingUtil {
             double dZ = z - z0;
             progress = (dX * xD + dZ * zD) * 2.0D;
         }
-        progress = Mth.clamp(progress, 0.0D, 1.0D);
-
+        // Do not clamp progress to [0, 1] - clamping snaps carts backward and freezes them at block boundaries
         double resX = x0 + xD * progress;
         double resY = y0 + yD * progress;
         double resZ = z0 + zD * progress;
@@ -1905,11 +1904,12 @@ public final class TrainChainingUtil {
             }
         }
 
-        // Pre-lift Y on slopes before horizontal move() so cart cleanly clears stair-step roadbed collisions
+        // On slopes, set Y to base rail elevation + 1.0 (matching vanilla OldMinecartBehavior) before horizontal move()
+        double moveY = (double) railPos.getY();
         if (shape.isSlope()) {
-            y = (double) railPos.getY() + 1.0D;
+            moveY += 1.0D;
         }
-        cart.setPos(x, y, z);
+        cart.setPos(x, moveY, z);
 
         // Suppress same-consist carts' bounding boxes temporarily during cart.move() so they never bind on corners
         List<Pair<AbstractMinecart, AABB>> savedBoxes = new ArrayList<>();
@@ -1936,10 +1936,16 @@ public final class TrainChainingUtil {
             cart.setPos(cart.getX(), cart.getY() + (double) exit1.getY(), cart.getZ());
         }
 
-        // Snap precisely onto the rail surface
+        // Snap precisely onto the rail surface vertically, while preserving forward progress along travel axis
         Vec3 newRailPos = getRailPosForEntity(cart, cart.getX(), cart.getY(), cart.getZ());
         if (newRailPos != null) {
-            cart.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
+            if (isCurve) {
+                cart.setPos(newRailPos.x, newRailPos.y, newRailPos.z);
+            } else {
+                double finalX = (shape == RailShape.NORTH_SOUTH || shape == RailShape.ASCENDING_NORTH || shape == RailShape.ASCENDING_SOUTH) ? newRailPos.x : cart.getX();
+                double finalZ = (shape == RailShape.EAST_WEST || shape == RailShape.ASCENDING_EAST || shape == RailShape.ASCENDING_WEST) ? newRailPos.z : cart.getZ();
+                cart.setPos(finalX, newRailPos.y, finalZ);
+            }
         }
 
         double actualDx = cart.getX() - initialX;
@@ -2005,8 +2011,8 @@ public final class TrainChainingUtil {
         }
         cart.needsSync = true;
 
-        boolean offRails = (newRailPos == null);
-        return !offRails && !cart.horizontalCollision;
+        boolean offRails = (newRailPos == null && findRailBlock(cart.level(), cart.getX(), cart.getY(), cart.getZ()) == null);
+        return !offRails;
     }
 
     /**

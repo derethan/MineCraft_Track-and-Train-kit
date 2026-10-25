@@ -60,6 +60,9 @@ import com.example.miningtools.item.LargeLiquidMinecartItem;
 import com.example.miningtools.item.LiquidMinecartItem;
 import com.example.miningtools.item.LivestockCartItem;
 import com.example.miningtools.item.TunnelBoreItem;
+import com.example.miningtools.item.TrackPaverItem;
+import com.example.miningtools.entity.TrackPaverEntity;
+import com.example.miningtools.menu.TrackPaverMenu;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.menu.CargoMinecartMenu;
 import com.example.miningtools.menu.DieselLocomotiveMenu;
@@ -390,6 +393,26 @@ public class MiningTools {
             () -> new MenuType<>(TunnelBoreMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
 
+    // Track and Road Paver Entity, Item & Menu
+    public static final DeferredHolder<EntityType<?>, EntityType<TrackPaverEntity>> TRACK_PAVER_ENTITY = ENTITY_TYPES.register(
+            "track_paver",
+            key -> EntityType.Builder.<TrackPaverEntity>of(TrackPaverEntity::new, MobCategory.MISC)
+                    .sized(2.8F, 2.0F)
+                    .passengerAttachments(1.35F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<TrackPaverItem> TRACK_PAVER_ITEM = ITEMS.registerItem(
+            "track_paver",
+            TrackPaverItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TrackPaverMenu>> TRACK_PAVER_MENU = MENUS.register(
+            "track_paver",
+            () -> new MenuType<>(TrackPaverMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Basic Locomotive Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<BasicLocomotiveEntity>> BASIC_LOCOMOTIVE_ENTITY = ENTITY_TYPES.register(
             "basic_locomotive",
@@ -638,6 +661,7 @@ public class MiningTools {
                         output.accept(CHUNK_LOADER_ITEM.get());
                         output.accept(BUFFER_STOP_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
+                        output.accept(TRACK_PAVER_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
                         output.accept(DIESEL_LOCOMOTIVE_ITEM.get());
                         output.accept(ELECTRIC_LOCOMOTIVE_ITEM.get());
@@ -819,6 +843,7 @@ public class MiningTools {
             event.accept(CHUNK_LOADER_ITEM);
             event.accept(BUFFER_STOP_ITEM);
             event.accept(TUNNEL_BORE_ITEM);
+            event.accept(TRACK_PAVER_ITEM);
             event.accept(BASIC_LOCOMOTIVE_ITEM);
             event.accept(ELECTRIC_LOCOMOTIVE_ITEM);
             event.accept(CARGO_MINECART_ITEM);

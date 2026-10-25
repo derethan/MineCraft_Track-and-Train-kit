@@ -103,5 +103,8 @@
   "item.miningtools.diesel_fueler": "Locomotive Diesel Fueling Station",
   "item.miningtools.generator_cart": "Generator Train Cart",
   "entity.miningtools.generator_cart": "Generator Train Cart",
-  "container.miningtools.generator_cart": "Generator Train Cart"
+  "container.miningtools.generator_cart": "Generator Train Cart",
+  "item.miningtools.track_paver": "Heavy Track & Road Paver",
+  "entity.miningtools.track_paver": "Heavy Track & Road Paver",
+  "container.miningtools.track_paver": "Heavy Track & Road Paver"
 }
