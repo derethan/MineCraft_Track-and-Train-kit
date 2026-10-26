@@ -91,6 +91,8 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
 
             ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, Identifier.parse(entry.dimension()));
             MarkerOverlay marker = activeMarkers.get(id);
+            boolean isLoco = isLocomotiveType(entry.iconType());
+
             if (marker == null) {
                 Identifier iconId = getIconForType(entry.iconType());
                 MapImage mapImage = new MapImage(iconId, 16, 16);
@@ -104,14 +106,18 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
                 marker.setTitle(entry.name());
                 marker.setOverlayGroupName("Trains");
 
-                TextProperties textProps = new TextProperties();
-                textProps.setColor(0xFFFFFF);
-                textProps.setBackgroundColor(0x000000);
-                textProps.setBackgroundOpacity(0.65F);
-                textProps.setFontShadow(true);
-                textProps.setOffsetY(-20);
-                marker.setTextProperties(textProps);
-                marker.setLabel(entry.name());
+                if (isLoco) {
+                    TextProperties textProps = new TextProperties();
+                    textProps.setColor(0xFFFFFF);
+                    textProps.setBackgroundColor(0x000000);
+                    textProps.setBackgroundOpacity(0.65F);
+                    textProps.setFontShadow(true);
+                    textProps.setOffsetY(-20);
+                    marker.setTextProperties(textProps);
+                    marker.setLabel(entry.name());
+                } else {
+                    marker.setLabel(null);
+                }
 
                 try {
                     jmAPI.show(marker);
@@ -123,7 +129,20 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
                 marker.setPoint(entry.pos());
                 marker.setDimension(dimKey);
                 marker.setTitle(entry.name());
-                marker.setLabel(entry.name());
+                if (isLoco) {
+                    if (marker.getTextProperties() == null) {
+                        TextProperties textProps = new TextProperties();
+                        textProps.setColor(0xFFFFFF);
+                        textProps.setBackgroundColor(0x000000);
+                        textProps.setBackgroundOpacity(0.65F);
+                        textProps.setFontShadow(true);
+                        textProps.setOffsetY(-20);
+                        marker.setTextProperties(textProps);
+                    }
+                    marker.setLabel(entry.name());
+                } else {
+                    marker.setLabel(null);
+                }
                 marker.getIcon().setRotation(entry.yRot());
                 marker.flagForRerender();
             }
@@ -161,6 +180,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
 
                 BlockPos pos = cart.blockPosition();
                 String trainName = getBestTrainName(cart);
+                boolean isLoco = isLocomotive(cart);
                 MarkerOverlay marker = activeMarkers.get(id);
 
                 if (marker == null) {
@@ -175,14 +195,18 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
                     marker.setTitle(trainName);
                     marker.setOverlayGroupName("Trains");
 
-                    TextProperties textProps = new TextProperties();
-                    textProps.setColor(0xFFFFFF);
-                    textProps.setBackgroundColor(0x000000);
-                    textProps.setBackgroundOpacity(0.65F);
-                    textProps.setFontShadow(true);
-                    textProps.setOffsetY(-20);
-                    marker.setTextProperties(textProps);
-                    marker.setLabel(trainName);
+                    if (isLoco) {
+                        TextProperties textProps = new TextProperties();
+                        textProps.setColor(0xFFFFFF);
+                        textProps.setBackgroundColor(0x000000);
+                        textProps.setBackgroundOpacity(0.65F);
+                        textProps.setFontShadow(true);
+                        textProps.setOffsetY(-20);
+                        marker.setTextProperties(textProps);
+                        marker.setLabel(trainName);
+                    } else {
+                        marker.setLabel(null);
+                    }
 
                     try {
                         jmAPI.show(marker);
@@ -194,12 +218,37 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
                     marker.setPoint(pos);
                     marker.setDimension(cart.level().dimension());
                     marker.setTitle(trainName);
-                    marker.setLabel(trainName);
+                    if (isLoco) {
+                        if (marker.getTextProperties() == null) {
+                            TextProperties textProps = new TextProperties();
+                            textProps.setColor(0xFFFFFF);
+                            textProps.setBackgroundColor(0x000000);
+                            textProps.setBackgroundOpacity(0.65F);
+                            textProps.setFontShadow(true);
+                            textProps.setOffsetY(-20);
+                            marker.setTextProperties(textProps);
+                        }
+                        marker.setLabel(trainName);
+                    } else {
+                        marker.setLabel(null);
+                    }
                     marker.getIcon().setRotation((int) cart.getYRot());
                     marker.flagForRerender();
                 }
             }
         }
+    }
+
+    public static boolean isLocomotive(AbstractMinecart cart) {
+        return cart instanceof BasicLocomotiveEntity
+                || cart instanceof DieselLocomotiveEntity
+                || cart instanceof ElectricLocomotiveEntity;
+    }
+
+    public static boolean isLocomotiveType(String type) {
+        return "locomotive".equals(type)
+                || "diesel".equals(type)
+                || "electric".equals(type);
     }
 
     public static String getBestTrainName(AbstractMinecart cart) {

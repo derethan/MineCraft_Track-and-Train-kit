@@ -26,27 +26,23 @@ public class GeneratorCartModel extends EntityModel<GeneratorCartRenderState> {
         PartDefinition root = mesh.getRoot();
 
         // 1. Chassis Underframe, Couplers & Wheels
-        root.addOrReplaceChild(
-                "chassis",
-                CubeListBuilder.create()
-                        // Heavy Underframe Deck (24 x 2 x 16)
-                        .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
-                        // Center Sill Draft Beam
-                        .texOffs(0, 20).addBox(-10.0F, 4.0F, -3.0F, 20.0F, 2.0F, 6.0F)
-                        // Front Coupler Hitch
-                        .texOffs(54, 20).addBox(-15.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
-                        // Rear Coupler Hitch
-                        .texOffs(54, 20).addBox(12.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
-                        // 4 Flanged Rail Wheels
-                        .texOffs(72, 20).addBox(-8.0F, 3.0F, -7.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(84, 20).addBox(4.0F, 3.0F, -7.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(96, 20).addBox(-8.0F, 3.0F, 5.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(108, 20).addBox(4.0F, 3.0F, 5.5F, 4.0F, 4.0F, 2.0F)
-                        // Side Running Boards / Footboards
-                        .texOffs(0, 30).addBox(-11.0F, 2.5F, -9.0F, 22.0F, 1.0F, 1.0F)
-                        .texOffs(0, 30).addBox(-11.0F, 2.5F, 8.0F, 22.0F, 1.0F, 1.0F),
-                PartPose.ZERO
-        );
+        CubeListBuilder chassis = CubeListBuilder.create()
+                // Heavy Underframe Deck (24 x 2 x 16)
+                .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
+                // Center Sill Draft Beam
+                .texOffs(0, 20).addBox(-10.0F, 4.0F, -3.0F, 20.0F, 2.0F, 6.0F)
+                // Front Coupler Hitch
+                .texOffs(0, 28).addBox(-15.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
+                // Rear Coupler Hitch
+                .texOffs(0, 28).addBox(12.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
+                // Side Running Boards / Footboards
+                .texOffs(0, 30).addBox(-11.0F, 2.5F, -9.0F, 22.0F, 1.0F, 1.0F)
+                .texOffs(0, 30).addBox(-11.0F, 2.5F, 8.0F, 22.0F, 1.0F, 1.0F);
+
+        // Authentic 2-axle bogie trucks (matching Caboose: sideframe brackets + 2 small wheels per side)
+        TruckModelHelper.addStandardBogieTrucks(chassis);
+
+        root.addOrReplaceChild("chassis", chassis, PartPose.ZERO);
 
         // 2. Heavy Boiler & Firebox (Coal combustion & water steam)
         root.addOrReplaceChild(

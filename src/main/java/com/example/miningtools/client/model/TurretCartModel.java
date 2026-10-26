@@ -28,41 +28,38 @@ public class TurretCartModel extends EntityModel<TurretCartRenderState> {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
 
-        // 1. Fixed Wagon Body & Armored Parapet
-        root.addOrReplaceChild(
-                "body",
-                CubeListBuilder.create()
-                        // Heavy Underframe Deck (24 x 2 x 16)
-                        .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
-                        // Center Sill Draft Beam
-                        .texOffs(0, 20).addBox(-10.0F, 4.0F, -3.0F, 20.0F, 2.0F, 6.0F)
-                        // Front Coupler Hitch
-                        .texOffs(54, 20).addBox(-15.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
-                        // Rear Coupler Hitch
-                        .texOffs(54, 20).addBox(12.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
-                        // 4 Flanged Steel Rail Wheels
-                        .texOffs(72, 20).addBox(-8.0F, 3.0F, -7.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(84, 20).addBox(4.0F, 3.0F, -7.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(96, 20).addBox(-8.0F, 3.0F, 5.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(108, 20).addBox(4.0F, 3.0F, 5.5F, 4.0F, 4.0F, 2.0F)
+        // 1. Fixed Wagon Body & Armored Parapet with Caboose-Style 2-Axle Bogie Trucks
+        CubeListBuilder bodyBuilder = CubeListBuilder.create()
+                // Heavy Underframe Deck (24 x 2 x 16)
+                .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
+                // Center Sill Draft Beam
+                .texOffs(0, 20).addBox(-10.0F, 4.0F, -3.0F, 20.0F, 2.0F, 6.0F)
+                // Front Coupler Hitch
+                .texOffs(0, 20).addBox(-15.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
+                // Rear Coupler Hitch
+                .texOffs(0, 20).addBox(12.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F);
 
-                        // 2. Armored Wagon Parapet Walls (matching Caboose steel plate style)
-                        // Front armored bulkhead (X = -12)
-                        .texOffs(0, 30).addBox(-12.0F, -4.0F, -8.0F, 2.0F, 6.0F, 16.0F)
-                        // Rear armored bulkhead (X = 10)
-                        .texOffs(0, 30).addBox(10.0F, -4.0F, -8.0F, 2.0F, 6.0F, 16.0F)
-                        // Left armored side plating (Z = -8)
-                        .texOffs(0, 54).addBox(-10.0F, -4.0F, -8.0F, 20.0F, 6.0F, 2.0F)
-                        // Right armored side plating (Z = 6)
-                        .texOffs(0, 54).addBox(-10.0F, -4.0F, 6.0F, 20.0F, 6.0F, 2.0F)
+        // Add 2-axle bogie trucks with sideframe brackets and 2 small wheels per side
+        TruckModelHelper.addStandardBogieTrucks(bodyBuilder);
 
-                        // 3. Heavy Arrow Ammo Chests on Deck
-                        // Front ammo magazine chest
-                        .texOffs(46, 30).addBox(-9.0F, -2.0F, -5.0F, 4.0F, 4.0F, 10.0F)
-                        // Rear ammo magazine chest
-                        .texOffs(46, 30).addBox(5.0F, -2.0F, -5.0F, 4.0F, 4.0F, 10.0F),
-                PartPose.ZERO
-        );
+        bodyBuilder
+                // 2. Armored Wagon Parapet Walls (matching Caboose steel plate style)
+                // Front armored bulkhead (X = -12)
+                .texOffs(0, 30).addBox(-12.0F, -4.0F, -8.0F, 2.0F, 6.0F, 16.0F)
+                // Rear armored bulkhead (X = 10)
+                .texOffs(0, 30).addBox(10.0F, -4.0F, -8.0F, 2.0F, 6.0F, 16.0F)
+                // Left armored side plating (Z = -8)
+                .texOffs(0, 54).addBox(-10.0F, -4.0F, -8.0F, 20.0F, 6.0F, 2.0F)
+                // Right armored side plating (Z = 6)
+                .texOffs(0, 54).addBox(-10.0F, -4.0F, 6.0F, 20.0F, 6.0F, 2.0F)
+
+                // 3. Heavy Arrow Ammo Chests on Deck
+                // Front ammo magazine chest
+                .texOffs(46, 30).addBox(-9.0F, -2.0F, -5.0F, 4.0F, 4.0F, 10.0F)
+                // Rear ammo magazine chest
+                .texOffs(46, 30).addBox(5.0F, -2.0F, -5.0F, 4.0F, 4.0F, 10.0F);
+
+        root.addOrReplaceChild("body", bodyBuilder, PartPose.ZERO);
 
         // 4. Rotating Armored Turret & Twin Bow Mounts
         root.addOrReplaceChild(

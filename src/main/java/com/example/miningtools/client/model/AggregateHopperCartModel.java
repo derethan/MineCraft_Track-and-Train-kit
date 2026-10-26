@@ -29,23 +29,19 @@ public class AggregateHopperCartModel extends EntityModel<AggregateHopperCartRen
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
 
-        // 1. Undercarriage Frame & Wheels
-        root.addOrReplaceChild(
-                "chassis",
-                CubeListBuilder.create()
-                        // Center undercarriage draft sill beam (20 x 2 x 6)
-                        .texOffs(0, 0).addBox(-10.0F, 3.0F, -3.0F, 20.0F, 2.0F, 6.0F)
-                        // Front Coupler / Bumper (2 x 2 x 4)
-                        .texOffs(0, 10).addBox(-14.0F, 2.0F, -2.0F, 2.0F, 2.0F, 4.0F)
-                        // Back Coupler / Bumper (2 x 2 x 4)
-                        .texOffs(0, 10).addBox(12.0F, 2.0F, -2.0F, 2.0F, 2.0F, 4.0F)
-                        // 4 Steel Rail Wheels
-                        .texOffs(54, 0).addBox(-8.0F, 2.0F, -7.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(68, 0).addBox(4.0F, 2.0F, -7.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(82, 0).addBox(-8.0F, 2.0F, 5.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(96, 0).addBox(4.0F, 2.0F, 5.0F, 4.0F, 4.0F, 2.0F),
-                PartPose.ZERO
-        );
+        // 1. Undercarriage Frame with Caboose-Style 2-Axle Bogie Trucks
+        CubeListBuilder chassisBuilder = CubeListBuilder.create()
+                // Center undercarriage draft sill beam (20 x 2 x 6)
+                .texOffs(0, 0).addBox(-10.0F, 3.0F, -3.0F, 20.0F, 2.0F, 6.0F)
+                // Front Coupler / Bumper (2 x 2 x 4)
+                .texOffs(0, 10).addBox(-14.0F, 2.0F, -2.0F, 2.0F, 2.0F, 4.0F)
+                // Back Coupler / Bumper (2 x 2 x 4)
+                .texOffs(0, 10).addBox(12.0F, 2.0F, -2.0F, 2.0F, 2.0F, 4.0F);
+
+        // Add 2-axle bogie trucks with sideframe brackets and 2 small wheels per side
+        TruckModelHelper.addStandardBogieTrucks(chassisBuilder);
+
+        root.addOrReplaceChild("chassis", chassisBuilder, PartPose.ZERO);
 
         // 2. Hopper Tub (Walls & Sloped Discharge Bottom)
         root.addOrReplaceChild(
