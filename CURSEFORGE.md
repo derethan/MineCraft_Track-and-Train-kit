@@ -311,6 +311,9 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.0.4**:
+  - **Heavy Track & Road Paver Auto-Shutdown**: Halts crawler movement and cuts engine activity immediately upon exhausting the filter block material in its bulk inventory; stops mid-strip to eliminate unpaved gaps; alerts operators with action bar notices.
+  - **Automated Version Bumping**: Build script tracks mod source fingerprints (`.last_source_hash`) and auto-increments the patch version on build/jar whenever mod files are modified.
 * **v1.0.3**:
   - **JourneyMap Name Displays**: On-map name badges are now exclusively shown for locomotives (Steam, Diesel, Electric), keeping rolling stock icons clean while retaining hover tooltips.
   - **Junction Rail Visual Continuity**: Extended the 3 middle wooden ties horizontally across the full track width in both the 3D block model and 2D texture.
@@ -342,5 +345,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.3.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.0.4.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
