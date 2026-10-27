@@ -311,6 +311,10 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.0.3**:
+  - **JourneyMap Name Displays**: On-map name badges are now exclusively shown for locomotives (Steam, Diesel, Electric), keeping rolling stock icons clean while retaining hover tooltips.
+  - **Junction Rail Visual Continuity**: Extended the 3 middle wooden ties horizontally across the full track width in both the 3D block model and 2D texture.
+  - **Bogie Truck & Wheel Consistency**: Standardized Hopper, Cargo, Turret, Generator, Livestock, Liquid Tanker, and Logging carts to Caboose-matching 2-axle bogie trucks and wheel scaling.
 * **v1.0.2**:
   - **Turret Cart Overhaul**: Added in-GUI Player Whitelist / Blacklist protection mode to whitelist friendly players or blacklist rival players; doubled engagement range to 32 blocks (2×); applied crisp, non-blurry 1024×1024 woodland camo livery and Caboose-matching flanged steel wheels.
   - **JourneyMap Tracking & Train Names**: Displays custom train and railcar names directly above markers on JourneyMap; implemented server-to-client train map synchronization (`TrainMapSyncPayload`) so trains never disappear off the map when farther than client render distance.
@@ -338,5 +342,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.2.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.0.3.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

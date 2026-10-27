@@ -855,6 +855,15 @@ For the complete, version-by-version release history and technical changes, see 
 
 ### Summary of Recent Updates:
 
+#### Version 1.0.3:
+- **JourneyMap Display Names**:
+  - Map name badges are now rendered exclusively for locomotives (**Steam Locomotive**, **Diesel Locomotive**, **Electric Locomotive**).
+  - Non-locomotive rolling stock retain map icons and hover tooltips without cluttering the map with text labels.
+- **Junction Rail Wooden Tie Continuity**:
+  - Extended the three middle wooden ties horizontally across the full track width (X=1 to X=15) in both the 3D model and 2D texture.
+- **Bogie Truck & Wheel Consistency Across Rolling Stock**:
+  - Standardized Hopper, Cargo, Turret, Generator, Livestock, Liquid Tanker, and Logging carts to Caboose-matching 2-axle bogie trucks (`TruckModelHelper`) with authentic sideframe brackets and wheel scaling.
+
 #### Version 1.0.2:
 - **Arrow Turret Cart Overhaul**:
   - **In-GUI Player Whitelist / Blacklist**: Toggle between `[Whitelist]` and `[Blacklist]` mode directly in the turret menu. Comma-separated player usernames allow defending friendly players or targeting specific rivals.

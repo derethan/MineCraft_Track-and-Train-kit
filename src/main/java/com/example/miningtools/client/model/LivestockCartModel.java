@@ -28,22 +28,20 @@ public class LivestockCartModel extends EntityModel<LivestockCartRenderState> {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
 
-        root.addOrReplaceChild(
-                "body",
-                CubeListBuilder.create()
-                        // 1. Heavy Underframe & Floor Deck (24 x 2 x 16)
-                        .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
-                        // Center Sill Draft Beam (20 x 2 x 6)
-                        .texOffs(0, 20).addBox(-10.0F, 4.0F, -3.0F, 20.0F, 2.0F, 6.0F)
-                        // Front Coupler Hitch (3 x 2 x 4)
-                        .texOffs(54, 20).addBox(-15.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
-                        // Rear Coupler Hitch (3 x 2 x 4)
-                        .texOffs(54, 20).addBox(12.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
-                        // 4 Flanged Steel Rail Wheels (4 x 4 x 2 each)
-                        .texOffs(72, 20).addBox(-8.0F, 3.0F, -7.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(84, 20).addBox(4.0F, 3.0F, -7.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(96, 20).addBox(-8.0F, 3.0F, 5.5F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(108, 20).addBox(4.0F, 3.0F, 5.5F, 4.0F, 4.0F, 2.0F)
+        // 1. Heavy Underframe & Floor Deck (24 x 2 x 16)
+        CubeListBuilder body = CubeListBuilder.create()
+                .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
+                // Center Sill Draft Beam (20 x 2 x 6)
+                .texOffs(0, 20).addBox(-10.0F, 4.0F, -3.0F, 20.0F, 2.0F, 6.0F)
+                // Front Coupler Hitch (3 x 2 x 4)
+                .texOffs(0, 28).addBox(-15.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F)
+                // Rear Coupler Hitch (3 x 2 x 4)
+                .texOffs(0, 28).addBox(12.0F, 3.0F, -2.0F, 3.0F, 2.0F, 4.0F);
+
+        // Authentic 2-axle bogie trucks (matching Caboose: sideframe brackets + 2 small wheels per side)
+        TruckModelHelper.addStandardBogieTrucks(body);
+
+        body
 
                         // 2. Open Horizontal Wooden Slats (Left & Right Sides)
                         // Slat 1: Bottom Kickboard (24 x 2 x 1)
@@ -103,9 +101,9 @@ public class LivestockCartModel extends EntityModel<LivestockCartRenderState> {
                         // Right Sloping Eave (24 x 1 x 2.5)
                         .texOffs(0, 116).addBox(-12.0F, -11.2F, 6.02F, 24.0F, 1.0F, 2.48F)
                         // Center Running Board / Roof Walk (26 x 0.8 x 4)
-                        .texOffs(0, 120).addBox(-13.0F, -12.8F, -2.0F, 26.0F, 0.8F, 4.0F),
-                PartPose.ZERO
-        );
+                        .texOffs(0, 120).addBox(-13.0F, -12.8F, -2.0F, 26.0F, 0.8F, 4.0F);
+
+        root.addOrReplaceChild("body", body, PartPose.ZERO);
 
         return LayerDefinition.create(mesh, 128, 128);
     }

@@ -75,25 +75,21 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         MeshDefinition mesh = new MeshDefinition();
         PartDefinition root = mesh.getRoot();
 
-        // 1. Flatbed Deck & Undercarriage Frame
-        root.addOrReplaceChild(
-                "chassis",
-                CubeListBuilder.create()
-                        // Diamond-plate flatbed deck (24 x 2 x 16)
-                        .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
-                        // Undercarriage center beam (18 x 2 x 8)
-                        .texOffs(0, 20).addBox(-9.0F, 4.0F, -4.0F, 18.0F, 2.0F, 8.0F)
-                        // Front Coupler / Hitch (2 x 2 x 4)
-                        .texOffs(0, 32).addBox(-14.0F, 3.0F, -2.0F, 2.0F, 2.0F, 4.0F)
-                        // Back Coupler / Hitch (2 x 2 x 4)
-                        .texOffs(0, 32).addBox(12.0F, 3.0F, -2.0F, 2.0F, 2.0F, 4.0F)
-                        // 4 Rail Wheels (Flanged steel wheels tucked under the deck)
-                        .texOffs(54, 20).addBox(-8.0F, 3.0F, -7.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(68, 20).addBox(4.0F, 3.0F, -7.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(82, 20).addBox(-8.0F, 3.0F, 5.0F, 4.0F, 4.0F, 2.0F)
-                        .texOffs(96, 20).addBox(4.0F, 3.0F, 5.0F, 4.0F, 4.0F, 2.0F),
-                PartPose.ZERO
-        );
+        // 1. Flatbed Deck & Undercarriage Frame with Caboose-Style 2-Axle Bogie Trucks
+        CubeListBuilder chassisBuilder = CubeListBuilder.create()
+                // Diamond-plate flatbed deck (24 x 2 x 16)
+                .texOffs(0, 0).addBox(-12.0F, 2.0F, -8.0F, 24.0F, 2.0F, 16.0F)
+                // Undercarriage center beam (18 x 2 x 8)
+                .texOffs(0, 20).addBox(-9.0F, 4.0F, -4.0F, 18.0F, 2.0F, 8.0F)
+                // Front Coupler / Hitch (2 x 2 x 4)
+                .texOffs(0, 32).addBox(-14.0F, 3.0F, -2.0F, 2.0F, 2.0F, 4.0F)
+                // Back Coupler / Hitch (2 x 2 x 4)
+                .texOffs(0, 32).addBox(12.0F, 3.0F, -2.0F, 2.0F, 2.0F, 4.0F);
+
+        // Add 2-axle bogie trucks with sideframe brackets and 2 small wheels per side
+        TruckModelHelper.addStandardBogieTrucks(chassisBuilder);
+
+        root.addOrReplaceChild("chassis", chassisBuilder, PartPose.ZERO);
 
         // 2. Upright Side Stakes (4 vertical posts: 2 x 12 x 2)
         root.addOrReplaceChild(

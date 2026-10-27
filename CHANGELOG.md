@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] - 2026-10-26
+
+### Changed
+- **JourneyMap Display Names Limited to Locomotives**:
+  - Filtered JourneyMap on-map text label badges so they are only displayed for locomotives (Steam Locomotive, Diesel Locomotive, Electric Locomotive).
+  - Regular rail carts (cargo, hoppers, tankers, livestock, generator, turret, caboose, etc.) continue to display their high-resolution map icons and hover tooltip titles without visual on-map text label clutter.
+- **Junction Rail Wooden Tie Continuity**:
+  - Extended the three middle wooden ties horizontally across the full track width (X=1 to X=15) in the junction rail 3D model and 2D block texture to match top and bottom ties.
+- **Bogie Truck & Wheel Consistency Across Rolling Stock**:
+  - Standardized Hopper Carts, Cargo Carts, Turret Carts, Generator Carts, Livestock Carts, Liquid Tankers, and Logging Carts to authentic 2-axle bogie trucks (`TruckModelHelper`) matching the Caboose wheel scale, sideframe brackets, and flanged steel styling.
+
+---
+
 ## [1.0.2] - 2026-10-25
 
 ### Added
@@ -24,8 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Introduced randomized shipping container paint schemes (Intermodal Ocean Blue, Freight Crimson Red, and Military Forest Green) across Cargo Carts while maintaining authentic Caboose-style flanged steel wheels.
 
 ### Fixed
-- **Junction Rail Wooden Tie Continuity**:
-  - Extended the three middle wooden ties horizontally across the full track width (X=1 to X=15) in the junction rail 3D model ([junction_rail.json](file:///src/main/resources/assets/miningtools/models/block/junction_rail.json)) and 2D block texture ([junction_rail.png](file:///src/main/resources/assets/miningtools/textures/block/junction_rail.png)), ensuring clean visual alignment with the top and bottom ties and removing redundant stub geometry.
 - **Track Paver Speedometer & Off-State Calibration**:
   - Fixed the speedometer overlay displaying maximum speed (8.0 m/s / full bar) when the paver was powered off or out of fuel.
   - Calibrated reference max speed for Track Pavers to 1.0 m/s in `SpeedometerOverlay`.
