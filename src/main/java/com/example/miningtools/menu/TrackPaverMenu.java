@@ -110,6 +110,13 @@ public class TrackPaverMenu extends AbstractContainerMenu {
             int nextMode = (this.getRunMode() == TrackPaverEntity.MODE_FORWARD)
                     ? TrackPaverEntity.MODE_STOPPED
                     : TrackPaverEntity.MODE_FORWARD;
+            if (this.container instanceof TrackPaverEntity paver) {
+                if (nextMode != TrackPaverEntity.MODE_STOPPED && paver.isPaving() && !paver.hasPaverMaterial()) {
+                    paver.notifyOutOfMaterial(player);
+                    this.data.set(2, TrackPaverEntity.MODE_STOPPED);
+                    return true;
+                }
+            }
             this.data.set(2, nextMode);
             return true;
         } else if (id == 1) {
@@ -117,6 +124,13 @@ public class TrackPaverMenu extends AbstractContainerMenu {
             int nextMode = (this.getRunMode() == TrackPaverEntity.MODE_REVERSE)
                     ? TrackPaverEntity.MODE_STOPPED
                     : TrackPaverEntity.MODE_REVERSE;
+            if (this.container instanceof TrackPaverEntity paver) {
+                if (nextMode != TrackPaverEntity.MODE_STOPPED && paver.isPaving() && !paver.hasPaverMaterial()) {
+                    paver.notifyOutOfMaterial(player);
+                    this.data.set(2, TrackPaverEntity.MODE_STOPPED);
+                    return true;
+                }
+            }
             this.data.set(2, nextMode);
             return true;
         } else if (id == 2) {

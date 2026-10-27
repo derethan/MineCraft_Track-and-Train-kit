@@ -113,6 +113,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     private int moveTicks = 0;
     private @Nullable BlockPos currentStepPos = null;
     private @Nullable BlockPos targetStepPos = null;
+    private int outOfMaterialNotifyCooldown = 0;
 
     // Treads animation rotation for client
     public float treadRotation = 0.0F;
@@ -199,6 +200,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
     public void setPaving(boolean paving) {
         this.entityData.set(DATA_PAVING, paving);
+        if (paving && this.getRunMode() != MODE_STOPPED && !this.hasPaverMaterial()) {
+            this.setRunMode(MODE_STOPPED);
+            this.notifyOutOfMaterial(null);
+        }
     }
 
     public int getRunMode() {
@@ -206,6 +211,16 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     }
 
     public void setRunMode(int mode) {
+        if (mode != MODE_STOPPED && this.isPaving() && !this.hasPaverMaterial()) {
+            this.entityData.set(DATA_RUN_MODE, MODE_STOPPED);
+            this.setActive(false);
+            this.isMoving = false;
+            this.moveTicks = 0;
+            this.targetStepPos = null;
+            this.setDeltaMovement(Vec3.ZERO);
+            this.notifyOutOfMaterial(null);
+            return;
+        }
         this.entityData.set(DATA_RUN_MODE, mode);
         if (mode == MODE_STOPPED) {
             this.setActive(false);
@@ -386,6 +401,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         }
 
         // Server tick
+        if (this.outOfMaterialNotifyCooldown > 0) {
+            this.outOfMaterialNotifyCooldown--;
+        }
+
         if (this.currentStepPos == null) {
             this.currentStepPos = BlockPos.containing(this.position());
         }
@@ -436,6 +455,12 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     }
 
     private void tickMoveStep(Direction travelDir, boolean isReversing) {
+        if (this.isPaving() && !this.hasPaverMaterial()) {
+            this.setRunMode(MODE_STOPPED);
+            this.notifyOutOfMaterial(null);
+            return;
+        }
+
         int ticksPerBlock = isReversing ? REVERSE_TICKS_PER_BLOCK : MOVE_TICKS_PER_BLOCK;
 
         if (!this.isMoving) {
@@ -488,6 +513,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         // When halfway through the step or completed, execute paving under the screed
         if (this.moveTicks == ticksPerBlock / 2 && this.isPaving()) {
             this.executePavingStrip(this.targetStepPos, travelDir);
+            if (this.getRunMode() == MODE_STOPPED) {
+                return;
+            }
         }
 
         if (this.moveTicks >= ticksPerBlock) {
@@ -500,6 +528,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
             if (this.isPaving()) {
                 this.executePavingStrip(this.currentStepPos, travelDir);
+                if (this.getRunMode() == MODE_STOPPED) {
+                    return;
+                }
             }
         }
     }
@@ -511,6 +542,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     public void executePavingStrip(BlockPos centerPos, Direction forwardDir) {
         BlockState targetPaverState = this.getTargetPaverBlockState();
         if (targetPaverState == null || targetPaverState.isAir()) {
+            this.setRunMode(MODE_STOPPED);
+            this.notifyOutOfMaterial(null);
             return;
         }
 
@@ -529,6 +562,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         for (BlockPos pos : strip) {
             if (this.paveSingleBlock(pos, targetPaverState)) {
                 placedAny = true;
+            } else if (this.getRunMode() == MODE_STOPPED) {
+                break;
             }
         }
 
@@ -560,6 +595,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
         // Check material availability
         if (!this.consumePaverMaterial(targetState.getBlock())) {
+            this.setRunMode(MODE_STOPPED);
+            this.notifyOutOfMaterial(null);
             return false;
         }
 
@@ -663,6 +700,54 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         return null;
     }
 
+    public boolean hasPaverMaterial() {
+        Entity driver = this.getFirstPassenger();
+        if (driver instanceof Player player && player.isCreative()) {
+            return true;
+        }
+
+        ItemStack filterStack = this.getItem(SLOT_PAVER_BLOCK);
+        if (!filterStack.isEmpty() && filterStack.getItem() instanceof BlockItem bi) {
+            Block filterBlock = bi.getBlock();
+            for (int i = SLOT_MATERIAL_START; i < SLOT_MATERIAL_START + SLOT_MATERIAL_COUNT; i++) {
+                ItemStack stack = this.getItem(i);
+                if (!stack.isEmpty() && stack.getItem() instanceof BlockItem matBi && matBi.getBlock() == filterBlock) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // If filter slot is empty, check if any valid block exists in the material inventory
+        for (int i = SLOT_MATERIAL_START; i < SLOT_MATERIAL_START + SLOT_MATERIAL_COUNT; i++) {
+            ItemStack stack = this.getItem(i);
+            if (!stack.isEmpty() && stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void notifyOutOfMaterial(@Nullable Player targetPlayer) {
+        if (targetPlayer != null) {
+            targetPlayer.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+            return;
+        }
+        if (this.outOfMaterialNotifyCooldown > 0) {
+            return;
+        }
+        this.outOfMaterialNotifyCooldown = 40;
+
+        Entity passenger = this.getFirstPassenger();
+        if (passenger instanceof Player rider) {
+            rider.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+        } else {
+            for (Player player : this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(8.0D))) {
+                player.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+            }
+        }
+    }
+
     private boolean consumePaverMaterial(Block targetBlock) {
         // If driver is creative player, don't consume material
         Entity driver = this.getFirstPassenger();
@@ -674,6 +759,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             ItemStack stack = this.getItem(i);
             if (!stack.isEmpty() && stack.getItem() instanceof BlockItem bi && bi.getBlock() == targetBlock) {
                 stack.shrink(1);
+                if (stack.isEmpty()) {
+                    this.setItem(i, ItemStack.EMPTY);
+                }
+                this.setChanged();
                 return true;
             }
         }
@@ -711,6 +800,11 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     public void handleHotkeyAction(Player player, int action) {
         switch (action) {
             case LocomotiveControlPayload.ACTION_START -> {
+                if (this.isPaving() && !this.hasPaverMaterial()) {
+                    this.setRunMode(MODE_STOPPED);
+                    player.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+                    return;
+                }
                 this.setRunMode(MODE_FORWARD);
                 player.sendOverlayMessage(Component.literal("Track Paver: Paving Forward (1.0 m/s)").withStyle(ChatFormatting.GREEN));
             }
@@ -738,6 +832,11 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             }
             case LocomotiveControlPayload.ACTION_REVERSE -> {
                 int next = (this.getRunMode() == MODE_REVERSE) ? MODE_FORWARD : MODE_REVERSE;
+                if (next != MODE_STOPPED && this.isPaving() && !this.hasPaverMaterial()) {
+                    this.setRunMode(MODE_STOPPED);
+                    player.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+                    return;
+                }
                 this.setRunMode(next);
                 if (next == MODE_REVERSE) {
                     player.sendOverlayMessage(Component.literal("Track Paver: Reversing").withStyle(ChatFormatting.GOLD));
