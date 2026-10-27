@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4] - 2026-10-26
+
+### Changed
+- **Heavy Track & Road Paver Auto-Shutdown on Material Exhaustion**:
+  - Automatically halts vehicle movement (`MODE_STOPPED`) and shuts down engine activity when the machine runs out of the material set in its filter slot within its inventory.
+  - Terminates further strip paving immediately if material runs out mid-placement, preventing incomplete roads and unpaved gaps.
+  - Added material availability validation to prevent starting or reversing while out of paving material, and alerts operators and nearby players with an action bar notification (`Track Paver: Out of paving material!`).
+- **Automated Version Bumping in Build Script**:
+  - Added source hash tracking (`.last_source_hash`) and automatic patch version incrementing to `build.gradle` on build/jar tasks when mod changes are detected.
+  - Added explicit versioning tasks: `bumpVersion`, `bumpPatch`, `bumpMinor`, `bumpMajor`, and `checkModChanges`.
+
+---
+
 ## [1.0.3] - 2026-10-26
 
 ### Changed
