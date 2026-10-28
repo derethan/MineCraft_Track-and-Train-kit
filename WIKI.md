@@ -45,6 +45,7 @@ Welcome to the comprehensive player manual, engineering walkthrough, and craftin
    - [Mechanical Track Signal Switch Stand](#mechanical-track-signal-switch-stand)
    - [Railway Buffer Stop (Stop Block)](#railway-buffer-stop-stop-block)
    - [Industrial Chunk Anchor](#industrial-chunk-anchor)
+   - [Railway Block Signal & Signal Tuner Radio](#railway-block-signal--signal-tuner-radio)
 7. [Heavy Machinery: The Tunnel Bore & Track Paver](#7-heavy-machinery-the-tunnel-bore--track-paver)
    - [Automated Tunnel Bore](#automated-tunnel-bore)
    - [Heavy Track & Road Paver (AP1055F)](#heavy-track--road-paver-ap1055f)
@@ -819,6 +820,20 @@ All recipes are crafted in a standard 3×3 Crafting Table:
 [ I ] [ R ] [ I ]    R = Redstone Block
 ```
 
+#### Railway Block Signal (Yields 2)
+```
+[ . ] [ I ] [ . ]    I = Iron Ingot
+[ R ] [ G ] [ I ]    R = Redstone Dust, G = Green Dye
+[ . ] [ I ] [ . ]
+```
+
+#### Signal Tuner Radio
+```
+[ . ] [ . ] [ R ]    R = Redstone Torch
+[ . ] [ I ] [ C ]    I = Iron Ingot, C = Copper Ingot
+[ . ] [ I ] [ . ]
+```
+
 #### Automated Tunnel Bore
 ```
 [ P ] [ B ] [ P ]    P = Iron Pickaxe, B = Iron Block
@@ -854,6 +869,32 @@ All recipes are crafted in a standard 3×3 Crafting Table:
 For the complete, version-by-version release history and technical changes, see **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### Summary of Recent Updates:
+
+#### Version 1.0.6:
+- **Dedicated Railway Block Signaling & Interlocking System**:
+  - Added **Railway Block Signal (`railway_signal`)**: 3-aspect steel mast post with Red/Yellow/Green/Shunt LED lenses and analog redstone output.
+  - Added **Signal Tuner Radio (`signal_tuner`)**: Wireless transceiver tool to pair signals into long-distance Block Sections and bind siding turnouts.
+  - **Dynamic Track Circuit & Siding Automation**: Signals scan bounded tracks for train occupancy, automatically throwing linked Track Switches to divert trains into passing sidings when the main line is occupied.
+  - **Train Stop Protection & Yard Shunting**: Smoothly stops trains at Red signals while permitting slow-speed shunting (Gear 1 crawl / Shift key) for wagon coupling.
+  - **Item Definitions & Icons**: Full 1.21.4+ item model definitions in `assets/miningtools/items/`, model JSONs in `models/item/`, and 16x16 pixel-art icons in `textures/item/`.
+
+#### Version 1.0.5:
+- **Universal Burnable Fuel Support for Basic Locomotive**:
+  - Accepts any valid furnace fuel (coal, charcoal, wood, planks, sticks, blaze rods, lava buckets, coal blocks) with proportional burn durations and bucket preservation.
+- **Track Paver Collision Box & Step Climbing Safety**:
+  - Full entity collision bounds preventing clipping; climbs and descends 1-block steps while halting before 2+ block obstacles, cliffs, and ceilings.
+- **Track Paver Work Light**:
+  - High-intensity level 15 floodlight illuminating the workspace (GUI button & `L` hotkey).
+- **Track Paver Work Mode & Dual-Speed Transits**:
+  - Work Mode (paving at 1.0 m/s) vs Transport Mode (no paving, 5.0 m/s) with dynamic speedometer HUD adaptation.
+- **Track Paver 3x3 Ghost Hologram Alignment Grid**:
+  - In-world 3x3 holographic wireframe grid previewing replacement blocks ahead across all terrain contours.
+
+#### Version 1.0.4:
+- **Track Paver Auto-Shutdown on Material Exhaustion**:
+  - Halts vehicle movement and shuts down engine immediately upon running out of filter blocks.
+- **Automated Version Bumping in Build Script**:
+  - Tracks source fingerprint and auto-increments patch version on build/jar tasks.
 
 #### Version 1.0.3:
 - **JourneyMap Display Names**:

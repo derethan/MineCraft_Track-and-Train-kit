@@ -18,6 +18,7 @@
     "miningtools:entity_loader",
     "miningtools:entity_unloader",
     "miningtools:chunk_loader",
-    "miningtools:buffer_stop"
+    "miningtools:buffer_stop",
+    "miningtools:railway_signal"
   ]
 }

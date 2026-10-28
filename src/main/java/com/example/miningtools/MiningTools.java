@@ -28,6 +28,7 @@ import com.example.miningtools.block.FluidLoaderBlock;
 import com.example.miningtools.block.HornRailBlock;
 import com.example.miningtools.block.JunctionRailBlock;
 import com.example.miningtools.block.TrackSwitchBlock;
+import com.example.miningtools.block.RailwaySignalBlock;
 import com.example.miningtools.block.TurnoutRailBlock;
 import com.example.miningtools.block.WyeRailBlock;
 import com.example.miningtools.block.entity.ChunkLoaderBlockEntity;
@@ -35,6 +36,7 @@ import com.example.miningtools.block.entity.ElectricRailBlockEntity;
 import com.example.miningtools.block.entity.EntityLoaderBlockEntity;
 import com.example.miningtools.block.entity.EntityUnloaderBlockEntity;
 import com.example.miningtools.block.entity.FluidLoaderBlockEntity;
+import com.example.miningtools.block.entity.RailwaySignalBlockEntity;
 import com.example.miningtools.block.entity.TrackSwitchBlockEntity;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.CabooseMinecartEntity;
@@ -63,6 +65,7 @@ import com.example.miningtools.item.ElectricLocomotiveItem;
 import com.example.miningtools.item.LargeLiquidMinecartItem;
 import com.example.miningtools.item.LiquidMinecartItem;
 import com.example.miningtools.item.LivestockCartItem;
+import com.example.miningtools.item.SignalTunerItem;
 import com.example.miningtools.item.TunnelBoreItem;
 import com.example.miningtools.item.TrackPaverItem;
 import com.example.miningtools.entity.TrackPaverEntity;
@@ -227,6 +230,28 @@ public class MiningTools {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TrackSwitchBlockEntity>> TRACK_SWITCH_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "track_switch",
             () -> new BlockEntityType<>(TrackSwitchBlockEntity::new, TRACK_SWITCH.get())
+    );
+
+    // Railway Block Signal Block, Item & BlockEntity
+    public static final DeferredBlock<RailwaySignalBlock> RAILWAY_SIGNAL = BLOCKS.registerBlock(
+            "railway_signal",
+            RailwaySignalBlock::new,
+            p -> p.strength(2.0F).sound(SoundType.METAL).noOcclusion().lightLevel(state -> 8)
+    );
+    public static final DeferredItem<BlockItem> RAILWAY_SIGNAL_ITEM = ITEMS.registerSimpleBlockItem(
+            "railway_signal",
+            RAILWAY_SIGNAL
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<RailwaySignalBlockEntity>> RAILWAY_SIGNAL_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "railway_signal",
+            () -> new BlockEntityType<>(RailwaySignalBlockEntity::new, RAILWAY_SIGNAL.get())
+    );
+
+    // Signal Tuner Radio Item
+    public static final DeferredItem<SignalTunerItem> SIGNAL_TUNER_ITEM = ITEMS.registerItem(
+            "signal_tuner",
+            SignalTunerItem::new,
+            p -> p.stacksTo(1)
     );
 
     // Fluid Loader, Fluid Unloader & Diesel Locomotive Fueler Blocks, Items, BlockEntity & Menu
@@ -654,6 +679,8 @@ public class MiningTools {
                         output.accept(TURNOUT_RAIL_ITEM.get());
                         output.accept(WYE_RAIL_ITEM.get());
                         output.accept(TRACK_SWITCH_ITEM.get());
+                        output.accept(RAILWAY_SIGNAL_ITEM.get());
+                        output.accept(SIGNAL_TUNER_ITEM.get());
                         output.accept(CARGO_LOADER_ITEM.get());
                         output.accept(CARGO_UNLOADER_ITEM.get());
                         output.accept(FLUID_LOADER_ITEM.get());
@@ -846,6 +873,8 @@ public class MiningTools {
             event.accept(TURNOUT_RAIL_ITEM);
             event.accept(WYE_RAIL_ITEM);
             event.accept(TRACK_SWITCH_ITEM);
+            event.accept(RAILWAY_SIGNAL_ITEM);
+            event.accept(SIGNAL_TUNER_ITEM);
             event.accept(CARGO_LOADER_ITEM);
             event.accept(CARGO_UNLOADER_ITEM);
             event.accept(FLUID_LOADER_ITEM);

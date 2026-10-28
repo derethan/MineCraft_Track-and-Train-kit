@@ -307,6 +307,8 @@ When seated inside a locomotive or coupled cart:
 | **Trackside Entity Unloader** | Iron Ingots + Activator Rail + Copper Ingots + Hopper + Redstone Dust |
 | **Track Signal Switch (Yields 2)** | Iron Ingots + Redstone Torch + Lever |
 | **Railway Buffer Stop (Yields 2)** | Iron Ingots + Wooden Log + Redstone Dust + Iron Bars |
+| **Railway Block Signal (Yields 2)** | Iron Ingots + Redstone Dust + Green Dye |
+| **Signal Tuner Radio** | Iron Ingots + Redstone Torch + Copper Ingot |
 | **Industrial Chunk Anchor** | Iron Ingots + Obsidian + Gold Ingots + Ender Pearl + Redstone Block |
 | **Surveyor's Charge** | TNT + Redstone Dust + Arrow |
 | **Remote Detonator** | Lever + Redstone Dust + Iron Ingot |
@@ -316,6 +318,12 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.0.6**:
+  - **Railway Block Signal & Interlocking**: Added 3-aspect steel mast signal posts with dynamic track circuit occupancy detection and analog redstone output.
+  - **Signal Tuner Radio**: Handheld wireless radio tool to pair signals across any distance into Block Sections and bind turnout switches.
+  - **Automated Passing Sidings**: Automatically diverts oncoming trains into passing loops when the single-track section ahead is occupied, holding them until clear.
+  - **Fail-Safe Stopping & Shunting Exemption**: Safely stops trains at Red signals while permitting slow-speed shunting (Gear 1 crawl / Shift key) for wagon coupling in yards.
+  - **Proper Item Models & Textures**: Full 1.21.4+ item definitions, models, and clean 16x16 pixel art icons for signals and tuners.
 * **v1.0.5**:
   - **Universal Fuel Support**: Basic Locomotives now accept any valid burnable fuel item (wood, planks, sticks, blaze rods, lava buckets, coal blocks, and modded fuels) with proportional burn durations and bucket remainder preservation.
   - **Track Paver Collision & Terrain Safety**: Added a full physical collision box and refined terrain collision checks to safely climb or descend 1-block steps while halting before 2+ block obstacles, cliffs, and overhangs.
@@ -356,5 +364,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.5.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.0.6.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

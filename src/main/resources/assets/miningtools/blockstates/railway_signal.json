@@ -1,0 +1,23 @@
+{
+  "variants": {
+    "aspect=red,facing=north": { "model": "miningtools:block/railway_signal_red", "y": 0 },
+    "aspect=red,facing=east": { "model": "miningtools:block/railway_signal_red", "y": 90 },
+    "aspect=red,facing=south": { "model": "miningtools:block/railway_signal_red", "y": 180 },
+    "aspect=red,facing=west": { "model": "miningtools:block/railway_signal_red", "y": 270 },
+
+    "aspect=yellow,facing=north": { "model": "miningtools:block/railway_signal_yellow", "y": 0 },
+    "aspect=yellow,facing=east": { "model": "miningtools:block/railway_signal_yellow", "y": 90 },
+    "aspect=yellow,facing=south": { "model": "miningtools:block/railway_signal_yellow", "y": 180 },
+    "aspect=yellow,facing=west": { "model": "miningtools:block/railway_signal_yellow", "y": 270 },
+
+    "aspect=green,facing=north": { "model": "miningtools:block/railway_signal_green", "y": 0 },
+    "aspect=green,facing=east": { "model": "miningtools:block/railway_signal_green", "y": 90 },
+    "aspect=green,facing=south": { "model": "miningtools:block/railway_signal_green", "y": 180 },
+    "aspect=green,facing=west": { "model": "miningtools:block/railway_signal_green", "y": 270 },
+
+    "aspect=shunt,facing=north": { "model": "miningtools:block/railway_signal_shunt", "y": 0 },
+    "aspect=shunt,facing=east": { "model": "miningtools:block/railway_signal_shunt", "y": 90 },
+    "aspect=shunt,facing=south": { "model": "miningtools:block/railway_signal_shunt", "y": 180 },
+    "aspect=shunt,facing=west": { "model": "miningtools:block/railway_signal_shunt", "y": 270 }
+  }
+}

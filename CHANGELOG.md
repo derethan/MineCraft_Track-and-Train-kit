@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.6] - 2026-10-28
+
+### Added
+- **Dedicated Railway Block Signaling & Interlocking System**:
+  - **Railway Block Signal (`railway_signal`)**: A 3D steel mast signal post with 3-aspect LED lenses (Red, Yellow, Green, and Shunt) indicating track block occupancy. Emits analog redstone signals (Green: 15, Yellow: 8, Shunt: 4, Red: 0).
+  - **Signal Tuner Radio (`signal_tuner`)**: Handheld wireless transceiver item used to pair signals into long-distance Block Sections, toggle between Passing Siding and Automatic Block Signal (ABS) modes, and link turnout switches.
+  - **Dynamic Track Circuit & Occupancy Detection**: Signals automatically scan rail tracks between paired signals and update aspects to Red when trains or minecarts occupy the section.
+  - **Automated Passing Siding Routing**: Automatically throws linked `TrackSwitchBlock` turnouts to divert incoming trains into passing sidings when the main block ahead is occupied, holding them safely on braking rails until opposing trains pass.
+  - **Fail-Safe Train Halting at Red Signals**: Smoothly brings trains approaching a Red signal to a stop, zeroing locomotive speed level with action bar notifications.
+  - **Shunting & Yard Coupling Protection**: Operators holding Shift or moving at Gear 1 Crawl Speed (1.0 m/s) can safely pass or enter occupied tracks to bump-couple cars without triggering emergency stops.
+  - **Complete 1.21.4+ Item Model Definitions & Crisp Textures**: Added dedicated item definition JSONs in `assets/miningtools/items/`, model JSONs in `models/item/`, and 16x16 pixel-art icons in `textures/item/` for flawless rendering in inventory, GUI, and in-hand.
+  - **Crafting Recipes**: Added shaped crafting recipes for Railway Block Signal and Signal Tuner Radio.
+
+---
+
 ## [1.0.5] - 2026-10-28
 
 ### Added
