@@ -318,6 +318,8 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.0.7**:
+  - **Server Recipe Parsing Fix**: Fixed recipe ingredient syntax and category definitions for Railway Block Signal and Signal Tuner to resolve server data pack loading errors on Minecraft 26.3.
 * **v1.0.6**:
   - **Railway Block Signal & Interlocking**: Added 3-aspect steel mast signal posts with dynamic track circuit occupancy detection and analog redstone output.
   - **Signal Tuner Radio**: Handheld wireless radio tool to pair signals across any distance into Block Sections and bind turnout switches.
@@ -364,5 +366,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.6.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.0.7.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

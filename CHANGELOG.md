@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.7] - 2026-10-28
+
+### Fixed
+- **Recipe JSON Syntax for Railway Signal & Signal Tuner**:
+  - Corrected ingredient key mappings from legacy object format to Minecraft 26.3 direct string item identifiers.
+  - Corrected recipe category for `signal_tuner` from invalid `tools` to `equipment`, resolving server data pack loading crash on startup.
+
+---
+
 ## [1.0.6] - 2026-10-28
 
 ### Added

@@ -870,6 +870,9 @@ For the complete, version-by-version release history and technical changes, see 
 
 ### Summary of Recent Updates:
 
+#### Version 1.0.7:
+- **Server Recipe Parsing Fix**: Corrected shaped recipe ingredient syntax and category attributes for `railway_signal` and `signal_tuner` to prevent server data pack load errors.
+
 #### Version 1.0.6:
 - **Dedicated Railway Block Signaling & Interlocking System**:
   - Added **Railway Block Signal (`railway_signal`)**: 3-aspect steel mast post with Red/Yellow/Green/Shunt LED lenses and analog redstone output.
