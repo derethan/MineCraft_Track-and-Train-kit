@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "/NMahRASoNk=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\swack\\Documents\\GitHub\\MineCraft_Track-and-Train-kit\\scratch\\HdTexturePackGenerator\\HdTexturePackGenerator.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\swack\\.nuget\\packages\\microsoft.win32.systemevents\\10.0.13\\microsoft.win32.systemevents.10.0.13.nupkg.sha512",
+    "C:\\Users\\swack\\.nuget\\packages\\system.drawing.common\\10.0.13\\system.drawing.common.10.0.13.nupkg.sha512"
+  ],
+  "logs": []
+}
