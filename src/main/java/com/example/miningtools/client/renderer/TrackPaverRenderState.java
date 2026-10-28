@@ -1,6 +1,7 @@
 package com.example.miningtools.client.renderer;
 
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -16,4 +17,8 @@ public class TrackPaverRenderState extends EntityRenderState {
     public float hurtTime = 0.0F;
     public int hurtDir = 1;
     public float damageTime = 0.0F;
+    public boolean workLight = false;
+    public boolean showHologram = false;
+    public boolean isWorkMode = true;
+    public BlockPos[] hologramPositions = new BlockPos[9];
 }

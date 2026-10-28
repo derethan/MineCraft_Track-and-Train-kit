@@ -38,7 +38,7 @@ Every locomotive features dynamic directional headlights (level 15 lighting), in
 
 ### 1. Basic Steam Locomotive
 The quintessential iron horse for industrial mining and freight operations.
-* **Fuel**: Consumes coal, charcoal, or furnace fuel (default: 80 seconds per coal).
+* **Fuel**: Consumes any valid burnable fuel item (coal, charcoal, wood logs, planks, wooden slabs, sticks, blaze rods, lava buckets, coal blocks, etc.), with burn durations scaling proportionally to standard furnace burn times.
 * **Speed Profile**: 5 throttle gears with a calibrated **1.0 m/s (0.05 b/t) Crawl Speed** in Gear 1 for precise switching and coupling, scaling up to 0.35+ blocks/tick (~7 m/s or 25 km/h).
 * **Cruise Control**: Gear 3 runs at **50% of maximum speed** (~0.175 b/t).
 * **Pulling Capacity**: Pulls up to **5 carts** with zero drag penalty.
@@ -172,6 +172,11 @@ An automated subterranean excavator for carving out subway lines and railway cor
 
 ### 2. Heavy Track & Road Paver (AP1055F)
 A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F track paver (~2.75 blocks wide, 2.0 blocks high, 3.0 blocks long):
+* **Work Mode & Dual-Speed Transits**: Toggle between **Work Mode** (constructs a 3-wide road strip at a regulated 1.0 m/s) and **Transport Mode** (suspends block replacement and boosts travel speed to **5.0 m/s** for rapid transit and repositioning).
+* **Physical Collision & Terrain Step Safety**: Solid physical collision box prevents clipping; smoothly climbs and descends 1-block terrain steps while safely halting before 2+ block vertical obstacles, cliffs, and low ceilings.
+* **Toggleable Work Light**: High-intensity floodlight illuminating the surrounding workspace (Level 15 light) via GUI button or `L` key.
+* **3x3 Ghost Hologram Alignment Grid**: In-world holographic wireframe grid projected over the 3x3 footprint in front of the machine, showing the exact blocks that will be replaced along its trajectory to effortlessly line up target work areas (toggleable via GUI or `Shift + H`).
+* **Universal Fuel Compatibility**: Accepts all burnable furnace fuels (coal, charcoal, wood, blaze rods, lava buckets, etc.) in its fuel hopper.
 * **Calibrated 1.0 m/s Paving Speed**: Crawls forward at an exact 1.0 m/s (20 ticks per block step), replacing blocks in a 1-block deep by 3-block wide strip across its rear screed.
 * **Flush Ground Alignment**: Sits firmly flush against terrain and rail ties without visual hovering off the ground whether operating on-rail or traversing cross-country.
 * **Accurate Idle HUD & Audio**: Speedometer accurately displays 0.0 m/s when out of fuel or stopped, and engine sound smoothly mutes when idle or powered off.
@@ -311,6 +316,12 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.0.5**:
+  - **Universal Fuel Support**: Basic Locomotives now accept any valid burnable fuel item (wood, planks, sticks, blaze rods, lava buckets, coal blocks, and modded fuels) with proportional burn durations and bucket remainder preservation.
+  - **Track Paver Collision & Terrain Safety**: Added a full physical collision box and refined terrain collision checks to safely climb or descend 1-block steps while halting before 2+ block obstacles, cliffs, and overhangs.
+  - **Track Paver Work Light**: Added a toggleable high-intensity work floodlight (Level 15) illuminating the work area around the paver (GUI button and `L` hotkey).
+  - **Track Paver Work Mode & Dual-Speed**: Toggle between **Work Mode** (paving at 1.0 m/s) and **Transport Mode** (no paving, max speed 5.0 m/s) with dynamic speedometer HUD adaptation.
+  - **Track Paver 3x3 Ghost Hologram Grid**: Projected 3x3 alignment wireframe grid showing the exact blocks that will be replaced ahead across all terrain contours.
 * **v1.0.4**:
   - **Heavy Track & Road Paver Auto-Shutdown**: Halts crawler movement and cuts engine activity immediately upon exhausting the filter block material in its bulk inventory; stops mid-strip to eliminate unpaved gaps; alerts operators with action bar notices.
   - **Automated Version Bumping**: Build script tracks mod source fingerprints (`.last_source_hash`) and auto-increments the patch version on build/jar whenever mod files are modified.
@@ -345,5 +356,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.4.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.0.5.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

@@ -26,6 +26,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -50,6 +51,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Blocks;
@@ -59,6 +61,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.level.storage.loot.LootContext;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -339,7 +344,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canPlaceItem(int index, ItemStack stack) {
-        return false;
+        return isBurnableFuel(stack);
     }
 
     @Override
@@ -541,12 +546,71 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         TrainChainingUtil.pushEntitiesInLocomotivePath(this, travelDir, speed, preTickX, preTickY, preTickZ);
     }
 
+    public static boolean isBurnableFuel(ItemStack stack) {
+        if (stack.isEmpty()) return false;
+        if (stack.has(DataComponents.COOKING_FUEL)) return true;
+        if (stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK)) return true;
+        return GeneratorMinecartEntity.getFuelBurnDuration(stack) > 0;
+    }
+
+    public static int getItemBurnTicks(Level level, ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        int rawBurn = 0;
+        var fuelComp = stack.get(DataComponents.COOKING_FUEL);
+        if (fuelComp != null) {
+            LootContext ctx = null;
+            if (level instanceof ServerLevel serverLevel) {
+                var params = new LootParams.Builder(serverLevel)
+                        .create(LootContextParamSets.EMPTY);
+                ctx = new LootContext.Builder(params).create(java.util.Optional.empty());
+            }
+            rawBurn = fuelComp.burnTime().get(ctx, 0);
+        }
+        if (rawBurn <= 0) {
+            rawBurn = GeneratorMinecartEntity.getFuelBurnDuration(stack);
+        }
+        if (rawBurn <= 0 && (stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK))) {
+            rawBurn = stack.is(Items.COAL_BLOCK) ? 14400 : 1600;
+        }
+        if (rawBurn <= 0) {
+            return 0;
+        }
+
+        int configCoalTicks = 1600;
+        try {
+            configCoalTicks = Config.LOCOMOTIVE_COAL_BURN_TICKS.get();
+        } catch (Throwable ignored) {}
+
+        if (configCoalTicks == 1600) {
+            return rawBurn;
+        }
+        return Math.max(1, (int) Math.round((double) rawBurn * ((double) configCoalTicks / 1600.0D)));
+    }
+
     public boolean tryRefuel() {
         for (int i = 0; i < INVENTORY_SIZE; i++) {
             ItemStack stack = this.getItem(i);
-            if (!stack.isEmpty() && stack.is(ItemTags.COALS)) {
+            if (!stack.isEmpty() && isBurnableFuel(stack)) {
+                int burnTicks = getItemBurnTicks(this.level(), stack);
+                if (burnTicks <= 0) continue;
+                var remainderTemplate = stack.getItem().getCraftingRemainder();
+                ItemStack remainder = remainderTemplate != null ? remainderTemplate.create() : ItemStack.EMPTY;
                 stack.shrink(1);
-                int burnTicks = Config.LOCOMOTIVE_COAL_BURN_TICKS.get();
+                if (stack.isEmpty()) {
+                    this.setItem(i, remainder);
+                } else if (!remainder.isEmpty()) {
+                    boolean placed = false;
+                    for (int j = 0; j < INVENTORY_SIZE; j++) {
+                        if (this.getItem(j).isEmpty()) {
+                            this.setItem(j, remainder);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (!placed && this.level() instanceof ServerLevel serverLevel) {
+                        this.spawnAtLocation(serverLevel, remainder);
+                    }
+                }
                 this.fuelTotal = burnTicks;
                 this.fuel = burnTicks;
                 this.level().playSound(null, this.blockPosition(), SoundEvents.FURNACE_FIRE_CRACKLE, SoundSource.BLOCKS, 0.6F, 1.0F);
@@ -606,7 +670,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         int coalTotal = 0;
         for (int i = 0; i < INVENTORY_SIZE; i++) {
             ItemStack st = this.getItem(i);
-            if (!st.isEmpty() && st.is(ItemTags.COALS)) {
+            if (!st.isEmpty() && isBurnableFuel(st)) {
                 coalTotal += st.getCount();
             }
         }

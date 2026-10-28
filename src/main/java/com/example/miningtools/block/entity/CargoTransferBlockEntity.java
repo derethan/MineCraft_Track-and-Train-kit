@@ -241,7 +241,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     }
 
     public static boolean isCoalFuelItem(ItemStack stack) {
-        return !stack.isEmpty() && (stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK));
+        return !stack.isEmpty() && (stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK) || com.example.miningtools.entity.BasicLocomotiveEntity.isBurnableFuel(stack));
     }
 
     public boolean matchesItemFilter(ItemStack stack) {

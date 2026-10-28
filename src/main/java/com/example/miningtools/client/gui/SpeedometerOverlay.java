@@ -264,8 +264,8 @@ public class SpeedometerOverlay {
             }
             return (float) (cfgMax * 20.0D);
         }
-        if (vehicle instanceof TrackPaverEntity) {
-            return 1.0F;
+        if (vehicle instanceof TrackPaverEntity paver) {
+            return paver.isWorkMode() ? 1.0F : 5.0F;
         }
         if (vehicle instanceof AbstractMinecart) {
             return 8.0F;

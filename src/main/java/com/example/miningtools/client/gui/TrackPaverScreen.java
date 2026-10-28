@@ -33,6 +33,9 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
     private @Nullable Button toggleButton;
     private @Nullable Button reverseButton;
     private @Nullable Button lockButton;
+    private @Nullable Button workButton;
+    private @Nullable Button lightButton;
+    private @Nullable Button hologramButton;
 
     public TrackPaverScreen(TrackPaverMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title, 176, 204);
@@ -75,12 +78,13 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                 }).bounds(this.leftPos + 139, this.topPos - 18, 33, 14).build()
         );
 
+        // Row 1: Start/Halt and Reverse
         this.toggleButton = this.addRenderableWidget(
                 Button.builder(this.getToggleButtonLabel(), button -> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
                     }
-                }).bounds(this.leftPos + 88, this.topPos + 14, 42, 17).build()
+                }).bounds(this.leftPos + 78, this.topPos + 12, 44, 12).build()
         );
 
         this.reverseButton = this.addRenderableWidget(
@@ -88,7 +92,33 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 1);
                     }
-                }).bounds(this.leftPos + 132, this.topPos + 14, 36, 17).build()
+                }).bounds(this.leftPos + 125, this.topPos + 12, 44, 12).build()
+        );
+
+        // Row 2: Work Mode and Work Light
+        this.workButton = this.addRenderableWidget(
+                Button.builder(this.getWorkButtonLabel(), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 3);
+                    }
+                }).bounds(this.leftPos + 78, this.topPos + 26, 44, 12).build()
+        );
+
+        this.lightButton = this.addRenderableWidget(
+                Button.builder(this.getLightButtonLabel(), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 4);
+                    }
+                }).bounds(this.leftPos + 125, this.topPos + 26, 44, 12).build()
+        );
+
+        // Row 3: Hologram Guide and Cardinal Lock
+        this.hologramButton = this.addRenderableWidget(
+                Button.builder(this.getHologramButtonLabel(), button -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 5);
+                    }
+                }).bounds(this.leftPos + 78, this.topPos + 40, 44, 12).build()
         );
 
         this.lockButton = this.addRenderableWidget(
@@ -96,7 +126,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 2);
                     }
-                }).bounds(this.leftPos + 88, this.topPos + 33, 80, 17).build()
+                }).bounds(this.leftPos + 125, this.topPos + 40, 44, 12).build()
         );
     }
 
@@ -114,6 +144,24 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
             return Component.literal("Rev").withStyle(ChatFormatting.YELLOW);
         }
         return Component.literal("Rev").withStyle(ChatFormatting.GRAY);
+    }
+
+    private Component getWorkButtonLabel() {
+        return this.menu.isWorkMode()
+                ? Component.literal("Work: ON").withStyle(ChatFormatting.GREEN)
+                : Component.literal("Work: OFF").withStyle(ChatFormatting.GOLD);
+    }
+
+    private Component getLightButtonLabel() {
+        return this.menu.isWorkLightEnabled()
+                ? Component.literal("Light").withStyle(ChatFormatting.GOLD)
+                : Component.literal("Light").withStyle(ChatFormatting.GRAY);
+    }
+
+    private Component getHologramButtonLabel() {
+        return this.menu.isHologramEnabled()
+                ? Component.literal("Holo: ON").withStyle(ChatFormatting.AQUA)
+                : Component.literal("Holo: OFF").withStyle(ChatFormatting.GRAY);
     }
 
     private Component getLockButtonLabel() {
@@ -135,6 +183,15 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
         }
         if (this.reverseButton != null) {
             this.reverseButton.setMessage(this.getReverseButtonLabel());
+        }
+        if (this.workButton != null) {
+            this.workButton.setMessage(this.getWorkButtonLabel());
+        }
+        if (this.lightButton != null) {
+            this.lightButton.setMessage(this.getLightButtonLabel());
+        }
+        if (this.hologramButton != null) {
+            this.hologramButton.setMessage(this.getHologramButtonLabel());
         }
         if (this.lockButton != null) {
             this.lockButton.setMessage(this.getLockButtonLabel());

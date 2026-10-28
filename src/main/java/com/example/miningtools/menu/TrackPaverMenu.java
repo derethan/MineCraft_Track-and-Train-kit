@@ -1,6 +1,7 @@
 package com.example.miningtools.menu;
 
 import com.example.miningtools.MiningTools;
+import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.TrackPaverEntity;
 
 import net.minecraft.world.Container;
@@ -17,7 +18,7 @@ import net.minecraft.world.level.block.BaseRailBlock;
 
 public class TrackPaverMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = TrackPaverEntity.INVENTORY_SIZE;
-    public static final int DATA_COUNT = 5;
+    public static final int DATA_COUNT = 7;
 
     public static final int SLOT_PAVER_BLOCK = TrackPaverEntity.SLOT_PAVER_BLOCK;
     public static final int SLOT_FUEL = TrackPaverEntity.SLOT_FUEL;
@@ -54,11 +55,11 @@ public class TrackPaverMenu extends AbstractContainerMenu {
             }
         });
 
-        // Slot 1: Fuel Slot (Coal / Charcoal / Blaze Rod / Wood)
+        // Slot 1: Fuel Slot (Any burnable fuel)
         this.addSlot(new Slot(container, SLOT_FUEL, 18, 20) {
             @Override
             public boolean mayPlace(ItemStack stack) {
-                return TrackPaverEntity.getFuelBurnDuration(stack) > 0;
+                return BasicLocomotiveEntity.isBurnableFuel(stack);
             }
         });
 
@@ -93,7 +94,19 @@ public class TrackPaverMenu extends AbstractContainerMenu {
     }
 
     public boolean isPaving() {
+        return this.isWorkMode();
+    }
+
+    public boolean isWorkMode() {
         return this.data.get(4) != 0;
+    }
+
+    public boolean isWorkLightEnabled() {
+        return this.data.get(5) != 0;
+    }
+
+    public boolean isHologramEnabled() {
+        return this.data.get(6) != 0;
     }
 
     public int getBurnProgressScaled(int pixels) {
@@ -140,8 +153,16 @@ public class TrackPaverMenu extends AbstractContainerMenu {
             this.data.set(3, next);
             return true;
         } else if (id == 3) {
-            // Toggle Paving On / Off
-            this.data.set(4, this.isPaving() ? 0 : 1);
+            // Toggle Work Mode On / Off
+            this.data.set(4, this.isWorkMode() ? 0 : 1);
+            return true;
+        } else if (id == 4) {
+            // Toggle Work Light On / Off
+            this.data.set(5, this.isWorkLightEnabled() ? 0 : 1);
+            return true;
+        } else if (id == 5) {
+            // Toggle Hologram Grid On / Off
+            this.data.set(6, this.isHologramEnabled() ? 0 : 1);
             return true;
         }
         return false;
@@ -167,7 +188,7 @@ public class TrackPaverMenu extends AbstractContainerMenu {
                 }
             } else {
                 // Moving from player to machine
-                if (TrackPaverEntity.getFuelBurnDuration(slotStack) > 0) {
+                if (BasicLocomotiveEntity.isBurnableFuel(slotStack)) {
                     if (!this.moveItemStackTo(slotStack, SLOT_FUEL, SLOT_FUEL + 1, false)) {
                         if (!this.moveItemStackTo(slotStack, SLOT_MATERIAL_START, CONTAINER_SIZE, false)) {
                             return ItemStack.EMPTY;

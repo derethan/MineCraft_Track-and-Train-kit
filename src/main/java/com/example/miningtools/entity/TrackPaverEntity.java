@@ -49,6 +49,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -83,10 +84,13 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     public static final int LOCK_WEST = 3;
     public static final int LOCK_EAST = 4;
 
-    // 20 ticks = 1.0 second per block step = exact 1.0 m/s travel speed
+    // 20 ticks = 1.0 second per block step = exact 1.0 m/s travel speed in Work Mode
     public static final int MOVE_TICKS_PER_BLOCK = 20;
-    // 30 ticks = 1.5 seconds per block step for safe reversing
+    // 30 ticks = 1.5 seconds per block step for safe reversing in Work Mode
     public static final int REVERSE_TICKS_PER_BLOCK = 30;
+    // 4 ticks = 5.0 blocks per second = 5.0 m/s travel speed when Work Mode is OFF
+    public static final int FAST_MOVE_TICKS_PER_BLOCK = 4;
+    public static final int FAST_REVERSE_TICKS_PER_BLOCK = 4;
 
     private static final EntityDataAccessor<Direction> DATA_FACING =
             SynchedEntityData.defineId(TrackPaverEntity.class, EntityDataSerializers.DIRECTION);
@@ -102,6 +106,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             SynchedEntityData.defineId(TrackPaverEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<String> DATA_TRAIN_NAME =
             SynchedEntityData.defineId(TrackPaverEntity.class, EntityDataSerializers.STRING);
+    private static final EntityDataAccessor<Boolean> DATA_WORK_LIGHT =
+            SynchedEntityData.defineId(TrackPaverEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> DATA_HOLOGRAM =
+            SynchedEntityData.defineId(TrackPaverEntity.class, EntityDataSerializers.BOOLEAN);
 
     private NonNullList<ItemStack> itemStacks = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
 
@@ -114,6 +122,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     private @Nullable BlockPos currentStepPos = null;
     private @Nullable BlockPos targetStepPos = null;
     private int outOfMaterialNotifyCooldown = 0;
+    private @Nullable BlockPos currentLightPos = null;
 
     // Treads animation rotation for client
     public float treadRotation = 0.0F;
@@ -126,7 +135,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 case 1 -> TrackPaverEntity.this.fuelTotal;
                 case 2 -> TrackPaverEntity.this.getRunMode();
                 case 3 -> TrackPaverEntity.this.getCardinalLock();
-                case 4 -> TrackPaverEntity.this.isPaving() ? 1 : 0;
+                case 4 -> TrackPaverEntity.this.isWorkMode() ? 1 : 0;
+                case 5 -> TrackPaverEntity.this.isWorkLightEnabled() ? 1 : 0;
+                case 6 -> TrackPaverEntity.this.isHologramEnabled() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -138,13 +149,15 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 case 1 -> TrackPaverEntity.this.fuelTotal = value;
                 case 2 -> TrackPaverEntity.this.setRunMode(value);
                 case 3 -> TrackPaverEntity.this.setCardinalLock(value);
-                case 4 -> TrackPaverEntity.this.setPaving(value != 0);
+                case 4 -> TrackPaverEntity.this.setWorkMode(value != 0);
+                case 5 -> TrackPaverEntity.this.setWorkLightEnabled(value != 0);
+                case 6 -> TrackPaverEntity.this.setHologramEnabled(value != 0);
             }
         }
 
         @Override
         public int getCount() {
-            return 5;
+            return 7;
         }
     };
 
@@ -170,6 +183,58 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         entityData.define(DATA_CARDINAL_LOCK, LOCK_OFF);
         entityData.define(DATA_ON_RAILS, false);
         entityData.define(DATA_TRAIN_NAME, "");
+        entityData.define(DATA_WORK_LIGHT, false);
+        entityData.define(DATA_HOLOGRAM, false);
+    }
+
+    @Override
+    public boolean canBeCollidedWith(@Nullable Entity entity) {
+        return true;
+    }
+
+    @Override
+    public boolean canCollideWith(Entity entity) {
+        return !this.isPassengerOfSameVehicle(entity);
+    }
+
+    @Override
+    public boolean isPushable() {
+        return true;
+    }
+
+    public boolean isWorkMode() {
+        return this.entityData.get(DATA_PAVING);
+    }
+
+    public void setWorkMode(boolean workMode) {
+        this.entityData.set(DATA_PAVING, workMode);
+    }
+
+    public boolean isWorkLightEnabled() {
+        return this.entityData.get(DATA_WORK_LIGHT);
+    }
+
+    public void setWorkLightEnabled(boolean enabled) {
+        this.entityData.set(DATA_WORK_LIGHT, enabled);
+        if (!enabled && !this.level().isClientSide()) {
+            this.clearWorkLight();
+        }
+    }
+
+    public boolean isHologramEnabled() {
+        return this.entityData.get(DATA_HOLOGRAM);
+    }
+
+    public void setHologramEnabled(boolean enabled) {
+        this.entityData.set(DATA_HOLOGRAM, enabled);
+    }
+
+    public int getTicksPerBlock(boolean isReversing) {
+        if (this.isWorkMode()) {
+            return isReversing ? REVERSE_TICKS_PER_BLOCK : MOVE_TICKS_PER_BLOCK;
+        } else {
+            return isReversing ? FAST_REVERSE_TICKS_PER_BLOCK : FAST_MOVE_TICKS_PER_BLOCK;
+        }
     }
 
     public Direction getFacing() {
@@ -363,7 +428,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     public Vec3 getDeltaMovement() {
         if (this.isActive() && this.isMoving && this.getRunMode() != MODE_STOPPED) {
             Direction dir = this.getRunMode() == MODE_REVERSE ? this.getFacing().getOpposite() : this.getFacing();
-            double speed = this.getRunMode() == MODE_REVERSE ? (1.0 / REVERSE_TICKS_PER_BLOCK) : (1.0 / MOVE_TICKS_PER_BLOCK);
+            int ticks = this.getTicksPerBlock(this.getRunMode() == MODE_REVERSE);
+            double speed = 1.0D / (double) ticks;
             return new Vec3(dir.getStepX() * speed, 0.0, dir.getStepZ() * speed);
         }
         return Vec3.ZERO;
@@ -383,7 +449,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         // Update client-side animations
         if (this.level().isClientSide()) {
             if (this.isActive()) {
-                this.treadRotation += 0.15F;
+                float speedMultiplier = this.isWorkMode() ? 1.0F : 5.0F;
+                float treadSpeed = (this.getRunMode() == MODE_REVERSE) ? -0.15F * speedMultiplier : 0.15F * speedMultiplier;
+                this.treadRotation += treadSpeed;
+
                 // Emit diesel exhaust from vertical smokestack
                 Direction facing = this.getFacing();
                 double stackForward = 0.20D;
@@ -398,6 +467,13 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                         0.0, 0.08, 0.0);
             }
             return;
+        }
+
+        // Server-side work light
+        if (this.isWorkLightEnabled() && !this.isRemoved()) {
+            this.updateWorkLight();
+        } else {
+            this.clearWorkLight();
         }
 
         // Server tick
@@ -433,6 +509,54 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         }
     }
 
+    public void updateWorkLight() {
+        if (this.level().isClientSide() || this.isRemoved()) {
+            return;
+        }
+        BlockPos center = this.blockPosition().above(2);
+        if (!this.level().hasChunkAt(center)) {
+            return;
+        }
+        BlockState state = this.level().getBlockState(center);
+        if (!state.isAir() && !state.is(Blocks.LIGHT)) {
+            center = this.blockPosition().above();
+            if (!this.level().hasChunkAt(center)) {
+                return;
+            }
+            state = this.level().getBlockState(center);
+        }
+
+        if (!java.util.Objects.equals(this.currentLightPos, center)) {
+            this.clearWorkLight();
+            if (state.isAir() || state.is(Blocks.LIGHT)) {
+                this.level().setBlock(center, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
+                this.currentLightPos = center;
+            }
+        } else if (state.isAir()) {
+            this.level().setBlock(center, Blocks.LIGHT.defaultBlockState().setValue(LightBlock.LEVEL, 15), 3);
+        }
+    }
+
+    public void clearWorkLight() {
+        if (this.currentLightPos != null && !this.level().isClientSide()) {
+            if (this.level().hasChunkAt(this.currentLightPos)) {
+                BlockState state = this.level().getBlockState(this.currentLightPos);
+                if (state.is(Blocks.LIGHT)) {
+                    this.level().setBlock(this.currentLightPos, Blocks.AIR.defaultBlockState(), 3);
+                }
+            }
+            this.currentLightPos = null;
+        }
+    }
+
+    @Override
+    public void remove(Entity.RemovalReason reason) {
+        if (reason.shouldDestroy() && !this.level().isClientSide()) {
+            this.clearWorkLight();
+        }
+        super.remove(reason);
+    }
+
     private void handleRiderControls(LivingEntity rider) {
         float forwardInput = rider.zza;
         float strafeInput = rider.xxa;
@@ -454,43 +578,104 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         }
     }
 
+    private boolean isBlockPassable(BlockPos pos) {
+        BlockState state = this.level().getBlockState(pos);
+        return state.isAir() || state.getCollisionShape(this.level(), pos).isEmpty() || state.canBeReplaced() || BaseRailBlock.isRail(state) || state.is(BlockTags.RAILS);
+    }
+
+    private boolean isBlockSolidGround(BlockPos pos) {
+        BlockState state = this.level().getBlockState(pos);
+        return !state.isAir() && (state.isSolid() || !state.getCollisionShape(this.level(), pos).isEmpty() || BaseRailBlock.isRail(state) || state.is(BlockTags.RAILS));
+    }
+
+    private boolean isWallObstacle(BlockPos pos) {
+        // A wall obstacle exists if both feet and head level have solid collision (2+ blocks high obstruction)
+        return isBlockSolidGround(pos) && isBlockSolidGround(pos.above());
+    }
+
     private void tickMoveStep(Direction travelDir, boolean isReversing) {
-        if (this.isPaving() && !this.hasPaverMaterial()) {
+        if (this.isWorkMode() && !this.hasPaverMaterial()) {
             this.setRunMode(MODE_STOPPED);
             this.notifyOutOfMaterial(null);
             return;
         }
 
-        int ticksPerBlock = isReversing ? REVERSE_TICKS_PER_BLOCK : MOVE_TICKS_PER_BLOCK;
+        int ticksPerBlock = this.getTicksPerBlock(isReversing);
 
         if (!this.isMoving) {
-            // Determine next target block
-            BlockPos nextPos = this.currentStepPos.relative(travelDir);
+            if (this.currentStepPos == null) {
+                this.currentStepPos = this.blockPosition();
+            }
 
-            // Terrain step-up: check if next position is obstructed by a 1-block rise
-            BlockState nextFeetState = this.level().getBlockState(nextPos);
-            BlockState nextHeadState = this.level().getBlockState(nextPos.above());
-            if (nextFeetState.isSolid() && !nextHeadState.isSolid()) {
-                // Ground steps up by 1 block
-                nextPos = nextPos.above();
-            } else if (!nextFeetState.isSolid() && !this.level().getBlockState(nextPos.below()).isSolid()) {
-                // Ground steps down by 1 block
-                BlockPos downPos = nextPos.below();
-                if (this.level().getBlockState(downPos).isSolid() || this.level().getBlockState(downPos.below()).isSolid()) {
-                    nextPos = downPos;
+            BlockPos forwardPos = this.currentStepPos.relative(travelDir);
+            Direction leftDir = travelDir.getCounterClockWise();
+            Direction rightDir = travelDir.getClockWise();
+
+            BlockPos chosenTarget = null;
+
+            // Check if terrain steps UP 1 block
+            if (isBlockSolidGround(forwardPos)) {
+                BlockPos upPos = forwardPos.above();
+                // 1-block climb is valid ONLY IF:
+                // 1. upPos (feet at Y+1) is passable
+                // 2. upPos.above() (head at Y+2) is passable
+                // 3. Current vehicle position has headroom to step up (above(2) is passable)
+                // If forwardPos.above() is solid, that is a 2+ block obstacle - stops!
+                if (isBlockPassable(upPos) && isBlockPassable(upPos.above()) && isBlockPassable(this.currentStepPos.above(2))) {
+                    BlockPos upLeft = upPos.relative(leftDir);
+                    BlockPos upRight = upPos.relative(rightDir);
+                    if (isBlockPassable(upLeft.above()) && isBlockPassable(upRight.above())
+                            && !isWallObstacle(upLeft) && !isWallObstacle(upRight)) {
+                        chosenTarget = upPos;
+                    }
+                }
+            } else if (isBlockPassable(forwardPos)) {
+                // Forward feet is passable.
+                // Head level (forwardPos.above()) must also be passable (no low ceiling/overhang)
+                if (isBlockPassable(forwardPos.above())) {
+                    BlockPos groundPos = forwardPos.below();
+                    if (isBlockSolidGround(groundPos)) {
+                        // Flat terrain: ground exists at standard level
+                        BlockPos leftFeet = forwardPos.relative(leftDir);
+                        BlockPos rightFeet = forwardPos.relative(rightDir);
+                        if (isBlockPassable(leftFeet.above()) && isBlockPassable(rightFeet.above())
+                                && !isWallObstacle(leftFeet) && !isWallObstacle(rightFeet)) {
+                            chosenTarget = forwardPos;
+                        }
+                    } else {
+                        // Ground missing at standard level -> check 1-block descent
+                        BlockPos downPos = forwardPos.below();
+                        BlockPos downGround = downPos.below();
+                        // 1-block descent is valid ONLY IF downPos is passable and downGround is solid
+                        // (if downGround is air, drop is 2+ blocks - cliff/drop!)
+                        if (isBlockPassable(downPos) && isBlockSolidGround(downGround)) {
+                            BlockPos downLeft = downPos.relative(leftDir);
+                            BlockPos downRight = downPos.relative(rightDir);
+                            if (isBlockPassable(downLeft.above()) && isBlockPassable(downRight.above())
+                                    && !isWallObstacle(downLeft) && !isWallObstacle(downRight)) {
+                                chosenTarget = downPos;
+                            }
+                        }
+                    }
                 }
             }
 
+            if (chosenTarget == null) {
+                // Terrain obstruction or 2+ block height wall / drop! Stop the paver!
+                this.setRunMode(MODE_STOPPED);
+                return;
+            }
+
             // Impassable wall check (bedrock or unbreakable)
-            if (this.level().getBlockState(nextPos).getDestroySpeed(this.level(), nextPos) < 0.0F
-                    || this.level().getBlockState(nextPos.above()).getDestroySpeed(this.level(), nextPos.above()) < 0.0F) {
+            if (this.level().getBlockState(chosenTarget).getDestroySpeed(this.level(), chosenTarget) < 0.0F
+                    || this.level().getBlockState(chosenTarget.above()).getDestroySpeed(this.level(), chosenTarget.above()) < 0.0F) {
                 this.setRunMode(MODE_STOPPED);
                 return;
             }
 
             this.isMoving = true;
             this.moveTicks = 0;
-            this.targetStepPos = nextPos;
+            this.targetStepPos = chosenTarget;
         }
 
         // Consume fuel tick
@@ -510,8 +695,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         this.setPos(target.x, target.y, target.z);
         this.pullTrailingCartsOnMove();
 
-        // When halfway through the step or completed, execute paving under the screed
-        if (this.moveTicks == ticksPerBlock / 2 && this.isPaving()) {
+        // When halfway through the step or completed, execute paving under the screed ONLY IF in work mode!
+        if (this.moveTicks == ticksPerBlock / 2 && this.isWorkMode()) {
             this.executePavingStrip(this.targetStepPos, travelDir);
             if (this.getRunMode() == MODE_STOPPED) {
                 return;
@@ -526,7 +711,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             this.setPos(end.x, end.y, end.z);
             this.pullTrailingCartsOnMove();
 
-            if (this.isPaving()) {
+            if (this.isWorkMode()) {
                 this.executePavingStrip(this.currentStepPos, travelDir);
                 if (this.getRunMode() == MODE_STOPPED) {
                     return;
@@ -772,10 +957,15 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     private boolean consumeFuelTick() {
         if (this.fuel <= 0) {
             ItemStack fuelStack = this.getItem(SLOT_FUEL);
-            if (!fuelStack.isEmpty()) {
-                int duration = getFuelBurnDuration(fuelStack);
+            if (!fuelStack.isEmpty() && BasicLocomotiveEntity.isBurnableFuel(fuelStack)) {
+                int duration = BasicLocomotiveEntity.getItemBurnTicks(this.level(), fuelStack);
                 if (duration > 0) {
+                    var remainderTemplate = fuelStack.getItem().getCraftingRemainder();
+                    ItemStack remainder = remainderTemplate != null ? remainderTemplate.create() : ItemStack.EMPTY;
                     fuelStack.shrink(1);
+                    if (fuelStack.isEmpty()) {
+                        this.setItem(SLOT_FUEL, remainder);
+                    }
                     this.fuel = duration;
                     this.fuelTotal = duration;
                 }
@@ -789,12 +979,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     }
 
     public static int getFuelBurnDuration(ItemStack stack) {
-        if (stack.isEmpty()) return 0;
-        if (stack.is(Items.COAL_BLOCK)) return 14400;
-        if (stack.is(ItemTags.COALS)) return 1600;
-        if (stack.is(Items.BLAZE_ROD)) return 2400;
-        if (stack.is(ItemTags.LOGS) || stack.is(ItemTags.PLANKS)) return 300;
-        return 0;
+        return BasicLocomotiveEntity.isBurnableFuel(stack) ? 1600 : 0;
     }
 
     public void handleHotkeyAction(Player player, int action) {
@@ -806,7 +991,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                     return;
                 }
                 this.setRunMode(MODE_FORWARD);
-                player.sendOverlayMessage(Component.literal("Track Paver: Paving Forward (1.0 m/s)").withStyle(ChatFormatting.GREEN));
+                String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (5.0 m/s)";
+                player.sendOverlayMessage(Component.literal("Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
             }
             case LocomotiveControlPayload.ACTION_STOP -> {
                 this.setRunMode(MODE_STOPPED);
@@ -839,9 +1025,27 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 }
                 this.setRunMode(next);
                 if (next == MODE_REVERSE) {
-                    player.sendOverlayMessage(Component.literal("Track Paver: Reversing").withStyle(ChatFormatting.GOLD));
+                    String modeDesc = this.isWorkMode() ? "Work Reverse (0.67 m/s)" : "Transport Reverse (5.0 m/s)";
+                    player.sendOverlayMessage(Component.literal("Track Paver: " + modeDesc).withStyle(ChatFormatting.GOLD));
                 } else {
-                    player.sendOverlayMessage(Component.literal("Track Paver: Paving Forward (1.0 m/s)").withStyle(ChatFormatting.GREEN));
+                    String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (5.0 m/s)";
+                    player.sendOverlayMessage(Component.literal("Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
+                }
+            }
+            case LocomotiveControlPayload.ACTION_TOGGLE_LIGHT -> {
+                boolean nextLight = !this.isWorkLightEnabled();
+                this.setWorkLightEnabled(nextLight);
+                player.sendOverlayMessage(Component.literal("Track Paver: Work Light " + (nextLight ? "ON" : "OFF")).withStyle(nextLight ? ChatFormatting.GOLD : ChatFormatting.GRAY));
+            }
+            case LocomotiveControlPayload.ACTION_HORN -> {
+                if (player.isShiftKeyDown()) {
+                    boolean nextHolo = !this.isHologramEnabled();
+                    this.setHologramEnabled(nextHolo);
+                    player.sendOverlayMessage(Component.literal("Track Paver: Alignment Hologram " + (nextHolo ? "ON" : "OFF")).withStyle(nextHolo ? ChatFormatting.AQUA : ChatFormatting.GRAY));
+                } else {
+                    boolean nextWork = !this.isWorkMode();
+                    this.setWorkMode(nextWork);
+                    player.sendOverlayMessage(Component.literal("Track Paver: " + (nextWork ? "Work Mode (Paving 1.0 m/s)" : "Transport Mode (No Pave 5.0 m/s)")).withStyle(nextWork ? ChatFormatting.GREEN : ChatFormatting.GOLD));
                 }
             }
             case LocomotiveControlPayload.ACTION_OPEN_GUI -> player.openMenu(this);
@@ -928,6 +1132,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         output.putBoolean("Paving", this.isPaving());
         output.putBoolean("OnRails", this.isOnRails());
         output.putString("TrainName", this.getTrainName());
+        output.putBoolean("WorkLight", this.isWorkLightEnabled());
+        output.putBoolean("Hologram", this.isHologramEnabled());
     }
 
     @Override
@@ -942,5 +1148,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         this.setPaving(input.getBooleanOr("Paving", true));
         this.setOnRails(input.getBooleanOr("OnRails", false));
         this.setTrainName(input.getStringOr("TrainName", ""));
+        this.setWorkLightEnabled(input.getBooleanOr("WorkLight", false));
+        this.setHologramEnabled(input.getBooleanOr("Hologram", false));
     }
 }

@@ -37,12 +37,12 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
         this.data = data;
         container.startOpen(playerInventory.player);
 
-        // 3 Fuel Slots (Coal / Charcoal only)
+        // 3 Fuel Slots (Any burnable fuel)
         for (int i = 0; i < CONTAINER_SIZE; i++) {
             this.addSlot(new Slot(container, i, 62 + i * 18, 49) {
                 @Override
                 public boolean mayPlace(ItemStack stack) {
-                    return stack.is(ItemTags.COALS);
+                    return BasicLocomotiveEntity.isBurnableFuel(stack);
                 }
             });
         }
@@ -169,8 +169,8 @@ public class BasicLocomotiveMenu extends AbstractContainerMenu {
                     return ItemStack.EMPTY;
                 }
             } else {
-                // Moving from player inventory to locomotive (only coals allowed)
-                if (stackInSlot.is(ItemTags.COALS)) {
+                // Moving from player inventory to locomotive (any burnable fuel allowed)
+                if (BasicLocomotiveEntity.isBurnableFuel(stackInSlot)) {
                     if (!this.moveItemStackTo(stackInSlot, 0, CONTAINER_SIZE, false)) {
                         return ItemStack.EMPTY;
                     }
