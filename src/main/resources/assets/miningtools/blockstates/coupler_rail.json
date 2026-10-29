@@ -1,0 +1,46 @@
+{
+  "variants": {
+    "couple_mode=true,shape=ascending_east": {
+      "model": "miningtools:block/coupler_rail_couple_raised_ne",
+      "y": 90
+    },
+    "couple_mode=true,shape=ascending_north": {
+      "model": "miningtools:block/coupler_rail_couple_raised_ne"
+    },
+    "couple_mode=true,shape=ascending_south": {
+      "model": "miningtools:block/coupler_rail_couple_raised_sw"
+    },
+    "couple_mode=true,shape=ascending_west": {
+      "model": "miningtools:block/coupler_rail_couple_raised_sw",
+      "y": 90
+    },
+    "couple_mode=true,shape=east_west": {
+      "model": "miningtools:block/coupler_rail_couple",
+      "y": 90
+    },
+    "couple_mode=true,shape=north_south": {
+      "model": "miningtools:block/coupler_rail_couple"
+    },
+    "couple_mode=false,shape=ascending_east": {
+      "model": "miningtools:block/coupler_rail_decouple_raised_ne",
+      "y": 90
+    },
+    "couple_mode=false,shape=ascending_north": {
+      "model": "miningtools:block/coupler_rail_decouple_raised_ne"
+    },
+    "couple_mode=false,shape=ascending_south": {
+      "model": "miningtools:block/coupler_rail_decouple_raised_sw"
+    },
+    "couple_mode=false,shape=ascending_west": {
+      "model": "miningtools:block/coupler_rail_decouple_raised_sw",
+      "y": 90
+    },
+    "couple_mode=false,shape=east_west": {
+      "model": "miningtools:block/coupler_rail_decouple",
+      "y": 90
+    },
+    "couple_mode=false,shape=north_south": {
+      "model": "miningtools:block/coupler_rail_decouple"
+    }
+  }
+}

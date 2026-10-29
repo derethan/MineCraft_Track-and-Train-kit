@@ -31,6 +31,7 @@ import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.entity.TurretCartEntity;
 import com.example.miningtools.entity.GeneratorMinecartEntity;
+import com.example.miningtools.entity.TrackLayerCartEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
@@ -41,11 +42,14 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.Container;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.PoweredRailBlock;
@@ -54,6 +58,10 @@ import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
+import net.neoforged.neoforge.transfer.fluid.FluidResource;
+import java.util.function.Predicate;
 
 public final class TrainChainingUtil {
     /**
@@ -181,6 +189,10 @@ public final class TrainChainingUtil {
         if (entity instanceof LiquidMinecartEntity) {
             // Compact short tank car couplers extend to ~86px * 0.14 = 12px = 0.75m
             return 0.75D;
+        }
+        if (entity instanceof TrackLayerCartEntity) {
+            // Compact monolithic track laying cart frame (~20px -> 0.70m radius)
+            return 0.70D;
         }
         if (entity instanceof TunnelBoreEntity) {
             // Tunnel bore rear bumper anchor
@@ -631,6 +643,12 @@ public final class TrainChainingUtil {
                 || cart instanceof DieselLocomotiveEntity
                 || cart instanceof ElectricLocomotiveEntity
                 || cart instanceof TunnelBoreEntity;
+    }
+
+    public static boolean isLocomotive(Entity entity) {
+        return entity instanceof BasicLocomotiveEntity
+                || entity instanceof DieselLocomotiveEntity
+                || entity instanceof ElectricLocomotiveEntity;
     }
 
     public static boolean isTailCart(AbstractMinecart cart) {
@@ -2301,5 +2319,287 @@ public final class TrainChainingUtil {
                 }
             }
         }
+    }
+
+    /**
+     * Traverses all connected carts in a train consist in both directions.
+     */
+    public static List<AbstractMinecart> getConnectedConsist(AbstractMinecart startCart) {
+        if (startCart == null || startCart.isRemoved()) return Collections.emptyList();
+        Level level = startCart.level();
+        List<AbstractMinecart> consist = new ArrayList<>();
+        Set<UUID> visited = new HashSet<>();
+        Deque<AbstractMinecart> queue = new ArrayDeque<>();
+        queue.add(startCart);
+        visited.add(startCart.getUUID());
+
+        while (!queue.isEmpty() && consist.size() < 100) {
+            AbstractMinecart current = queue.poll();
+            consist.add(current);
+
+            UUID parentId = getCartParentUUID(current);
+            if (parentId != null && visited.add(parentId)) {
+                Entity pEnt = level.getEntity(parentId);
+                if (pEnt instanceof AbstractMinecart pCart && !pCart.isRemoved()) {
+                    queue.add(pCart);
+                }
+            }
+            UUID childId = getCartChildUUID(current);
+            if (childId != null && visited.add(childId)) {
+                Entity cEnt = level.getEntity(childId);
+                if (cEnt instanceof AbstractMinecart cCart && !cCart.isRemoved()) {
+                    queue.add(cCart);
+                }
+            }
+        }
+        return consist;
+    }
+
+    /**
+     * Inserts an ItemStack into a destination container, respecting slot limits and container filters.
+     * Returns the number of items successfully inserted.
+     */
+    public static int insertItemIntoContainer(Container container, ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        int remaining = stack.getCount();
+        int maxSlot = container.getContainerSize();
+        if (container instanceof CargoMinecartEntity) {
+            maxSlot = Math.min(maxSlot, CargoMinecartEntity.STORAGE_SLOTS);
+        }
+
+        // Pass 1: Add to existing matching stacks with room
+        for (int i = 0; i < maxSlot && remaining > 0; i++) {
+            ItemStack existing = container.getItem(i);
+            if (!existing.isEmpty() && ItemStack.isSameItemSameComponents(existing, stack)) {
+                if (container instanceof WorldlyContainer wc && !wc.canPlaceItemThroughFace(i, stack, Direction.UP)) {
+                    continue;
+                }
+                if (!container.canPlaceItem(i, stack)) {
+                    continue;
+                }
+                int space = Math.min(existing.getMaxStackSize(), container.getMaxStackSize()) - existing.getCount();
+                if (space > 0) {
+                    int toAdd = Math.min(space, remaining);
+                    existing.grow(toAdd);
+                    remaining -= toAdd;
+                    container.setChanged();
+                }
+            }
+        }
+
+        // Pass 2: Place in empty slots
+        for (int i = 0; i < maxSlot && remaining > 0; i++) {
+            ItemStack existing = container.getItem(i);
+            if (existing.isEmpty()) {
+                if (container instanceof WorldlyContainer wc && !wc.canPlaceItemThroughFace(i, stack, Direction.UP)) {
+                    continue;
+                }
+                if (!container.canPlaceItem(i, stack)) {
+                    continue;
+                }
+                int toAdd = Math.min(Math.min(stack.getMaxStackSize(), container.getMaxStackSize()), remaining);
+                ItemStack newStack = stack.copyWithCount(toAdd);
+                container.setItem(i, newStack);
+                remaining -= toAdd;
+                container.setChanged();
+            }
+        }
+
+        return stack.getCount() - remaining;
+    }
+
+    /**
+     * Pulls items matching a predicate from any connected cart in the consist into the destination cart.
+     */
+    public static int pullItemsFromConsist(AbstractMinecart destCart, Predicate<ItemStack> itemPredicate, int maxCount) {
+        if (!(destCart instanceof Container destContainer) || destCart.level().isClientSide() || destCart.isRemoved() || maxCount <= 0) {
+            return 0;
+        }
+
+        int remaining = maxCount;
+        List<AbstractMinecart> consist = getConnectedConsist(destCart);
+
+        for (AbstractMinecart sourceCart : consist) {
+            if (sourceCart == destCart || !(sourceCart instanceof Container sourceContainer) || sourceCart.isRemoved()) {
+                continue;
+            }
+
+            int maxSourceSlot = sourceContainer.getContainerSize();
+            if (sourceCart instanceof CargoMinecartEntity) {
+                maxSourceSlot = Math.min(maxSourceSlot, CargoMinecartEntity.STORAGE_SLOTS);
+            }
+
+            for (int s = 0; s < maxSourceSlot && remaining > 0; s++) {
+                ItemStack sourceStack = sourceContainer.getItem(s);
+                if (sourceStack.isEmpty() || !itemPredicate.test(sourceStack)) {
+                    continue;
+                }
+
+                if (sourceContainer instanceof WorldlyContainer wc && !wc.canTakeItemThroughFace(s, sourceStack, Direction.UP)) {
+                    continue;
+                }
+
+                int toMove = Math.min(remaining, sourceStack.getCount());
+                ItemStack candidate = sourceStack.copyWithCount(toMove);
+                int moved = insertItemIntoContainer(destContainer, candidate);
+                if (moved > 0) {
+                    sourceStack.shrink(moved);
+                    if (sourceStack.isEmpty()) {
+                        sourceContainer.setItem(s, ItemStack.EMPTY);
+                    } else {
+                        sourceContainer.setItem(s, sourceStack);
+                    }
+                    sourceContainer.setChanged();
+                    destContainer.setChanged();
+                    remaining -= moved;
+                }
+            }
+            if (remaining <= 0) break;
+        }
+        return maxCount - remaining;
+    }
+
+    /**
+     * Pushes items matching a predicate from the source cart into any connected cart in the consist that has room and accepts them.
+     */
+    public static int pushItemsToConsist(AbstractMinecart sourceCart, Predicate<ItemStack> itemPredicate, int maxCount) {
+        if (!(sourceCart instanceof Container sourceContainer) || sourceCart.level().isClientSide() || sourceCart.isRemoved() || maxCount <= 0) {
+            return 0;
+        }
+
+        int remaining = maxCount;
+        List<AbstractMinecart> consist = getConnectedConsist(sourceCart);
+
+        int maxSourceSlot = sourceContainer.getContainerSize();
+        if (sourceCart instanceof CargoMinecartEntity) {
+            maxSourceSlot = Math.min(maxSourceSlot, CargoMinecartEntity.STORAGE_SLOTS);
+        }
+
+        for (int s = 0; s < maxSourceSlot && remaining > 0; s++) {
+            ItemStack sourceStack = sourceContainer.getItem(s);
+            if (sourceStack.isEmpty() || !itemPredicate.test(sourceStack)) {
+                continue;
+            }
+
+            int toMove = Math.min(remaining, sourceStack.getCount());
+            for (AbstractMinecart destCart : consist) {
+                if (destCart == sourceCart || !(destCart instanceof Container destContainer) || destCart.isRemoved()) {
+                    continue;
+                }
+
+                ItemStack candidate = sourceStack.copyWithCount(toMove);
+                int moved = insertItemIntoContainer(destContainer, candidate);
+                if (moved > 0) {
+                    sourceStack.shrink(moved);
+                    if (sourceStack.isEmpty()) {
+                        sourceContainer.setItem(s, ItemStack.EMPTY);
+                    } else {
+                        sourceContainer.setItem(s, sourceStack);
+                    }
+                    sourceContainer.setChanged();
+                    destContainer.setChanged();
+                    remaining -= moved;
+                    toMove -= moved;
+                    if (toMove <= 0) break;
+                }
+            }
+        }
+        return maxCount - remaining;
+    }
+
+    /**
+     * Pulls fluid from connected liquid carts in the consist into destination tank.
+     */
+    public static int pullFluidsFromConsist(AbstractMinecart destCart, ResourceHandler<FluidResource> destTank, Predicate<FluidResource> fluidPredicate, int maxAmount) {
+        if (destCart == null || destCart.level().isClientSide() || destCart.isRemoved() || destTank == null || maxAmount <= 0) {
+            return 0;
+        }
+        int remaining = maxAmount;
+        List<AbstractMinecart> consist = getConnectedConsist(destCart);
+        for (AbstractMinecart sourceCart : consist) {
+            if (sourceCart == destCart || sourceCart.isRemoved()) continue;
+            ResourceHandler<FluidResource> sourceHandler = null;
+            if (sourceCart instanceof LiquidMinecartEntity lme) {
+                sourceHandler = lme.getFluidHandler();
+            } else if (sourceCart instanceof LargeLiquidMinecartEntity llme) {
+                sourceHandler = llme.getFluidHandler();
+            } else if (sourceCart instanceof DieselLocomotiveEntity dle) {
+                sourceHandler = dle.getFluidHandler();
+            } else {
+                sourceHandler = sourceCart.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.ENTITY, null);
+            }
+
+            if (sourceHandler != null) {
+                try {
+                    int moved = ResourceHandlerUtil.move(
+                            sourceHandler,
+                            destTank,
+                            fluidPredicate,
+                            remaining,
+                            null
+                    );
+                    if (moved > 0) {
+                        if (sourceCart instanceof LiquidMinecartEntity lme) {
+                            lme.syncFluidData();
+                        } else if (sourceCart instanceof LargeLiquidMinecartEntity llme) {
+                            llme.syncFluidData();
+                        } else if (sourceCart instanceof DieselLocomotiveEntity dle) {
+                            dle.syncFluidData();
+                        }
+                        remaining -= moved;
+                        if (remaining <= 0) break;
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }
+        return maxAmount - remaining;
+    }
+
+    /**
+     * Pushes fluid from source tank to connected liquid carts in the consist.
+     */
+    public static int pushFluidsToConsist(AbstractMinecart sourceCart, ResourceHandler<FluidResource> sourceTank, int maxAmount) {
+        if (sourceCart == null || sourceCart.level().isClientSide() || sourceCart.isRemoved() || sourceTank == null || maxAmount <= 0) {
+            return 0;
+        }
+        int remaining = maxAmount;
+        List<AbstractMinecart> consist = getConnectedConsist(sourceCart);
+        for (AbstractMinecart destCart : consist) {
+            if (destCart == sourceCart || destCart.isRemoved()) continue;
+            ResourceHandler<FluidResource> destHandler = null;
+            if (destCart instanceof LiquidMinecartEntity lme) {
+                destHandler = lme.getFluidHandler();
+            } else if (destCart instanceof LargeLiquidMinecartEntity llme) {
+                destHandler = llme.getFluidHandler();
+            } else if (destCart instanceof DieselLocomotiveEntity dle) {
+                destHandler = dle.getFluidHandler();
+            } else {
+                destHandler = destCart.getCapability(net.neoforged.neoforge.capabilities.Capabilities.Fluid.ENTITY, null);
+            }
+
+            if (destHandler != null) {
+                try {
+                    int moved = ResourceHandlerUtil.move(
+                            sourceTank,
+                            destHandler,
+                            r -> true,
+                            remaining,
+                            null
+                    );
+                    if (moved > 0) {
+                        if (destCart instanceof LiquidMinecartEntity lme) {
+                            lme.syncFluidData();
+                        } else if (destCart instanceof LargeLiquidMinecartEntity llme) {
+                            llme.syncFluidData();
+                        } else if (destCart instanceof DieselLocomotiveEntity dle) {
+                            dle.syncFluidData();
+                        }
+                        remaining -= moved;
+                        if (remaining <= 0) break;
+                    }
+                } catch (Throwable ignored) {}
+            }
+        }
+        return maxAmount - remaining;
     }
 }

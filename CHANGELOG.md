@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.13] - 2026-10-29
+
+### Fixed
+- **Railway Block Signal Blank Icon Fix**:
+  - Replaced the empty transparent placeholder for `railway_signal.png` with a rich 32×32 3D pixel-art icon displaying the concrete foundation plate, steel tubular mast, ladder rungs, side electrical relay cabinet, and 3-aspect signal target head with sun visors and glowing lens.
+
+---
+
+## [1.0.12] - 2026-10-29
+
+### Fixed
+- **Coupler Rail Recipe Registry Identifier Fix**:
+  - Corrected the chain recipe ingredient in `data/miningtools/recipe/coupler_rail.json` from `minecraft:chain` to `minecraft:iron_chain` to match Minecraft 26.3 vanilla registry naming, resolving the datapack recipe loading crash.
+
+---
+
+## [1.0.11] - 2026-10-29
+
+### Changed
+- **High-Resolution 3D Pixel-Art Icons for All Trains & Rolling Stock**:
+  - Overhauled all 13 locomotive, heavy machinery, and railcar item icons to a unified 32×32 3D pixel-art style matching the Track Layer Cart, complete with iron rails, wooden ties, flanged wheels, and crisp dark perimeter outlines:
+    - **Basic Steam Locomotive**: Boiler straps, brass steam dome, smokestack puffing smoke, cab windows, golden circular headlight, and front pilot cowcatcher.
+    - **CN Diesel Locomotive**: Canadian National red-and-black safety livery, white zebra stripes, ditch lights, cooling grilles, and exhaust stack.
+    - **Electric Bullet Train**: Aerodynamic white streamline nose cone, cyan speed stripes, tinted windshield, and red roof pantograph.
+    - **Anchor Caboose**: Red observation cupola, roof stovepipe chimney puffing smoke, and end platform railings.
+    - **Cargo Minecart**: Heavy flatbed with vertical steel stakes loaded with stacked wooden timber logs.
+    - **Aggregate Hopper Car**: Industrial metallic steel finish with exterior structural ribs, discharge chutes, and 3 distinct mounded 3D heaps.
+    - **Livestock Cart**: Horizontal wooden slatted construction with interior stall gaps, sliding door hardware, and curved metal roof.
+    - **Liquid Minecarts (Small & Large)**: Pressurized cylindrical steel tanks with spherical end heads, top walkway railings, manhole domes, and hazard placards.
+    - **Arrow Turret Cart**: Tactical woodland camouflage pattern, armored roof cupola, and dual arrow ports with steel tips.
+    - **Generator Cart**: Heavy dynamo housing, glowing copper stator coils, radiator fins, brass pressure gauge with needle, and cyan energy buffer LED.
+    - **Tunnel Bore**: Heavy armored frame, hazard warning stripes, and massive conical diamond rotary cutting head.
+    - **Track Paver (AP1055F)**: Caterpillar safety yellow body, continuous crawler tracks with bogie rollers, front asphalt hopper, and elevated operator canopy.
+
+---
+
+## [1.0.10] - 2026-10-29
+
+### Added
+- **Coupler Rail (`coupler_rail`)**:
+  - A toggleable specialty railway track block and block entity designed for automated consist switching and yard coupling.
+  - **Couple Mode (`couple_mode=true`)**: Automatically scans a 16-block radius around an arriving locomotive and couples the nearest eligible cart or consist end to the locomotive.
+  - **Decouple Mode (`couple_mode=false`)**: Automatically uncouples the locomotive from its directly attached trailing or pushed car, leaving the remaining cars in the consist securely linked together.
+  - **Single Execution Per Trip**: When a locomotive stops or stays parked on the rail, the block entity triggers connection or disconnection strictly once per trip and stays inactive until the locomotive fully departs the track.
+  - **Manual & Redstone Toggling**: Right-clicking the rail toggles between Couple and Decouple modes with action bar feedback; redstone power inverts the mode for automated shunting yards and runaround tracks.
+  - **Crafting Recipe**: 6 Iron Ingots + Chain + Redstone Dust yields 6 Coupler Rails.
+
+### Fixed
+- **Entity Loader Passenger Ejection Fix**:
+  - Prevented Entity Loader blocks from transmitting redstone power upwards into Activator Rails directly above them, preventing loaded passengers from immediately being ejected if the cart remains on the station.
+  - Added protection to Livestock Carts to suppress activator rail ejection whenever resting over an Entity Loader block.
+
+---
+
+## [1.0.9] - 2026-10-28
+
+### Fixed
+- **Track Layer Cart Item Model & Held Model Resolution**:
+  - Added missing 1.21.4+ item model definition (`assets/miningtools/items/track_layer_cart.json`), resolving missing texture/model fallback (purple-and-black checkerboard cube) in inventory, creative tab, GUI, and player hands.
+  - Upgraded Track Layer Cart item icon to a crisp, high-resolution 32×32 pixel-art sprite displaying the monolithic yellow armored chassis, overhead roll cage, cockpit controls, front track dispenser chute, rear retrieval claw, and flanged steel wheels on rails.
+
+---
+
+## [1.0.8] - 2026-10-28
+
+### Added
+- **Track Layer Cart (`track_layer_cart`)**:
+  - Compact 1-block minecart vehicle built with a custom monolithic industrial 3D model featuring an armored unibody hull, protective overhead roll-cage canopy, recessed driver cockpit, front track guide chute, rear articulated track retrieval scoop, and flanged railway wheels.
+  - **Track Laying Mode**: Places 1 piece of track from its inventory down in front of itself onto solid ground as it moves forward along the track alignment, paving continuous rail lines automatically.
+  - **Track Removing Mode**: Drives along minetrack and picks up each track piece behind itself after traveling over it, storing retrieved rails back into its inventory.
+  - **Calibrated Work Mode Speed (1.5 blocks/s)**: Travel speed is governed to an exact, calibrated 1.5 blocks/s (0.075 blocks/tick) in Laying and Removing modes for smooth and reliable track work.
+  - **Normal Transport Mode**: When work mode is turned OFF, functions as a normal minecart (free-rolling, responsive to powered rails, slopes, locomotive towing, and manual driving up to standard 8.0 m/s speeds).
+  - **Player Driveability & GUI**: Fully steerable while riding (`W` = Forward, `S` = Stop/Brake, `R` = Reverse direction, `H` = Cycle Laying/Removing/Transport modes, `C` = Open GUI) with action-bar status HUD and an interactive dashboard GUI.
+  - **Capacity & Crafting**: 28-slot inventory (1 Pattern slot + 27 track storage slots) and shaped crafting recipe using iron ingots, iron blocks, a piston, rail, and a chest minecart.
+
+### Changed
+- **Train Consist Material & Resource Sharing**:
+  - Carts in a linked train consist that use material (coal/solid fuel, diesel fluid, tracks, ballast, paving blocks) can now automatically draw materials from and deposit materials into linked carts that have room and accept that material.
+  - **Track Sharing**: Track Layer Carts draw rails from linked wagons (such as a connected Cargo Minecart) when placing track, and deposit harvested rails into linked storage wagons when removing track.
+  - **Solid Fuel Sharing**: Steam Locomotives, Generator Carts, Tunnel Bores, and Track Pavers automatically pull coal and furnace fuels from linked coal tenders and cargo carts when fuel reserves run low.
+  - **Diesel Fuel Sharing**: Diesel Locomotives now draw diesel fuel and lava across the entire linked train consist from connected Small or Large Liquid Minecarts.
+  - **Ballast & Paving Blocks**: Tunnel Bores and Track Pavers automatically draw ballast and matching paving blocks from linked hopper and cargo carts in the consist.
+
+---
+
 ## [1.0.7] - 2026-10-28
 
 ### Fixed

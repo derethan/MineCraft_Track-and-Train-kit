@@ -25,6 +25,10 @@ import com.example.miningtools.client.gui.TunnelBoreScreen;
 import com.example.miningtools.client.gui.TrackPaverScreen;
 import com.example.miningtools.client.model.TrackPaverModel;
 import com.example.miningtools.client.renderer.TrackPaverRenderer;
+import com.example.miningtools.client.gui.TrackLayerCartScreen;
+import com.example.miningtools.client.model.TrackLayerCartModel;
+import com.example.miningtools.client.renderer.TrackLayerCartRenderer;
+import com.example.miningtools.entity.TrackLayerCartEntity;
 import com.example.miningtools.client.gui.GeneratorMinecartScreen;
 import com.example.miningtools.client.model.GeneratorCartModel;
 import com.example.miningtools.client.renderer.GeneratorCartRenderer;
@@ -90,6 +94,9 @@ import net.neoforged.neoforge.common.NeoForge;
 public class MiningToolsClient {
     public static final ModelLayerLocation TRACK_PAVER_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "track_paver"), "main");
+
+    public static final ModelLayerLocation TRACK_LAYER_CART_LAYER =
+            new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "track_layer_cart"), "main");
 
     public static final ModelLayerLocation TUNNEL_BORE_LAYER =
             new ModelLayerLocation(Identifier.fromNamespaceAndPath(MiningTools.MODID, "tunnel_bore"), "main");
@@ -191,6 +198,7 @@ public class MiningToolsClient {
     private void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(TUNNEL_BORE_LAYER, TunnelBoreModel::createBodyLayer);
         event.registerLayerDefinition(TRACK_PAVER_LAYER, TrackPaverModel::createBodyLayer);
+        event.registerLayerDefinition(TRACK_LAYER_CART_LAYER, TrackLayerCartModel::createBodyLayer);
         event.registerLayerDefinition(BASIC_LOCOMOTIVE_LAYER, BasicLocomotiveModel::createBodyLayer);
         event.registerLayerDefinition(LOGGING_CART_LAYER, LoggingCartModel::createBodyLayer);
         event.registerLayerDefinition(HOPPER_CART_LAYER, AggregateHopperCartModel::createBodyLayer);
@@ -207,6 +215,7 @@ public class MiningToolsClient {
     private void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(MiningTools.TUNNEL_BORE_ENTITY.get(), TunnelBoreRenderer::new);
         event.registerEntityRenderer(MiningTools.TRACK_PAVER_ENTITY.get(), TrackPaverRenderer::new);
+        event.registerEntityRenderer(MiningTools.TRACK_LAYER_CART_ENTITY.get(), TrackLayerCartRenderer::new);
         event.registerEntityRenderer(MiningTools.BASIC_LOCOMOTIVE_ENTITY.get(), BasicLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.CARGO_MINECART_ENTITY.get(), CargoMinecartRenderer::new);
         event.registerEntityRenderer(MiningTools.HOPPER_CART_ENTITY.get(), AggregateHopperCartRenderer::new);
@@ -223,6 +232,7 @@ public class MiningToolsClient {
     private void registerMenuScreens(RegisterMenuScreensEvent event) {
         event.register(MiningTools.TUNNEL_BORE_MENU.get(), TunnelBoreScreen::new);
         event.register(MiningTools.TRACK_PAVER_MENU.get(), TrackPaverScreen::new);
+        event.register(MiningTools.TRACK_LAYER_CART_MENU.get(), TrackLayerCartScreen::new);
         event.register(MiningTools.BASIC_LOCOMOTIVE_MENU.get(), BasicLocomotiveScreen::new);
         event.register(MiningTools.CARGO_MINECART_MENU.get(), CargoMinecartScreen::new);
         event.register(MiningTools.HOPPER_CART_MENU.get(), AggregateHopperCartScreen::new);
@@ -281,8 +291,9 @@ public class MiningToolsClient {
         DieselLocomotiveEntity dieselLoco = DieselLocomotiveEntity.getConnectedLocomotive(vehicle);
         boolean isBore = (vehicle instanceof com.example.miningtools.entity.TunnelBoreEntity b && !b.isRemoved());
         boolean isPaver = (vehicle instanceof TrackPaverEntity p && !p.isRemoved());
+        boolean isLayer = (vehicle instanceof TrackLayerCartEntity tl && !tl.isRemoved());
         boolean hasMenu = (vehicle instanceof net.minecraft.world.MenuProvider);
-        if ((loco == null || loco.isRemoved()) && (elecLoco == null || elecLoco.isRemoved()) && (dieselLoco == null || dieselLoco.isRemoved()) && !isBore && !isPaver && !hasMenu) {
+        if ((loco == null || loco.isRemoved()) && (elecLoco == null || elecLoco.isRemoved()) && (dieselLoco == null || dieselLoco.isRemoved()) && !isBore && !isPaver && !isLayer && !hasMenu) {
             wasUpPressed = false;
             wasDownPressed = false;
             wasLeftPressed = false;
@@ -300,7 +311,7 @@ public class MiningToolsClient {
         }
         wasOpenGuiPressed = isOpenGui;
 
-        boolean isLocoOrBoreOrPaver = (loco != null && !loco.isRemoved()) || (elecLoco != null && !elecLoco.isRemoved()) || (dieselLoco != null && !dieselLoco.isRemoved()) || isBore || isPaver;
+        boolean isLocoOrBoreOrPaver = (loco != null && !loco.isRemoved()) || (elecLoco != null && !elecLoco.isRemoved()) || (dieselLoco != null && !dieselLoco.isRemoved()) || isBore || isPaver || isLayer;
         if (!isLocoOrBoreOrPaver) {
             wasUpPressed = false;
             wasDownPressed = false;

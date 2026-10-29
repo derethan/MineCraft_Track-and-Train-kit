@@ -69,6 +69,10 @@ public record LocomotiveControlPayload(int action) implements CustomPacketPayloa
                     return;
                 }
 
+                if (vehicle instanceof com.example.miningtools.entity.TrackLayerCartEntity layer && !layer.isRemoved()) {
+                    layer.handleHotkeyAction(player, payload.action());
+                    return;
+                }
                 if (vehicle instanceof com.example.miningtools.entity.TunnelBoreEntity bore && !bore.isRemoved()) {
 
                     bore.handleHotkeyAction(player, payload.action());

@@ -413,6 +413,10 @@ public class GeneratorMinecartEntity extends AbstractMinecartContainer implement
             this.setGenerating(false);
             if (hasWater && needsEnergy) {
                 ItemStack fuel = this.getItem(FUEL_SLOT);
+                if (fuel.isEmpty()) {
+                    TrainChainingUtil.pullItemsFromConsist(this, s -> getFuelBurnDuration(s) > 0, 8);
+                    fuel = this.getItem(FUEL_SLOT);
+                }
                 int duration = getFuelBurnDuration(fuel);
                 if (duration > 0) {
                     fuel.shrink(1);

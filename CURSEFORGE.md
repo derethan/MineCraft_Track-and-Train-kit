@@ -24,7 +24,7 @@ Whether you need to haul massive freight trains across long distances, automate 
 * 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers and features server-synced far-distance persistence so trains never vanish off the map across long distances.
 * 💥 **Geological Prospecting & Boreholes**: Detonate Surveyor's Charges wirelessly via the Remote Detonator to drill a clean 1×1 borehole to bedrock and receive a full-depth cylindrical column survey tallying ores, minerals, and subterranean oil deposits.
 * 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation and the **Heavy Track & Road Paver** (AP1055F) that crawls at 1 m/s replacing a 1×3 wide strip with selected paver blocks while preserving tracks underneath.
-* 🛤️ **Specialty Switch & Power Rails**: Braking / Holding Rails, 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
+* 🛤️ **Specialty Switch & Power Rails**: Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
 * 📡 **Smart Track Automation & Fueling**: Automated Item Loaders/Unloaders, Fluid Loaders/Unloaders, dedicated Locomotive Fuelers (Diesel & Coal), Entity Loaders/Unloaders, and Train-Name Signal Switches.
 * 🏷️ **In-GUI Custom Cart Naming**: Name every locomotive and custom railcar directly in its GUI to automate routing, filtering, and depot switching.
 * ⚓ **Zero-Decoupling Chunk Anchors**: Both mobile (Anchor Caboose, placeable anywhere in the train) and stationary (Industrial Chunk Anchor) chunk loaders that keep automation and trains ticking across chunk borders.
@@ -186,6 +186,22 @@ A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F t
 * **Manual & Automated Operations**: Mount the elevated right-side operator station to drive manually (WASD steering, R for reverse, Space to toggle auto-cruise, C for cockpit GUI), or engage automated forward paving mode.
 * **Large Material Hopper**: Dedicated Paver Pattern / Target Block Slot (Slot 0) + Fuel Slot (Slot 1) + 27 bulk material storage slots (Slots 2–28) holding up to 1,728 paving blocks.
 
+### 3. Track Layer Cart (`track_layer_cart`)
+A compact, rugged, industrial 1-block machine built with a custom monolithic 3D model (armored unibody chassis, protective overhead roll-cage canopy, recessed operator cockpit, front track guide chute, rear articulated retrieval claw, and flanged wheels):
+* **Dual Work Modes**:
+  - **Track Laying Mode**: Snaps to minetrack and places 1 piece of track from its inventory down in front of itself onto sturdy ground as it rolls forward, paving railway lines effortlessly.
+  - **Track Removing Mode**: Drives along existing railway lines and cleanly retrieves the track behind it after traveling over it, picking up rails and placing them directly into its inventory.
+* **Calibrated 1.5 blocks/s Work Speed**: When operating in Laying or Removing Mode, travels at an exact governed speed of **1.5 blocks/s** (0.075 blocks/tick) for safe, dependable track deployment and retrieval.
+* **Normal Transport Mode**: When work mode is toggled OFF, acts as a normal minecart—rolling freely, responding to powered rails, slopes, and pulling engines, reaching full standard minecart speeds.
+* **Fully Driveable & Autonomous**:
+  - Mount directly to steer and drive with `W` (Forward), `S` (Stop/Brake), `R` (Reverse direction), `H` (Cycle Laying / Removing / Transport modes), and `C` (Open GUI).
+  - Features an interactive GUI dashboard to monitor stored rails, switch travel direction, toggle between Laying, Removing, or Transport modes, and set custom vehicle names.
+* **Consist Material & Resource Sharing**:
+  - Carts that use material (coal/solid fuel, diesel fluid, tracks, ballast, paver blocks) can now receive from and place into carts they are linked to in the train consist!
+  - In Laying Mode, the Track Layer Cart automatically pulls rails from connected supply carts (like a linked Cargo Minecart) when low on track.
+  - In Removing Mode, it automatically deposits collected rails into connected storage wagons if its internal inventory fills up.
+* **Large Track Capacity**: 1 Pattern / Preferred Rail Slot + 27 bulk track storage slots (holding up to 1,728 rail pieces).
+
 ---
 
 ## 📡 Track Automation, Facilities & Map Tracking
@@ -282,6 +298,7 @@ When seated inside a locomotive or coupled cart:
 | **Electric Bullet Train** | Iron Block + Copper Block + Redstone Block + Tinted Glass + Minecart |
 | **Tunnel Bore** | Iron Pickaxes + Iron Block + Furnace Minecart + Chest Minecart + Iron Ingots |
 | **Heavy Track & Road Paver** | Iron Shovels + Iron Block + Blast Furnace + Chest Minecart + Iron Ingots |
+| **Track Layer Cart** | Iron Ingots + Iron Blocks + Piston + Rail + Chest Minecart |
 | **Cargo Minecart** | Chest + Minecart + Iron Ingot |
 | **Loose Aggregate Hopper Car** | Iron Ingots + Hopper + Chest Minecart |
 | **Generator Train Cart** | Copper Ingots + Redstone + Iron Ingots + Blast Furnace + Minecart |
@@ -297,6 +314,7 @@ When seated inside a locomotive or coupled cart:
 | **Electric Third Rail (Yields 6)** | Copper Ingots + Redstone Dust + Sticks |
 | **Locomotive Control Rail (Yields 6)**| Iron Ingots + Coal + Redstone Dust |
 | **Locomotive Horn Rail (Yields 6)** | Iron Ingots + Gold Ingot + Redstone Dust |
+| **Coupler Rail (Yields 6)** | Iron Ingots + Iron Chain + Redstone Dust |
 | **Trackside Cargo Loader** | Iron Ingots + Hopper + Chest + Redstone Dust |
 | **Trackside Cargo Unloader** | Iron Ingots + Chest + Hopper + Redstone Dust |
 | **Diesel Locomotive Fueler** | Iron Ingots + Bucket + Gold Ingots + Hopper + Redstone Dust |
@@ -318,6 +336,25 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.0.13**:
+  - **Railway Block Signal Icon Fix**: Created a detailed 32×32 3D pixel-art icon for the Railway Block Signal, replacing the blank transparent placeholder with an authentic steel mast, relay box, and 3-aspect signal head.
+* **v1.0.12**:
+  - **Coupler Rail Recipe Identifier Fix**: Corrected chain ingredient from `minecraft:chain` to `minecraft:iron_chain` for Minecraft 26.3 compatibility, fixing the world load recipe registry error.
+* **v1.0.11**:
+  - **High-Resolution 3D Pixel-Art Icon Overhaul**: Upgraded all 13 train and railcar item icons (Steam, Diesel, Electric, Caboose, Cargo, Hopper, Livestock, Tankers, Turret, Generator, Tunnel Bore, and Track Paver) to a unified, rich 32×32 pixel-art style matching the Track Layer Cart with authentic details, flanged steel wheels, rails, and crisp outlines.
+* **v1.0.10**:
+  - **Coupler Rail (`coupler_rail`)**: New specialty track block supporting toggleable **Couple Mode** (scans 16 blocks and couples nearest cart/consist to arriving locomotive) and **Decouple Mode** (disconnects locomotive from its directly attached trailing or pushed car).
+  - **Single Execution Per Trip**: Locomotive arrivals execute coupling/uncoupling strictly once per trip, ensuring parked or stationary locomotives never repeatedly trigger while waiting on the rail.
+  - **Manual & Redstone Switching**: Right-click to toggle mode manually; redstone power inverts/toggles mode for automated switching in yards.
+  - **Entity Loader Passenger Ejection Fix**: Prevented Entity Loader stations from powering overhead activator rails and guarded Livestock Carts from ejecting passengers while resting over loader blocks.
+* **v1.0.9**:
+  - **Track Layer Cart Item Model & Held Model Fix**: Added missing 1.21.4+ item model definition (`assets/miningtools/items/track_layer_cart.json`) and upgraded item texture to a detailed 32×32 pixel-art sprite, fixing the missing purple/black cube fallback in inventories and when held in hand.
+* **v1.0.8**:
+  - **Track Layer Cart**: Compact, heavy-duty industrial railway vehicle featuring a custom monolithic 3D unibody model with roll-cage canopy, front guide chute, rear retriever claw, and flanged steel wheels.
+  - **Track Laying & Removing Modes**: Snaps to rail and deploys track pieces ahead of itself in Laying Mode, or retrieves track behind it into its inventory in Removing Mode.
+  - **Calibrated 1.5 blocks/s Work Speed**: Governed 1.5 blocks/s (0.075 blocks/tick) travel speed during work modes; rolls freely at standard minecart speeds in normal transport mode.
+  - **Full Driving Controls & GUI**: Mountable and steerable with keyboard controls (`W`, `S`, `R`, `H`, `C`) and interactive cockpit GUI with direction/mode toggles and custom naming.
+  - **Consist Material & Resource Sharing**: Locomotive engines, generator wagons, pavers, bores, and track layers can now dynamically draw and deposit fuel, fluids, and materials to/from coupled carts across the entire train consist.
 * **v1.0.7**:
   - **Server Recipe Parsing Fix**: Fixed recipe ingredient syntax and category definitions for Railway Block Signal and Signal Tuner to resolve server data pack loading errors on Minecraft 26.3.
 * **v1.0.6**:
@@ -366,5 +403,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.7.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.0.13.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

@@ -155,6 +155,10 @@ public class LivestockCartEntity extends AbstractMinecart {
     @Override
     public void activateMinecart(ServerLevel level, int x, int y, int z, boolean receivingPower) {
         if (receivingPower) {
+            BlockPos railPos = new BlockPos(x, y, z);
+            if (level.getBlockState(railPos.below()).is(MiningTools.ENTITY_LOADER.get())) {
+                return; // Never eject passengers while positioned over an Entity Loader!
+            }
             if (this.isVehicle()) {
                 this.ejectPassengers();
             }

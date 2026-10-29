@@ -900,7 +900,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                     return true;
                 }
             }
-            return false;
+            // Try pulling matching blocks from linked carts
+            int pulled = TrainChainingUtil.pullItemsFromConsist(this, s -> s.getItem() instanceof BlockItem bi2 && bi2.getBlock() == filterBlock, 16);
+            return pulled > 0;
         }
 
         // If filter slot is empty, check if any valid block exists in the material inventory
@@ -910,7 +912,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 return true;
             }
         }
-        return false;
+        // Try pulling any valid placeable block from linked consist carts
+        int pulled = TrainChainingUtil.pullItemsFromConsist(this, s -> s.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock), 16);
+        return pulled > 0;
     }
 
     public void notifyOutOfMaterial(@Nullable Player targetPlayer) {
@@ -957,6 +961,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     private boolean consumeFuelTick() {
         if (this.fuel <= 0) {
             ItemStack fuelStack = this.getItem(SLOT_FUEL);
+            if (fuelStack.isEmpty() || !BasicLocomotiveEntity.isBurnableFuel(fuelStack)) {
+                TrainChainingUtil.pullItemsFromConsist(this, BasicLocomotiveEntity::isBurnableFuel, 8);
+                fuelStack = this.getItem(SLOT_FUEL);
+            }
             if (!fuelStack.isEmpty() && BasicLocomotiveEntity.isBurnableFuel(fuelStack)) {
                 int duration = BasicLocomotiveEntity.getItemBurnTicks(this.level(), fuelStack);
                 if (duration > 0) {

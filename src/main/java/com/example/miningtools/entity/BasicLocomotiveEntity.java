@@ -617,6 +617,11 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 return true;
             }
         }
+        // Pull fuel from linked consist carts (such as a coal tender or cargo minecart)
+        int pulled = TrainChainingUtil.pullItemsFromConsist(this, BasicLocomotiveEntity::isBurnableFuel, 16);
+        if (pulled > 0) {
+            return tryRefuel();
+        }
         return false;
     }
 

@@ -617,6 +617,10 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
     private boolean consumeFuelTick() {
         if (this.fuel <= 0) {
             ItemStack fuelStack = this.getItem(FUEL_SLOT);
+            if (fuelStack.isEmpty() || !fuelStack.is(ItemTags.COALS)) {
+                TrainChainingUtil.pullItemsFromConsist(this, s -> s.is(ItemTags.COALS), 8);
+                fuelStack = this.getItem(FUEL_SLOT);
+            }
             if (!fuelStack.isEmpty() && fuelStack.is(ItemTags.COALS)) {
                 fuelStack.shrink(1);
                 this.fuel = 1600;
@@ -694,6 +698,17 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
             ItemStack s = this.getItem(slot);
             if (!s.isEmpty() && isBallastItem(s)) {
                 return slot;
+            }
+        }
+        // Try pulling ballast from linked consist carts
+        int pulled = TrainChainingUtil.pullItemsFromConsist(this, TunnelBoreEntity::isBallastItem, 16);
+        if (pulled > 0) {
+            for (int i = 0; i < BALLAST_SLOTS_COUNT; i++) {
+                int slot = BALLAST_SLOTS_START + i;
+                ItemStack s = this.getItem(slot);
+                if (!s.isEmpty() && isBallastItem(s)) {
+                    return slot;
+                }
             }
         }
         return -1;
@@ -1016,6 +1031,19 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
                     if (!s.isEmpty() && s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BaseRailBlock) {
                         railSlot = slot;
                         break;
+                    }
+                }
+
+                if (railSlot == -1) {
+                    // Try pulling track from linked consist carts
+                    TrainChainingUtil.pullItemsFromConsist(this, s -> s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BaseRailBlock, 16);
+                    for (int i = 0; i < RAIL_SLOTS_COUNT; i++) {
+                        int slot = RAIL_SLOTS_START + i;
+                        ItemStack s = this.getItem(slot);
+                        if (!s.isEmpty() && s.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BaseRailBlock) {
+                            railSlot = slot;
+                            break;
+                        }
                     }
                 }
 

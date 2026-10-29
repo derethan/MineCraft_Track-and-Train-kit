@@ -30,6 +30,8 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import net.minecraft.world.level.block.Blocks;
+
 public class EntityLoaderBlock extends Block implements EntityBlock {
     public static final EnumProperty<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
@@ -71,11 +73,17 @@ public class EntityLoaderBlock extends Block implements EntityBlock {
 
     @Override
     protected int getSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        if (direction == Direction.UP && level.getBlockState(pos.above()).is(Blocks.ACTIVATOR_RAIL)) {
+            return 0; // Never power an activator rail directly above an entity loader, which would eject passengers!
+        }
         return state.getValue(POWERED) ? 15 : 0;
     }
 
     @Override
     protected int getDirectSignal(BlockState state, BlockGetter level, BlockPos pos, Direction direction) {
+        if (direction == Direction.UP && level.getBlockState(pos.above()).is(Blocks.ACTIVATOR_RAIL)) {
+            return 0; // Never power an activator rail directly above an entity loader, which would eject passengers!
+        }
         return state.getValue(POWERED) ? 15 : 0;
     }
 

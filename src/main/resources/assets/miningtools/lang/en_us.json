@@ -7,6 +7,8 @@
   "item.miningtools.control_rail": "Locomotive Control Rail",
   "block.miningtools.horn_rail": "Locomotive Horn Rail",
   "item.miningtools.horn_rail": "Locomotive Horn Rail",
+  "block.miningtools.coupler_rail": "Coupler Rail",
+  "item.miningtools.coupler_rail": "Coupler Rail",
   "block.miningtools.turnout_rail": "Turnout Rail",
   "item.miningtools.turnout_rail": "Turnout Rail",
   "block.miningtools.wye_rail": "Wye Rail",
@@ -109,5 +111,8 @@
   "container.miningtools.generator_cart": "Generator Train Cart",
   "item.miningtools.track_paver": "Heavy Track & Road Paver",
   "entity.miningtools.track_paver": "Heavy Track & Road Paver",
-  "container.miningtools.track_paver": "Heavy Track & Road Paver"
+  "container.miningtools.track_paver": "Heavy Track & Road Paver",
+  "item.miningtools.track_layer_cart": "Track Layer Cart",
+  "entity.miningtools.track_layer_cart": "Track Layer Cart",
+  "container.miningtools.track_layer_cart": "Track Layer Cart"
 }
