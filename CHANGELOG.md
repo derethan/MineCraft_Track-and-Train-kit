@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-10-29
+
+### Fixed
+- **Speed & Gear Control Rail Recipe Format**:
+  - Corrected key ingredient definitions in `speed_control_rail.json` to use standard item ID strings (`"minecraft:iron_ingot"`, `"minecraft:redstone"`, `"minecraft:clock"`) instead of legacy nested `{"item": ...}` objects, resolving the `IllegalStateException: Map entry 'I' : Failed to parse either` recipe registry failure on server and world load.
+
+---
+
 ## [1.1.0] - 2026-10-29
 
 ### Added

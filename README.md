@@ -347,6 +347,8 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.1**:
+  - **Speed & Gear Control Rail Recipe Fix**: Corrected ingredient keys to use direct item identifier strings instead of legacy nested item objects, fixing the recipe parsing crash on world and server startup.
 * **v1.1.0**:
   - **Creative Executive Diesel Locomotive**: Creative-only diesel locomotive featuring infinite fuel and Royal Cobalt & Gold livery.
   - **Speed & Gear Control Rail**: Real-time configuration GUI to set locomotive speed/gears (Gears 0 to 5) and direction with selective Train Name filtering.
