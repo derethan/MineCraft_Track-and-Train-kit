@@ -524,7 +524,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
      * Siphons compatible diesel fuel from any directly coupled Liquid Minecart (tender)
      * connected directly behind or ahead of the locomotive.
      */
-    private void siphonFuelFromTenderCarts() {
+    protected void siphonFuelFromTenderCarts() {
         if (this.level().isClientSide() || !(this.level() instanceof ServerLevel serverLevel)) {
             return;
         }
@@ -544,7 +544,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         }
     }
 
-    private void drainFuelItemSlot() {
+    protected void drainFuelItemSlot() {
         ItemStack input = this.getItem(0);
         if (input.isEmpty()) return;
 
@@ -578,7 +578,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         }
     }
 
-    private void tickFuelAndMovement() {
+    protected void tickFuelAndMovement() {
         BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
         boolean onRails = BaseRailBlock.isRail(railState);

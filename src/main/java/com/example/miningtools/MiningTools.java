@@ -7,7 +7,9 @@ import org.slf4j.Logger;
 
 import com.example.miningtools.block.BufferStopBlock;
 import com.example.miningtools.block.CouplerRailBlock;
+import com.example.miningtools.block.SpeedControlRailBlock;
 import com.example.miningtools.block.entity.CouplerRailBlockEntity;
+import com.example.miningtools.block.entity.SpeedControlRailBlockEntity;
 import com.example.miningtools.block.SurveyorsChargeBlock;
 import com.example.miningtools.item.RemoteDetonatorItem;
 import com.example.miningtools.block.ChunkLoaderBlock;
@@ -21,6 +23,8 @@ import com.example.miningtools.network.TurretCartFilterPayload;
 import com.example.miningtools.network.CargoTransferSyncPayload;
 import com.example.miningtools.network.FluidLoaderFilterPayload;
 import com.example.miningtools.network.FluidLoaderSyncPayload;
+import com.example.miningtools.network.SpeedControlRailSyncPayload;
+import com.example.miningtools.network.SpeedControlRailUpdatePayload;
 import com.example.miningtools.network.CartRenameOpenPayload;
 import com.example.miningtools.network.CartRenamePayload;
 import com.example.miningtools.block.ElectricRailBlock;
@@ -48,6 +52,8 @@ import com.example.miningtools.item.AggregateHopperCartItem;
 import com.example.miningtools.menu.AggregateHopperCartMenu;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
+import com.example.miningtools.entity.CreativeDieselLocomotiveEntity;
+import com.example.miningtools.item.CreativeDieselLocomotiveItem;
 import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
@@ -212,6 +218,21 @@ public class MiningTools {
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CouplerRailBlockEntity>> COUPLER_RAIL_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
             "coupler_rail",
             () -> new BlockEntityType<>(CouplerRailBlockEntity::new, COUPLER_RAIL.get())
+    );
+
+    // Speed Control Rail Block, Item & BlockEntity
+    public static final DeferredBlock<SpeedControlRailBlock> SPEED_CONTROL_RAIL = BLOCKS.registerBlock(
+            "speed_control_rail",
+            SpeedControlRailBlock::new,
+            p -> p.noCollision().strength(0.7F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> SPEED_CONTROL_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
+            "speed_control_rail",
+            SPEED_CONTROL_RAIL
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SpeedControlRailBlockEntity>> SPEED_CONTROL_RAIL_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "speed_control_rail",
+            () -> new BlockEntityType<>(SpeedControlRailBlockEntity::new, SPEED_CONTROL_RAIL.get())
     );
 
 
@@ -522,6 +543,21 @@ public class MiningTools {
             () -> new MenuType<>(DieselLocomotiveMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
 
+    // Creative Diesel Locomotive Entity & Item (Infinite fuel, creative prestige locomotive)
+    public static final DeferredHolder<EntityType<?>, EntityType<CreativeDieselLocomotiveEntity>> CREATIVE_DIESEL_LOCOMOTIVE_ENTITY = ENTITY_TYPES.register(
+            "creative_diesel_locomotive",
+            key -> EntityType.Builder.<CreativeDieselLocomotiveEntity>of(CreativeDieselLocomotiveEntity::new, MobCategory.MISC)
+                    .sized(0.98F, 1.35F)
+                    .passengerAttachments(0.25F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<CreativeDieselLocomotiveItem> CREATIVE_DIESEL_LOCOMOTIVE_ITEM = ITEMS.registerItem(
+            "creative_diesel_locomotive",
+            CreativeDieselLocomotiveItem::new,
+            p -> p.stacksTo(1)
+    );
+
     // Cargo Minecart Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<CargoMinecartEntity>> CARGO_MINECART_ENTITY = ENTITY_TYPES.register(
             "cargo_minecart",
@@ -717,6 +753,7 @@ public class MiningTools {
                         output.accept(BRAKING_RAIL_ITEM.get());
                         output.accept(HORN_RAIL_ITEM.get());
                         output.accept(COUPLER_RAIL_ITEM.get());
+                        output.accept(SPEED_CONTROL_RAIL_ITEM.get());
                         output.accept(TURNOUT_RAIL_ITEM.get());
                         output.accept(WYE_RAIL_ITEM.get());
                         output.accept(TRACK_SWITCH_ITEM.get());
@@ -737,6 +774,7 @@ public class MiningTools {
                         output.accept(TRACK_LAYER_CART_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
                         output.accept(DIESEL_LOCOMOTIVE_ITEM.get());
+                        output.accept(CREATIVE_DIESEL_LOCOMOTIVE_ITEM.get());
                         output.accept(ELECTRIC_LOCOMOTIVE_ITEM.get());
                         output.accept(CARGO_MINECART_ITEM.get());
                         output.accept(HOPPER_CART_ITEM.get());
@@ -899,6 +937,16 @@ public class MiningTools {
                 com.example.miningtools.network.TrainMapSyncPayload.STREAM_CODEC,
                 com.example.miningtools.network.TrainMapSyncPayload::handle
         );
+        registrar.playToClient(
+                SpeedControlRailSyncPayload.TYPE,
+                SpeedControlRailSyncPayload.STREAM_CODEC,
+                SpeedControlRailSyncPayload::handle
+        );
+        registrar.playToServer(
+                SpeedControlRailUpdatePayload.TYPE,
+                SpeedControlRailUpdatePayload.STREAM_CODEC,
+                SpeedControlRailUpdatePayload::handle
+        );
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
@@ -913,6 +961,7 @@ public class MiningTools {
             event.accept(BRAKING_RAIL_ITEM);
             event.accept(HORN_RAIL_ITEM);
             event.accept(COUPLER_RAIL_ITEM);
+            event.accept(SPEED_CONTROL_RAIL_ITEM);
             event.accept(TURNOUT_RAIL_ITEM);
             event.accept(WYE_RAIL_ITEM);
             event.accept(TRACK_SWITCH_ITEM);
@@ -930,7 +979,10 @@ public class MiningTools {
             event.accept(BUFFER_STOP_ITEM);
             event.accept(TUNNEL_BORE_ITEM);
             event.accept(TRACK_PAVER_ITEM);
+            event.accept(TRACK_LAYER_CART_ITEM);
             event.accept(BASIC_LOCOMOTIVE_ITEM);
+            event.accept(DIESEL_LOCOMOTIVE_ITEM);
+            event.accept(CREATIVE_DIESEL_LOCOMOTIVE_ITEM);
             event.accept(ELECTRIC_LOCOMOTIVE_ITEM);
             event.accept(CARGO_MINECART_ITEM);
             event.accept(HOPPER_CART_ITEM);

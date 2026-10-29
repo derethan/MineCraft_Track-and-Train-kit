@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.0] - 2026-10-29
+
+### Added
+- **Creative Executive Diesel Locomotive (`creative_diesel_locomotive`)**:
+  - Added a dedicated creative-mode executive diesel locomotive sporting a Royal Cobalt / Midnight Blue body with Brilliant Gold chevron accents.
+  - Infinite fuel: operates continuously without requiring fueling, never drains input containers, and bypasses tender cart siphoning.
+  - Full support for multi-gear throttle (Gears 1–5), headlights, horn, dynamic lighting, and consist hauling.
+  - Exclusive to Creative Mode tabs (no crafting recipe required).
+  - Custom 32×32 3D pixel-art icon on rails matching the fleet's high-res styling.
+- **Speed & Gear Control Rail (`speed_control_rail`)**:
+  - Added an interactive track piece with a real-time configuration GUI opened by right-clicking.
+  - Set target locomotive speed/gear (0 = Stop/Neutral, 1–5 = Forward/Reverse gears) as a locomotive or consist travels across the track.
+  - Direction setting modes: Keep Current Direction, Force Forward, or Force Reverse.
+  - Train Name Filter: assign target speed changes to specific named trains (or leave empty / `*` to affect all rolling stock).
+  - Single execution per trip: prevents repetitive activations or sound spam while a train is parked on the rail.
+  - Crafted with Iron Ingots, Redstone Dust, and a Clock.
+  - High-resolution 32×32 3D item icon with embedded speedometer gauge and tachometer sensor rail texture.
+
+---
+
 ## [1.0.13] - 2026-10-29
 
 ### Fixed

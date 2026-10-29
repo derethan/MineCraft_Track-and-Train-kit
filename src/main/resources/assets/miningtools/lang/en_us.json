@@ -114,5 +114,11 @@
   "container.miningtools.track_paver": "Heavy Track & Road Paver",
   "item.miningtools.track_layer_cart": "Track Layer Cart",
   "entity.miningtools.track_layer_cart": "Track Layer Cart",
-  "container.miningtools.track_layer_cart": "Track Layer Cart"
+  "container.miningtools.track_layer_cart": "Track Layer Cart",
+  "block.miningtools.speed_control_rail": "Speed Control Rail",
+  "item.miningtools.speed_control_rail": "Speed Control Rail",
+  "gui.miningtools.speed_control_rail.title": "Speed & Gear Control Rail",
+  "item.miningtools.creative_diesel_locomotive": "Creative Executive Diesel Locomotive",
+  "entity.miningtools.creative_diesel_locomotive": "Creative Executive Diesel Locomotive",
+  "container.miningtools.creative_diesel_locomotive": "Creative Executive Diesel Locomotive"
 }

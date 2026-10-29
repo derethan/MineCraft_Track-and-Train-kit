@@ -189,6 +189,7 @@ public class MiningToolsClient {
         CartRenameOpenPayload.CLIENT_HANDLER = CartRenameScreen::open;
         CargoTransferSyncPayload.CLIENT_HANDLER = CargoTransferScreen::onSyncPayload;
         FluidLoaderSyncPayload.CLIENT_HANDLER = FluidLoaderScreen::onSyncPayload;
+        com.example.miningtools.network.SpeedControlRailSyncPayload.CLIENT_HANDLER = com.example.miningtools.client.gui.SpeedControlRailScreen::open;
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {
@@ -227,6 +228,7 @@ public class MiningToolsClient {
         event.registerEntityRenderer(MiningTools.GENERATOR_MINECART_ENTITY.get(), GeneratorCartRenderer::new);
         event.registerEntityRenderer(MiningTools.ELECTRIC_LOCOMOTIVE_ENTITY.get(), ElectricLocomotiveRenderer::new);
         event.registerEntityRenderer(MiningTools.DIESEL_LOCOMOTIVE_ENTITY.get(), DieselLocomotiveRenderer::new);
+        event.registerEntityRenderer(MiningTools.CREATIVE_DIESEL_LOCOMOTIVE_ENTITY.get(), com.example.miningtools.client.renderer.CreativeDieselLocomotiveRenderer::new);
     }
 
     private void registerMenuScreens(RegisterMenuScreensEvent event) {

@@ -67,6 +67,13 @@ Sleek, aerodynamic, ultra-high-speed electric rail transit.
 * **Electric Rail Pickup**: Draws power directly through trackside **Electric Rails** without stopping, or recharges using battery items in its GUI.
 * **Pulling Capacity**: Pulls up to **10 carts** at lightning speeds.
 
+### 4. Creative Executive Diesel Locomotive
+A dedicated prestige locomotive built exclusively for Creative Mode builders and test yards.
+* **Visual Styling**: Royal Cobalt and Deep Midnight Blue livery with brilliant Gold chevron striping.
+* **Infinite Motive Power**: Never runs out of fuel, never requires refueling, and never consumes fluid from inventory or tender carts.
+* **Complete Controls**: Full multi-gear transmission (Gears 1–5), instant keybinding ignition, horn, directional headlights, and heavy hauling power.
+* **Creative Exclusive**: Accessible directly through the Creative Inventory tabs (no survival crafting recipe required).
+
 ---
 
 ## 🔗 Train Mechanics, Physics & Railroad Crowbar
@@ -267,6 +274,8 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 * **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication and smart directional routing.
 * **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
 * **Locomotive Horn Rail**: Pressure-sensitive rail that triggers locomotive whistles and horns (ideal for level crossings and tunnel entrances).
+* **Coupler Rail**: Toggleable specialty track that automatically couples or uncouples locomotives and rolling stock carts upon arrival, with single-trigger trip protection.
+* **Speed Control Rail**: Specialty track with an interactive configuration GUI to set locomotive speed/gears (0 = Stop, 1–5 = Forward/Reverse gears), direction modes, and selective train name filtering.
 * **Electric Rail**: Conductive third rail that transmits Forge Energy (FE) along your network to charge Electric Locomotives on the fly.
 
 ---
@@ -315,6 +324,8 @@ When seated inside a locomotive or coupled cart:
 | **Locomotive Control Rail (Yields 6)**| Iron Ingots + Coal + Redstone Dust |
 | **Locomotive Horn Rail (Yields 6)** | Iron Ingots + Gold Ingot + Redstone Dust |
 | **Coupler Rail (Yields 6)** | Iron Ingots + Iron Chain + Redstone Dust |
+| **Speed Control Rail (Yields 6)** | Iron Ingots + Clock + Redstone Dust |
+| **Creative Executive Diesel Locomotive** | *Creative Mode Only (No crafting recipe needed)* |
 | **Trackside Cargo Loader** | Iron Ingots + Hopper + Chest + Redstone Dust |
 | **Trackside Cargo Unloader** | Iron Ingots + Chest + Hopper + Redstone Dust |
 | **Diesel Locomotive Fueler** | Iron Ingots + Bucket + Gold Ingots + Hopper + Redstone Dust |
@@ -336,6 +347,10 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.0**:
+  - **Creative Executive Diesel Locomotive**: Creative-only diesel locomotive featuring infinite fuel and Royal Cobalt & Gold livery.
+  - **Speed & Gear Control Rail**: Real-time configuration GUI to set locomotive speed/gears (Gears 0 to 5) and direction with selective Train Name filtering.
+  - **3D Pixel-Art Icon Consistency**: Crafted 32×32 3D isometric icons matching the Track Layer Cart style for all newly added equipment.
 * **v1.0.13**:
   - **Railway Block Signal Icon Fix**: Created a detailed 32×32 3D pixel-art icon for the Railway Block Signal, replacing the blank transparent placeholder with an authentic steel mast, relay box, and 3-aspect signal head.
 * **v1.0.12**:
@@ -402,5 +417,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.0.13.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.1.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
