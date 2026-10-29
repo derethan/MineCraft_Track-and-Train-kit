@@ -92,16 +92,17 @@ A dedicated prestige locomotive built exclusively for Creative Mode builders and
 ## 📦 Rolling Stock & Freight
 
 ### Adaptive Cargo Minecart
-A heavy-duty freight wagon with 27 storage slots, authentic Caboose-matching flanged steel wheels, and an intelligent **Filter Slot**. The cart's 3D model automatically adapts to its cargo:
-* **Log Mode**: Four vertical timber stakes loaded with stacked wooden logs.
-* **Container Mode**: Heavy enclosed shipping container (stakes retract) featuring dynamic container colors (**Industrial Red**, **Forest Green**, or **Deep Blue**).
+A heavy-duty freight wagon with 27 storage slots, authentic Caboose-matching flanged steel wheels, and dynamic content detection (plus an optional **Filter Slot**). The cart's 3D model automatically adapts to its cargo:
+* **Log Mode**: Four vertical timber stakes loaded with stacked round logs (automatically rendered whenever the cart holds only logs).
+* **Plank / Pallet Mode**: Bundles of milled lumber neatly strapped atop dual 3D wooden shipping pallets complete with top slats, stringers, and fork pockets (automatically rendered whenever the cart holds only planks).
+* **Container Mode**: Heavy enclosed shipping container (sea can) featuring dynamic container colors (**Industrial Red**, **Forest Green**, or **Deep Blue**) rendered for mixed or general cargo.
 * **Ore Mode**: Raw unrefined ores mounded high.
 * **Ingot Mode**: Stacked precious metal ingots.
 
 ### Loose Aggregate Hopper Car (Hopper Minecart)
 A heavy-duty open-top hopper car designed for hauling bulk loose aggregates (modeled after North American TIMX and Herzog ballast hoppers) with Caboose-matching flanged steel wheels:
 * **Smooth Metallic Finish**: Sleek, uniform solid industrial steel finish (`#737A84`) across all bulk material variants.
-* **Dynamic 3D Heap Mounds**: Dynamically renders 3 mounded heaps inside the container when hauling loose bulk materials (Coal heaps, Gravel/ballast heaps, yellow Sand heaps, Red Sand heaps, Dirt/clay heaps, and raw metal Ore heaps).
+* **Dynamic 3D Heap Mounds**: Dynamically renders 3 mounded heaps inside the container when hauling loose bulk materials (Coal heaps, Gravel/ballast heaps, yellow Sand heaps, Red Sand heaps, Dirt/clay heaps, and raw metal Ore heaps including all raw ores, block ore versions, and tin).
 * **Empty Chute View**: Renders as a hollow container displaying internal sloped discharge chutes when cleared.
 * **Filter Slot**: Dedicated hopper filter slot locks acceptance to the specified aggregate type.
 * **Track-Aligned Placement**: Automatically aligns initial yaw to railway tracks upon placement.
@@ -347,6 +348,11 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.3**:
+  - **Cargo Cart Log Stacking Pole Clipping Fix**: Calibrated round log dimensions to 4×4 cross-section (12.0 units total width) and adjusted nesting groove depths so logs fit squarely between side stakes without clipping through the vertical poles.
+* **v1.1.2**:
+  - **Dynamic Log & Plank Pallet Cargo Visuals**: Cargo carts now automatically detect held items without requiring a filter—displaying timber stakes with round log stacks when hauling only logs, and stacked lumber bundles atop dual 3D wooden shipping pallets with fork pockets when hauling only planks. Mixed items render as colorful sea can shipping containers.
+  - **Comprehensive Raw Ores & Block Ore Version Support**: Added full support for all raw ores and block ore versions (including tin, raw metal blocks, and deepslate/nether ores) to the Hopper Cart with strict non-bulk aggregate filtering and prioritized ore evaluation.
 * **v1.1.1**:
   - **Speed & Gear Control Rail Recipe Fix**: Corrected ingredient keys to use direct item identifier strings instead of legacy nested item objects, fixing the recipe parsing crash on world and server startup.
 * **v1.1.0**:
@@ -419,5 +425,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.1.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.3.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

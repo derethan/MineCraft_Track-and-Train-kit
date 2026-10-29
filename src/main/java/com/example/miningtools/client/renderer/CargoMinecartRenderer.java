@@ -55,7 +55,7 @@ public class CargoMinecartRenderer extends AbstractMinecartRenderer<CargoMinecar
         super.extractRenderState(entity, state, partialTicks);
         CartRenderHelper.updateRailRenderState(entity, state);
         state.filterItem = entity.getFilterItem();
-        state.filterType = entity.getFilterType();
+        state.filterType = entity.getEffectiveCargoType();
         state.storedCount = entity.getStoredCount();
         state.containerColorIndex = Math.abs(entity.getUUID().hashCode()) % 3;
     }

@@ -40,10 +40,12 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
 
     private final ModelPart shippingContainer;
     private final ModelPart stakes;
+    private final ModelPart pallets;
 
     public LoggingCartModel(ModelPart root) {
         super(root);
         this.stakes = root.getChild("stakes");
+        this.pallets = root.getChild("pallets");
         this.log1 = root.getChild("log1");
         this.log2 = root.getChild("log2");
         this.log3 = root.getChild("log3");
@@ -106,78 +108,110 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
                 PartPose.ZERO
         );
 
-        // 3. The 5 Round Logs (24 x 5 x 5 each)
-        // Bottom Row - Log 1 (Left)
+        // 3. The 5 Round Logs (24 x 4 x 4 each, calibrated to fit between side stakes without clipping)
+        // Bottom Row - Log 1 (Left: Z from -6.0 to -2.0)
         root.addOrReplaceChild(
                 "log1",
-                CubeListBuilder.create().texOffs(0, 40).addBox(-12.0F, -3.0F, -7.5F, 24.0F, 5.0F, 5.0F),
+                CubeListBuilder.create().texOffs(0, 40).addBox(-12.0F, -2.0F, -6.0F, 24.0F, 4.0F, 4.0F),
                 PartPose.ZERO
         );
 
-        // Bottom Row - Log 2 (Center)
+        // Bottom Row - Log 2 (Center: Z from -2.0 to 2.0)
         root.addOrReplaceChild(
                 "log2",
-                CubeListBuilder.create().texOffs(64, 40).addBox(-12.0F, -3.0F, -2.5F, 24.0F, 5.0F, 5.0F),
+                CubeListBuilder.create().texOffs(64, 40).addBox(-12.0F, -2.0F, -2.0F, 24.0F, 4.0F, 4.0F),
                 PartPose.ZERO
         );
 
-        // Bottom Row - Log 3 (Right)
+        // Bottom Row - Log 3 (Right: Z from 2.0 to 6.0)
         root.addOrReplaceChild(
                 "log3",
-                CubeListBuilder.create().texOffs(0, 54).addBox(-12.0F, -3.0F, 2.5F, 24.0F, 5.0F, 5.0F),
+                CubeListBuilder.create().texOffs(0, 54).addBox(-12.0F, -2.0F, 2.0F, 24.0F, 4.0F, 4.0F),
                 PartPose.ZERO
         );
 
-        // Top Row - Log 4 (Left Upper Groove)
+        // Top Row - Log 4 (Left Upper Groove: Z from -4.0 to 0.0)
         root.addOrReplaceChild(
                 "log4",
-                CubeListBuilder.create().texOffs(64, 54).addBox(-12.0F, -7.5F, -5.0F, 24.0F, 5.0F, 5.0F),
+                CubeListBuilder.create().texOffs(64, 54).addBox(-12.0F, -5.5F, -4.0F, 24.0F, 4.0F, 4.0F),
                 PartPose.ZERO
         );
 
-        // Top Row - Log 5 (Right Upper Groove)
+        // Top Row - Log 5 (Right Upper Groove: Z from 0.0 to 4.0)
         root.addOrReplaceChild(
                 "log5",
-                CubeListBuilder.create().texOffs(0, 68).addBox(-12.0F, -7.5F, 0.0F, 24.0F, 5.0F, 5.0F),
+                CubeListBuilder.create().texOffs(0, 68).addBox(-12.0F, -5.5F, 0.0F, 24.0F, 4.0F, 4.0F),
                 PartPose.ZERO
         );
-
-        // 4. The 5 Milled Lumber Stacks (2x6 boards)
+        // 4. The 5 Milled Lumber Stacks (2x6 boards, elevated 1.5 units to rest atop pallets)
         // Bottom Row - Lumber 1 (Left bundle: 24 x 2.5 x 6)
         root.addOrReplaceChild(
                 "lumber1",
-                CubeListBuilder.create().texOffs(0, 80).addBox(-12.0F, -0.5F, -6.0F, 24.0F, 2.5F, 6.0F),
+                CubeListBuilder.create().texOffs(0, 80).addBox(-12.0F, -2.0F, -6.0F, 24.0F, 2.5F, 6.0F),
                 PartPose.ZERO
         );
 
         // Bottom Row - Lumber 2 (Right bundle: 24 x 2.5 x 6)
         root.addOrReplaceChild(
                 "lumber2",
-                CubeListBuilder.create().texOffs(64, 80).addBox(-12.0F, -0.5F, 0.0F, 24.0F, 2.5F, 6.0F),
+                CubeListBuilder.create().texOffs(64, 80).addBox(-12.0F, -2.0F, 0.0F, 24.0F, 2.5F, 6.0F),
                 PartPose.ZERO
         );
 
         // Middle Row - Lumber 3 (Center wide bundle: 24 x 3 x 11)
         root.addOrReplaceChild(
                 "lumber3",
-                CubeListBuilder.create().texOffs(0, 92).addBox(-12.0F, -3.5F, -5.5F, 24.0F, 3.0F, 11.0F),
+                CubeListBuilder.create().texOffs(0, 92).addBox(-12.0F, -5.0F, -5.5F, 24.0F, 3.0F, 11.0F),
                 PartPose.ZERO
         );
 
         // Top Row - Lumber 4 (Left bundle: 24 x 3 x 5)
         root.addOrReplaceChild(
                 "lumber4",
-                CubeListBuilder.create().texOffs(0, 108).addBox(-12.0F, -6.5F, -5.0F, 24.0F, 3.0F, 5.0F),
+                CubeListBuilder.create().texOffs(0, 108).addBox(-12.0F, -8.0F, -5.0F, 24.0F, 3.0F, 5.0F),
                 PartPose.ZERO
         );
 
         // Top Row - Lumber 5 (Right bundle: 24 x 3 x 5)
         root.addOrReplaceChild(
                 "lumber5",
-                CubeListBuilder.create().texOffs(64, 108).addBox(-12.0F, -6.5F, 0.0F, 24.0F, 3.0F, 5.0F),
+                CubeListBuilder.create().texOffs(64, 108).addBox(-12.0F, -8.0F, 0.0F, 24.0F, 3.0F, 5.0F),
                 PartPose.ZERO
         );
 
+        // 4b. Tiny Wooden Shipping Pallets (resting on flatbed deck under plank stacks)
+        CubeListBuilder palletBuilder = CubeListBuilder.create();
+        // Pallet 1 (Front: X from -10.5 to -1.5)
+        // 4 Top Slats (spaced across X)
+        palletBuilder.texOffs(72, 88).addBox(-10.5F, 0.5F, -6.0F, 1.5F, 0.4F, 12.0F);
+        palletBuilder.texOffs(72, 88).addBox(-7.5F, 0.5F, -6.0F, 1.5F, 0.4F, 12.0F);
+        palletBuilder.texOffs(72, 88).addBox(-4.5F, 0.5F, -6.0F, 1.5F, 0.4F, 12.0F);
+        palletBuilder.texOffs(72, 88).addBox(-2.0F, 0.5F, -6.0F, 1.0F, 0.4F, 12.0F);
+        // 3 Stringers / Spacers (leaving forklift tine pockets)
+        palletBuilder.texOffs(72, 102).addBox(-10.5F, 0.9F, -5.8F, 9.5F, 0.8F, 1.4F);
+        palletBuilder.texOffs(72, 102).addBox(-10.5F, 0.9F, -0.7F, 9.5F, 0.8F, 1.4F);
+        palletBuilder.texOffs(72, 102).addBox(-10.5F, 0.9F, 4.4F, 9.5F, 0.8F, 1.4F);
+        // 3 Bottom Runner Boards
+        palletBuilder.texOffs(72, 106).addBox(-10.5F, 1.7F, -5.8F, 9.5F, 0.3F, 1.4F);
+        palletBuilder.texOffs(72, 106).addBox(-10.5F, 1.7F, -0.7F, 9.5F, 0.3F, 1.4F);
+        palletBuilder.texOffs(72, 106).addBox(-10.5F, 1.7F, 4.4F, 9.5F, 0.3F, 1.4F);
+
+        // Pallet 2 (Rear: X from 1.5 to 10.5)
+        // 4 Top Slats (spaced across X)
+        palletBuilder.texOffs(72, 88).addBox(1.5F, 0.5F, -6.0F, 1.0F, 0.4F, 12.0F);
+        palletBuilder.texOffs(72, 88).addBox(3.5F, 0.5F, -6.0F, 1.5F, 0.4F, 12.0F);
+        palletBuilder.texOffs(72, 88).addBox(6.5F, 0.5F, -6.0F, 1.5F, 0.4F, 12.0F);
+        palletBuilder.texOffs(72, 88).addBox(9.5F, 0.5F, -6.0F, 1.5F, 0.4F, 12.0F);
+        // 3 Stringers / Spacers
+        palletBuilder.texOffs(72, 102).addBox(1.5F, 0.9F, -5.8F, 9.5F, 0.8F, 1.4F);
+        palletBuilder.texOffs(72, 102).addBox(1.5F, 0.9F, -0.7F, 9.5F, 0.8F, 1.4F);
+        palletBuilder.texOffs(72, 102).addBox(1.5F, 0.9F, 4.4F, 9.5F, 0.8F, 1.4F);
+        // 3 Bottom Runner Boards
+        palletBuilder.texOffs(72, 106).addBox(1.5F, 1.7F, -5.8F, 9.5F, 0.3F, 1.4F);
+        palletBuilder.texOffs(72, 106).addBox(1.5F, 1.7F, -0.7F, 9.5F, 0.3F, 1.4F);
+        palletBuilder.texOffs(72, 106).addBox(1.5F, 1.7F, 4.4F, 9.5F, 0.3F, 1.4F);
+
+        root.addOrReplaceChild("pallets", palletBuilder, PartPose.ZERO);
         // 5. The 5 Ore Pile Layers (Rough, faceted natural ore mounds)
         // Base rocky layer (22 x 2 x 11)
         root.addOrReplaceChild(
@@ -275,10 +309,11 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         boolean isWood = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.WOOD;
         boolean isOre = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.ORE;
         boolean isIngot = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.INGOT;
-        boolean isUnfilteredWithItems = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.NONE && count > 0;
+        boolean isContainer = state.filterType == com.example.miningtools.entity.CargoMinecartEntity.FilterType.NONE && count > 0;
 
-        this.shippingContainer.visible = isUnfilteredWithItems;
+        this.shippingContainer.visible = isContainer;
         this.stakes.visible = isLog;
+        this.pallets.visible = isWood && count >= 1;
 
         this.log1.visible = isLog && count >= 1;
         this.log2.visible = isLog && count >= 128;
@@ -291,7 +326,6 @@ public class LoggingCartModel extends EntityModel<CargoMinecartRenderState> {
         this.lumber3.visible = isWood && count >= 256;
         this.lumber4.visible = isWood && count >= 512;
         this.lumber5.visible = isWood && count >= 1024;
-
         this.ore1.visible = isOre && count >= 1;
         this.ore2.visible = isOre && count >= 128;
         this.ore3.visible = isOre && count >= 256;

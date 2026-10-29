@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.3] - 2026-10-29
+
+### Fixed
+- **Cargo Cart Log Stacking Pole Clipping Fix**:
+  - Re-calibrated log geometry in `LoggingCartModel` from 5×5 cross-section to 4×4 cross-section (total bottom width of 12.0 units), perfectly fitting between the inner faces of the upright side stakes (`Z = -6.1` and `Z = 6.1`) with 0.1-unit safety clearance.
+  - Adjusted top nesting log positions (`log4` and `log5`) into the lower grooves to prevent any model overlap or visual clipping through the vertical side poles.
+
+---
+
+## [1.1.2] - 2026-10-29
+
+### Added
+- **Cargo Cart Dynamic Log & Plank Pallet Displays**:
+  - Cargo carts now automatically detect their stored contents without requiring a manual filter:
+    - When containing exclusively logs, cargo carts dynamically render authentic multi-tiered round log stacks with upright side stakes instead of sea can shipping containers.
+    - When containing exclusively wooden planks, cargo carts dynamically render neat bundles of milled lumber resting on dual 3D wooden shipping pallets complete with top slats, stringers, and forklift pockets instead of sea can shipping containers.
+  - Added synchronized cargo visual state (`DATA_CARGO_TYPE`) ensuring rolling carts immediately and smoothly update their visual appearance for all nearby players on servers.
+  - Added plank and wooden slab support to Cargo Cart filtering and acceptance validation.
+- **Hopper Cart All Raw Ores & Block Ore Version Support (Including Tin)**:
+  - Comprehensive ore classification in `AggregateHopperCartEntity` supporting all raw ores (`raw_iron`, `raw_copper`, `raw_gold`, `raw_tin`, modded raw metals) and all block ore versions (`iron_ore`, `deepslate_iron_ore`, `raw_iron_block`, `raw_tin_block`, `tin_ore`, `deepslate_tin_ore`, `coal_ore`, `redstone_ore`, `nether_quartz_ore`, `ancient_debris`, etc.).
+  - Prioritized ore evaluation before stone and fuel checks, preventing ores with "stone" or "coal" in their registry paths (such as `redstone_ore` or `coal_ore`) from being misclassified as gravel or coal.
+  - Enforced strict aggregate validation ensuring non-bulk items cannot be inserted into hopper carts.
+
+---
+
 ## [1.1.1] - 2026-10-29
 
 ### Fixed

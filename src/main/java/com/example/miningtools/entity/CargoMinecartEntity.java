@@ -67,6 +67,8 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
             SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.ITEM_STACK);
     private static final EntityDataAccessor<Integer> DATA_STORED_COUNT =
             SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<String> DATA_CARGO_TYPE =
+            SynchedEntityData.defineId(CargoMinecartEntity.class, EntityDataSerializers.STRING);
 
     public CargoMinecartEntity(EntityType<? extends CargoMinecartEntity> type, Level level) {
         super(type, level);
@@ -85,6 +87,7 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         super.defineSynchedData(builder);
         builder.define(DATA_FILTER_ITEM, ItemStack.EMPTY);
         builder.define(DATA_STORED_COUNT, 0);
+        builder.define(DATA_CARGO_TYPE, FilterType.NONE.name());
     }
 
     @Override
@@ -118,6 +121,9 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
 
     public void setFilterItem(ItemStack stack) {
         this.entityData.set(DATA_FILTER_ITEM, stack.isEmpty() ? ItemStack.EMPTY : stack.copyWithCount(1));
+        if (!this.level().isClientSide()) {
+            this.updateStoredCount();
+        }
     }
 
     public FilterType getFilterType() {
@@ -128,7 +134,7 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         if (isLogItem(filter)) {
             return FilterType.LOG;
         }
-        if (isWoodItem(filter)) {
+        if (isPlankOrWoodItem(filter)) {
             return FilterType.WOOD;
         }
         if (isOreItem(filter)) {
@@ -138,6 +144,14 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
             return FilterType.INGOT;
         }
         return FilterType.NONE;
+    }
+
+    public FilterType getEffectiveCargoType() {
+        try {
+            return FilterType.valueOf(this.entityData.get(DATA_CARGO_TYPE));
+        } catch (Throwable ignored) {
+            return FilterType.NONE;
+        }
     }
 
     public int getStoredCount() {
@@ -161,29 +175,50 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
     }
 
     /**
-     * Checks if an item is a true Log (has tree rings / log ends, not 6-sided bark wood or hyphae).
+     * Checks if an item is a true Log (tree trunks, logs, stems).
      */
     public static boolean isLogItem(ItemStack stack) {
-        if (stack.isEmpty() || !stack.is(ItemTags.LOGS)) {
+        if (stack.isEmpty()) {
             return false;
         }
-        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
-        return !path.endsWith("_wood") && !path.endsWith("_hyphae");
+        if (stack.is(ItemTags.LOGS)) {
+            String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().toLowerCase();
+            return !path.endsWith("_wood") && !path.endsWith("_hyphae");
+        }
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().toLowerCase();
+        return path.endsWith("_log") || path.contains("_log_") || path.contains("stem");
     }
 
     /**
-     * Checks if an item is Wood (6-sided bark wood block or hyphae).
+     * Checks if an item is Planks, wooden slabs, or 6-sided bark wood.
      */
-    public static boolean isWoodItem(ItemStack stack) {
-        if (stack.isEmpty() || !stack.is(ItemTags.LOGS)) {
+    public static boolean isPlankOrWoodItem(ItemStack stack) {
+        if (stack.isEmpty()) {
             return false;
         }
-        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
-        return path.endsWith("_wood") || path.endsWith("_hyphae");
+        if (stack.is(ItemTags.PLANKS) || stack.is(ItemTags.WOODEN_SLABS)) {
+            return true;
+        }
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) {
+            return false;
+        }
+        String path = id.getPath().toLowerCase();
+        if (path.contains("plank") || path.contains("lumber")) {
+            return true;
+        }
+        if (stack.is(ItemTags.LOGS) && (path.endsWith("_wood") || path.endsWith("_hyphae"))) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean isWoodItem(ItemStack stack) {
+        return isPlankOrWoodItem(stack);
     }
 
     /**
-     * Checks if an item is an Ore block or Raw metal chunk.
+     * Checks if an item is an Ore block or Raw metal chunk (including tin).
      */
     public static boolean isOreItem(ItemStack stack) {
         if (stack.isEmpty()) {
@@ -192,7 +227,10 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         if (stack.is(C_ORES) || stack.is(C_RAW_MATERIALS)) {
             return true;
         }
-        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().toLowerCase();
+        if (path.contains("tin") && (path.contains("ore") || path.contains("raw") || path.contains("block"))) {
+            return true;
+        }
         return path.endsWith("_ore") || path.startsWith("raw_") || path.contains("_raw_");
     }
 
@@ -206,12 +244,12 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         if (stack.is(C_INGOTS) || stack.is(C_NUGGETS)) {
             return true;
         }
-        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+        String path = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().toLowerCase();
         return path.endsWith("_ingot") || path.endsWith("_nugget");
     }
 
     public static boolean isValidFilterCandidate(ItemStack stack) {
-        return isLogItem(stack) || isWoodItem(stack) || isOreItem(stack) || isIngotOrNuggetItem(stack);
+        return isLogItem(stack) || isPlankOrWoodItem(stack) || isOreItem(stack) || isIngotOrNuggetItem(stack);
     }
 
     /**
@@ -240,10 +278,10 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
                     return true;
                 }
             }
-        } else if (isWoodItem(filterCandidate)) {
+        } else if (isPlankOrWoodItem(filterCandidate)) {
             for (int i = 0; i < STORAGE_SLOTS; i++) {
                 ItemStack stored = this.getItem(i);
-                if (!stored.isEmpty() && !isWoodItem(stored)) {
+                if (!stored.isEmpty() && !isPlankOrWoodItem(stored)) {
                     return true;
                 }
             }
@@ -265,9 +303,59 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         return false;
     }
 
+    public FilterType calculateEffectiveCargoType() {
+        ItemStack filter = getFilterItem();
+        if (!filter.isEmpty()) {
+            if (isLogItem(filter)) return FilterType.LOG;
+            if (isPlankOrWoodItem(filter)) return FilterType.WOOD;
+            if (isOreItem(filter)) return FilterType.ORE;
+            if (isIngotOrNuggetItem(filter)) return FilterType.INGOT;
+            return FilterType.NONE;
+        }
+
+        // When no filter is set, dynamically inspect stored contents:
+        int nonEmptyCount = 0;
+        boolean allLogs = true;
+        boolean allPlanks = true;
+        boolean allOres = true;
+        boolean allIngots = true;
+
+        for (int i = 0; i < STORAGE_SLOTS; i++) {
+            ItemStack stack = this.getItem(i);
+            if (!stack.isEmpty()) {
+                nonEmptyCount++;
+                if (!isLogItem(stack)) allLogs = false;
+                if (!isPlankOrWoodItem(stack)) allPlanks = false;
+                if (!isOreItem(stack)) allOres = false;
+                if (!isIngotOrNuggetItem(stack)) allIngots = false;
+            }
+        }
+
+        if (nonEmptyCount == 0) {
+            return FilterType.NONE;
+        }
+        if (allLogs) {
+            return FilterType.LOG;
+        }
+        if (allPlanks) {
+            return FilterType.WOOD;
+        }
+        if (allOres) {
+            return FilterType.ORE;
+        }
+        if (allIngots) {
+            return FilterType.INGOT;
+        }
+        // Mixed or general cargo
+        return FilterType.NONE;
+    }
+
     public void updateStoredCount() {
-        FilterType filterType = getFilterType();
+        FilterType effective = calculateEffectiveCargoType();
+        this.entityData.set(DATA_CARGO_TYPE, effective.name());
+
         int count = 0;
+        FilterType filterType = getFilterType();
         if (filterType == FilterType.LOG) {
             for (int i = 0; i < STORAGE_SLOTS; i++) {
                 ItemStack stack = this.getItem(i);
@@ -278,7 +366,7 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
         } else if (filterType == FilterType.WOOD) {
             for (int i = 0; i < STORAGE_SLOTS; i++) {
                 ItemStack stack = this.getItem(i);
-                if (isWoodItem(stack)) {
+                if (isPlankOrWoodItem(stack)) {
                     count += stack.getCount();
                 }
             }
@@ -297,7 +385,7 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
                 }
             }
         } else {
-            // FilterType.NONE: count all items in storage
+            // Count all items in storage
             for (int i = 0; i < STORAGE_SLOTS; i++) {
                 ItemStack stack = this.getItem(i);
                 if (!stack.isEmpty()) {
@@ -380,6 +468,14 @@ public class CargoMinecartEntity extends AbstractMinecartContainer implements Wo
             return true;
         }
         return false;
+    }
+
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        if (!this.level().isClientSide()) {
+            this.updateStoredCount();
+        }
     }
 
     @Override

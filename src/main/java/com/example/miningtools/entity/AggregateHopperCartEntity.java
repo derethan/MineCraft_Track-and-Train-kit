@@ -51,6 +51,7 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
 
     public static final TagKey<Item> C_ORES = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "ores"));
     public static final TagKey<Item> C_RAW_MATERIALS = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "raw_materials"));
+    public static final TagKey<Item> C_STORAGE_BLOCKS_RAW = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath("c", "storage_blocks/raw_materials"));
 
     public static final int STORAGE_SLOTS = 27;
     public static final int FILTER_SLOT = 27;
@@ -131,37 +132,99 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
         return this.entityData.get(DATA_STORED_COUNT);
     }
 
+    public static boolean isOreOrRawOreItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (stack.is(C_ORES) || stack.is(C_RAW_MATERIALS) || stack.is(C_STORAGE_BLOCKS_RAW)) {
+            return true;
+        }
+        if (stack.is(ItemTags.COAL_ORES) || stack.is(ItemTags.IRON_ORES) || stack.is(ItemTags.COPPER_ORES)
+                || stack.is(ItemTags.GOLD_ORES) || stack.is(ItemTags.REDSTONE_ORES) || stack.is(ItemTags.DIAMOND_ORES)
+                || stack.is(ItemTags.EMERALD_ORES) || stack.is(ItemTags.LAPIS_ORES)) {
+            return true;
+        }
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        if (id == null) {
+            return false;
+        }
+        String path = id.getPath().toLowerCase();
+
+        // Explicit tin support for raw ore, ore block, and raw metal block versions
+        if (path.contains("tin")) {
+            if (path.contains("ore") || path.contains("raw") || path.contains("block")) {
+                return true;
+            }
+        }
+
+        // Raw ore materials and raw metal storage blocks (e.g., raw_iron_block, raw_copper_block, raw_gold_block, raw_tin_block)
+        if (path.startsWith("raw_") || path.contains("_raw_") || path.endsWith("_raw")
+                || path.contains("raw_materials") || path.contains("raw_block")) {
+            return true;
+        }
+        if (path.endsWith("_block") && (path.contains("raw_") || path.contains("_raw") || path.contains("ore"))) {
+            return true;
+        }
+
+        // Natural ore blocks (stone, deepslate, nether, end, ancient debris)
+        if (path.endsWith("_ore") || path.contains("_ore_") || path.startsWith("ore_")
+                || path.equals("ancient_debris")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static boolean isValidAggregate(ItemStack stack) {
+        return detectType(stack) != AggregateType.NONE;
+    }
+
     public static AggregateType detectType(ItemStack stack) {
         if (stack.isEmpty()) {
             return AggregateType.NONE;
         }
+        // 1. Raw ores and block ore versions (including tin, raw metal blocks, deepslate/nether ores)
+        if (isOreOrRawOreItem(stack)) {
+            return AggregateType.RAW_ORE;
+        }
+
         Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (id == null) {
             return AggregateType.NONE;
         }
         String path = id.getPath().toLowerCase();
 
+        // 2. Coals (fuel items)
         if (stack.is(ItemTags.COALS) || path.contains("coal") || path.contains("charcoal")) {
             return AggregateType.COAL;
         }
+
+        // 3. Red Sand
         if (path.contains("red_sand")) {
             return AggregateType.RED_SAND;
         }
+
+        // 4. Yellow Sand and Sandstone
         if (path.contains("sand") || path.contains("sandstone")) {
             return AggregateType.SAND;
         }
-        if (path.contains("gravel") || path.contains("flint") || path.contains("cobble")
-                || path.contains("andesite") || path.contains("diorite") || path.contains("granite")
-                || path.contains("tuff") || path.contains("basalt") || path.contains("stone")) {
-            return AggregateType.GRAVEL;
-        }
-        if (path.contains("dirt") || path.contains("mud") || path.contains("clay") || path.contains("podzol")) {
+
+        // 5. Dirt, Mud, Clay, Podzol, Soul Soil
+        if (path.contains("dirt") || path.contains("mud") || path.contains("clay") || path.contains("podzol")
+                || path.contains("soul_soil") || path.contains("farmland") || path.contains("mycelium")) {
             return AggregateType.DIRT;
         }
-        if (stack.is(C_RAW_MATERIALS) || stack.is(C_ORES) || path.contains("raw_") || path.contains("ore")) {
-            return AggregateType.RAW_ORE;
+
+        // 6. Gravel, Ballast, Stone aggregates
+        if (path.contains("gravel") || path.contains("flint") || path.contains("cobble")
+                || path.contains("andesite") || path.contains("diorite") || path.contains("granite")
+                || path.contains("tuff") || path.contains("basalt") || path.contains("stone")
+                || path.contains("deepslate") || path.contains("blackstone") || path.contains("calcite")
+                || path.contains("dripstone")) {
+            return AggregateType.GRAVEL;
         }
-        return AggregateType.GRAVEL;
+
+        return AggregateType.NONE;
     }
 
     public boolean hasStoredItems() {
@@ -178,6 +241,9 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
             return false;
         }
         AggregateType targetType = detectType(filterStack);
+        if (targetType == AggregateType.NONE) {
+            return true;
+        }
         for (int i = 0; i < STORAGE_SLOTS; i++) {
             ItemStack inCart = this.getItem(i);
             if (!inCart.isEmpty() && detectType(inCart) != targetType) {
@@ -212,6 +278,10 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
 
     @Override
     public boolean canPlaceItem(int index, ItemStack stack) {
+        if (!isValidAggregate(stack)) {
+            return false;
+        }
+
         if (index == FILTER_SLOT) {
             return true;
         }
@@ -227,6 +297,14 @@ public class AggregateHopperCartEntity extends AbstractMinecartContainer impleme
         }
 
         return true;
+    }
+
+    @Override
+    public void setChanged() {
+        super.setChanged();
+        if (!this.level().isClientSide()) {
+            this.updateStoredCountAndType();
+        }
     }
 
     @Override

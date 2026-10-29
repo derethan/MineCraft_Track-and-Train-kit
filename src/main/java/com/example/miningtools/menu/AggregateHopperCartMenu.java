@@ -47,6 +47,9 @@ public class AggregateHopperCartMenu extends AbstractContainerMenu {
         this.addSlot(new Slot(container, FILTER_SLOT, 152, 14) {
             @Override
             public boolean mayPlace(ItemStack stack) {
+                if (!AggregateHopperCartEntity.isValidAggregate(stack)) {
+                    return false;
+                }
                 if (container instanceof AggregateHopperCartEntity cart) {
                     if (cart.hasStoredItems() && !cart.getFilterItem().isEmpty()) {
                         return false;
