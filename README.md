@@ -348,6 +348,8 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.4**:
+  - **Cargo Cart Log Texture UV & End Face Transparency Fix**: Realigned texture face regions in `logging_cart.png` and `wood_cart.png` to perfectly match the 4×4 box UV layout, fixing transparent diagonal gaps and flickering on the log ends.
 * **v1.1.3**:
   - **Cargo Cart Log Stacking Pole Clipping Fix**: Calibrated round log dimensions to 4×4 cross-section (12.0 units total width) and adjusted nesting groove depths so logs fit squarely between side stakes without clipping through the vertical poles.
 * **v1.1.2**:
@@ -425,5 +427,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.3.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.4.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

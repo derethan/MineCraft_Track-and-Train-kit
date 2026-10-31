@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.4] - 2026-10-30
+
+### Fixed
+- **Cargo Cart Log Texture UV Alignment & End Face Transparency Fix**:
+  - Re-mapped the high-resolution textures in both `logging_cart.png` and `wood_cart.png` to precisely match the 4×4×24 box UV specification for all five log tiers (`log1` through `log5`).
+  - Fixed transparent triangular patches on the top surface and missing top-row pixels on log ends caused by the previous UV offset falling into empty transparent space.
+  - Applied 100% solid pixel resampling and 2-pixel clamp-padding around face borders, eliminating edge transparency, depth-buffer flickering, and mipmap bleeding at the ends of logs.
+
+---
+
 ## [1.1.3] - 2026-10-29
 
 ### Fixed
