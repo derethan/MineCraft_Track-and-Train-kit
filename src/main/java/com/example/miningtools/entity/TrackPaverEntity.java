@@ -88,9 +88,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     public static final int MOVE_TICKS_PER_BLOCK = 20;
     // 30 ticks = 1.5 seconds per block step for safe reversing in Work Mode
     public static final int REVERSE_TICKS_PER_BLOCK = 30;
-    // 4 ticks = 5.0 blocks per second = 5.0 m/s travel speed when Work Mode is OFF
-    public static final int FAST_MOVE_TICKS_PER_BLOCK = 4;
-    public static final int FAST_REVERSE_TICKS_PER_BLOCK = 4;
+    // 10 ticks = 2.0 blocks per second = 2.0 m/s travel speed when Work Mode is OFF (Transport Mode)
+    public static final int FAST_MOVE_TICKS_PER_BLOCK = 10;
+    public static final int FAST_REVERSE_TICKS_PER_BLOCK = 10;
 
     private static final EntityDataAccessor<Direction> DATA_FACING =
             SynchedEntityData.defineId(TrackPaverEntity.class, EntityDataSerializers.DIRECTION);
@@ -999,7 +999,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                     return;
                 }
                 this.setRunMode(MODE_FORWARD);
-                String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (5.0 m/s)";
+                String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (2.0 m/s)";
                 player.sendOverlayMessage(Component.literal("Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
             }
             case LocomotiveControlPayload.ACTION_STOP -> {
@@ -1033,10 +1033,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 }
                 this.setRunMode(next);
                 if (next == MODE_REVERSE) {
-                    String modeDesc = this.isWorkMode() ? "Work Reverse (0.67 m/s)" : "Transport Reverse (5.0 m/s)";
+                    String modeDesc = this.isWorkMode() ? "Work Reverse (0.67 m/s)" : "Transport Reverse (2.0 m/s)";
                     player.sendOverlayMessage(Component.literal("Track Paver: " + modeDesc).withStyle(ChatFormatting.GOLD));
                 } else {
-                    String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (5.0 m/s)";
+                    String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (2.0 m/s)";
                     player.sendOverlayMessage(Component.literal("Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
                 }
             }
@@ -1053,7 +1053,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 } else {
                     boolean nextWork = !this.isWorkMode();
                     this.setWorkMode(nextWork);
-                    player.sendOverlayMessage(Component.literal("Track Paver: " + (nextWork ? "Work Mode (Paving 1.0 m/s)" : "Transport Mode (No Pave 5.0 m/s)")).withStyle(nextWork ? ChatFormatting.GREEN : ChatFormatting.GOLD));
+                    player.sendOverlayMessage(Component.literal("Track Paver: " + (nextWork ? "Work Mode (Paving 1.0 m/s)" : "Transport Mode (No Pave 2.0 m/s)")).withStyle(nextWork ? ChatFormatting.GREEN : ChatFormatting.GOLD));
                 }
             }
             case LocomotiveControlPayload.ACTION_OPEN_GUI -> player.openMenu(this);

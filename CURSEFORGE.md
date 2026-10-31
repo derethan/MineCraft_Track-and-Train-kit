@@ -180,7 +180,7 @@ An automated subterranean excavator for carving out subway lines and railway cor
 
 ### 2. Heavy Track & Road Paver (AP1055F)
 A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F track paver (~2.75 blocks wide, 2.0 blocks high, 3.0 blocks long):
-* **Work Mode & Dual-Speed Transits**: Toggle between **Work Mode** (constructs a 3-wide road strip at a regulated 1.0 m/s) and **Transport Mode** (suspends block replacement and boosts travel speed to **5.0 m/s** for rapid transit and repositioning).
+* **Work Mode & Dual-Speed Transits**: Toggle between **Work Mode** (constructs a 3-wide road strip at a regulated 1.0 m/s) and **Transport Mode** (suspends block replacement and adjusts travel speed to **2.0 m/s** for rapid transit and repositioning).
 * **Physical Collision & Terrain Step Safety**: Solid physical collision box prevents clipping; smoothly climbs and descends 1-block terrain steps while safely halting before 2+ block vertical obstacles, cliffs, and low ceilings.
 * **Toggleable Work Light**: High-intensity floodlight illuminating the surrounding workspace (Level 15 light) via GUI button or `L` key.
 * **3x3 Ghost Hologram Alignment Grid**: In-world holographic wireframe grid projected over the 3x3 footprint in front of the machine, showing the exact blocks that will be replaced along its trajectory to effortlessly line up target work areas (toggleable via GUI or `Shift + H`).
@@ -197,12 +197,12 @@ A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F t
 ### 3. Track Layer Cart (`track_layer_cart`)
 A compact, rugged, industrial 1-block machine built with a custom monolithic 3D model (armored unibody chassis, protective overhead roll-cage canopy, recessed operator cockpit, front track guide chute, rear articulated retrieval claw, and flanged wheels):
 * **Dual Work Modes**:
-  - **Track Laying Mode**: Snaps to minetrack and places 1 piece of track from its inventory down in front of itself onto sturdy ground as it rolls forward, paving railway lines effortlessly.
-  - **Track Removing Mode**: Drives along existing railway lines and cleanly retrieves the track behind it after traveling over it, picking up rails and placing them directly into its inventory.
+  - **Track Laying Mode**: Snaps to minetrack and places 1 piece of track from its inventory down in front of itself onto sturdy ground as it rolls forward, paving railway lines effortlessly. Automatically climbs and descends 1-block terrain steps, placing linked slope rails up hills and down valleys!
+  - **Track Removing Mode**: Drives along existing railway lines (including ascending and descending slopes) and cleanly retrieves the track behind it after traveling over it, picking up rails and placing them directly into its inventory.
 * **Calibrated 1.5 blocks/s Work Speed**: When operating in Laying or Removing Mode, travels at an exact governed speed of **1.5 blocks/s** (0.075 blocks/tick) for safe, dependable track deployment and retrieval.
-* **Normal Transport Mode**: When work mode is toggled OFF, acts as a normal minecart—rolling freely, responding to powered rails, slopes, and pulling engines, reaching full standard minecart speeds.
+* **Normal Transport Mode**: When work mode is toggled OFF, acts as a normal minecart—rolling freely, responding to powered rails, slopes, and pulling engines, reaching full standard minecart speeds with driver propulsion.
 * **Fully Driveable & Autonomous**:
-  - Mount directly to steer and drive with `W` (Forward), `S` (Stop/Brake), `R` (Reverse direction), `H` (Cycle Laying / Removing / Transport modes), and `C` (Open GUI).
+  - Mount directly to steer and drive with `W` (Forward), `S` (Stop/Brake), `A`/`D` (Steer Left/Right), `R` (Reverse direction), `H` (Cycle Laying / Removing / Transport modes), and `C` (Open GUI).
   - Features an interactive GUI dashboard to monitor stored rails, switch travel direction, toggle between Laying, Removing, or Transport modes, and set custom vehicle names.
 * **Consist Material & Resource Sharing**:
   - Carts that use material (coal/solid fuel, diesel fluid, tracks, ballast, paver blocks) can now receive from and place into carts they are linked to in the train consist!
@@ -348,6 +348,10 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.6**:
+  - **Track Layer Cart Climbing & Descending Slopes**: Implemented automatic 1-block terrain step climbing and descending in Laying Mode, slope tracking in Removing Mode, steering controls (`A`/`D`), and enhanced transport mode propulsion along railway gradients.
+* **v1.1.5**:
+  - **Track Paver Transport Mode Speed Calibration**: Calibrated Track Paver Transport Mode max travel speed to 2.0 m/s (10 ticks/block) in both forward and reverse, updating HUD speedometer scaling and in-game action bar messages.
 * **v1.1.4**:
   - **Cargo Cart Log Texture UV & End Face Transparency Fix**: Realigned texture face regions in `logging_cart.png` and `wood_cart.png` to perfectly match the 4×4 box UV layout, fixing transparent diagonal gaps and flickering on the log ends.
 * **v1.1.3**:
@@ -428,5 +432,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.4.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.6.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

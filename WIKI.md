@@ -889,7 +889,7 @@ For the complete, version-by-version release history and technical changes, see 
 - **Track Paver Work Light**:
   - High-intensity level 15 floodlight illuminating the workspace (GUI button & `L` hotkey).
 - **Track Paver Work Mode & Dual-Speed Transits**:
-  - Work Mode (paving at 1.0 m/s) vs Transport Mode (no paving, 5.0 m/s) with dynamic speedometer HUD adaptation.
+  - Work Mode (paving at 1.0 m/s) vs Transport Mode (no paving, 2.0 m/s) with dynamic speedometer HUD adaptation.
 - **Track Paver 3x3 Ghost Hologram Alignment Grid**:
   - In-world 3x3 holographic wireframe grid previewing replacement blocks ahead across all terrain contours.
 

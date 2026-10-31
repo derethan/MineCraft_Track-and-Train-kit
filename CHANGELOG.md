@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.6] - 2026-10-31
+
+### Fixed
+- **Track Layer Cart Climbing & Descending Slopes**:
+  - Added terrain incline detection and 1-block step climbing/descending in Laying Mode, allowing the Track Layer to lay connected ascending and descending slope tracks automatically up hills and down valleys without stalling or halting.
+  - Implemented multi-elevation slope navigation in Removing Mode, allowing the cart to seamlessly traverse and harvest tracks along ascending and descending grades.
+  - Added terrain clearance and headroom safety checks for sloped tracks, preventing placement into blocked cliffs or under low ceilings while ensuring smooth clearance.
+  - Updated driver controls in Normal Transport Mode to provide active forward and reverse propulsion along rail gradients.
+  - Added keyboard steering controls (`A` / `D` keys) for turning the Track Layer left and right.
+  - Calibrated trailing consist cars to snap vertically to slope rails when towed by the Track Layer.
+
+---
+
+## [1.1.5] - 2026-10-31
+
+### Changed
+- **Track Paver Transport Mode Speed Calibration**:
+  - Calibrated Transport Mode maximum forward and reverse speed to **2.0 m/s** (10 ticks per block step, down from 5.0 m/s) for safe, controllable maneuvering and repositioning without runaway speeds.
+  - Updated in-game action-bar overlay messages and HUD speedometer scaling to reflect the 2.0 m/s transport speed limit.
+
+---
+
 ## [1.1.4] - 2026-10-30
 
 ### Fixed

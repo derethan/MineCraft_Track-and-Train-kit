@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.jspecify.annotations.Nullable;
 
+import com.mojang.datafixers.util.Pair;
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.TrackLayerCartMenu;
 import com.example.miningtools.network.LocomotiveControlPayload;
@@ -18,6 +19,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -48,6 +50,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -183,6 +186,10 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
     public void setRunMode(int mode) {
         this.entityData.set(DATA_RUN_MODE, mode);
         this.setActive(mode != RUN_MODE_STOPPED);
+        if (mode == RUN_MODE_STOPPED) {
+            this.isStepMoving = false;
+            this.setDeltaMovement(Vec3.ZERO);
+        }
     }
 
     public boolean isActive() {
@@ -284,8 +291,23 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
 
         updateStoredRailCount();
 
-        // When Work Mode is OFF: act as normal minecart
+        // When Work Mode is OFF: act as normal minecart, but respect driver propulsion
         if (!this.isWorkMode()) {
+            if (this.getRunMode() != RUN_MODE_STOPPED) {
+                boolean isRev = (this.getRunMode() == RUN_MODE_REVERSE);
+                Direction dir = isRev ? this.getFacing().getOpposite() : this.getFacing();
+                Vec3 motion = this.getDeltaMovement();
+                double push = 0.08D;
+                double maxSpeed = 0.4D; // ~8.0 m/s vanilla minecart top speed
+                double mx = motion.x + dir.getStepX() * push;
+                double mz = motion.z + dir.getStepZ() * push;
+                double horizSpeed = Math.hypot(mx, mz);
+                if (horizSpeed > maxSpeed) {
+                    mx = (mx / horizSpeed) * maxSpeed;
+                    mz = (mz / horizSpeed) * maxSpeed;
+                }
+                this.setDeltaMovement(mx, motion.y, mz);
+            }
             if (!TrainChainingUtil.shouldSkipVanillaServerTick(this)) {
                 super.tick();
             }
@@ -295,6 +317,78 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
 
         // Work Mode is ON (Laying or Removing at 1.5 blocks/s)
         this.tickWorkModeMovement();
+    }
+
+    private boolean isRailAt(BlockPos pos) {
+        return BaseRailBlock.isRail(this.level(), pos);
+    }
+
+    private boolean isGroundSturdy(BlockPos groundPos) {
+        if (!this.level().getFluidState(groundPos).isEmpty()) {
+            return false;
+        }
+        BlockState state = this.level().getBlockState(groundPos);
+        return !state.isAir() && state.isFaceSturdy(this.level(), groundPos, Direction.UP);
+    }
+
+    private boolean isClearForTrack(BlockPos pos) {
+        if (!this.level().getFluidState(pos).isEmpty()) {
+            return false;
+        }
+        BlockState state = this.level().getBlockState(pos);
+        return state.isAir() || state.canBeReplaced() || BaseRailBlock.isRail(state);
+    }
+
+    private boolean isPassable(BlockPos pos) {
+        BlockState state = this.level().getBlockState(pos);
+        return state.isAir() || state.canBeReplaced() || state.getCollisionShape(this.level(), pos).isEmpty();
+    }
+
+    private @Nullable BlockPos findExistingRailAhead(BlockPos curPos, Direction travelDir) {
+        BlockPos forwardPos = curPos.relative(travelDir);
+        BlockPos candUp = forwardPos.above();
+        BlockPos candFlat = forwardPos;
+        BlockPos candDown = forwardPos.below();
+
+        // 1. If current rail is a sloped rail, check its exit towards travelDir
+        BlockState curState = this.level().getBlockState(curPos);
+        if (curState.getBlock() instanceof BaseRailBlock curRail) {
+            RailShape curShape = curRail.getRailDirection(curState, this.level(), curPos, this);
+            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(curShape);
+            Vec3i exit0 = exits.getFirst();
+            Vec3i exit1 = exits.getSecond();
+
+            Vec3i travelExit = null;
+            if (exit0.getX() == travelDir.getStepX() && exit0.getZ() == travelDir.getStepZ()) {
+                travelExit = exit0;
+            } else if (exit1.getX() == travelDir.getStepX() && exit1.getZ() == travelDir.getStepZ()) {
+                travelExit = exit1;
+            }
+
+            if (travelExit != null) {
+                if (travelExit.getY() > 0 && isRailAt(candUp)) {
+                    return candUp;
+                }
+                if (travelExit.getY() < 0 && isRailAt(candDown)) {
+                    return candDown;
+                }
+            }
+        }
+
+        // 2. Check flat candidate first
+        if (isRailAt(candFlat)) {
+            return candFlat;
+        }
+        // 3. Check ascending slope candidate (+1 Y)
+        if (isRailAt(candUp) && isGroundSturdy(forwardPos)) {
+            return candUp;
+        }
+        // 4. Check descending slope candidate (-1 Y)
+        if (isRailAt(candDown) && isGroundSturdy(forwardPos.below(2))) {
+            return candDown;
+        }
+
+        return null;
     }
 
     private void tickWorkModeMovement() {
@@ -309,27 +403,77 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
         Direction travelDir = isReversing ? this.getFacing().getOpposite() : this.getFacing();
 
         if (!this.isStepMoving) {
-            if (this.currentRailPos == null) {
+            if (this.currentRailPos == null || !isRailAt(this.currentRailPos)) {
                 this.currentRailPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
             }
 
-            BlockPos nextPos = this.currentRailPos.relative(travelDir);
+            BlockPos forwardPos = this.currentRailPos.relative(travelDir);
 
-            // Laying Mode: Check if track is needed in front and lay it
-            if (this.getWorkMode() == WORK_MODE_LAY) {
-                BlockState nextState = this.level().getBlockState(nextPos);
-                if (!nextState.is(BlockTags.RAILS) && !(nextState.getBlock() instanceof BaseRailBlock)) {
-                    // Check ground support
-                    BlockPos groundPos = nextPos.below();
-                    BlockState groundState = this.level().getBlockState(groundPos);
-                    if (!groundState.isFaceSturdy(this.level(), groundPos, Direction.UP)) {
+            if (this.getWorkMode() == WORK_MODE_REMOVE) {
+                BlockPos existingRail = findExistingRailAhead(this.currentRailPos, travelDir);
+                if (existingRail == null) {
+                    this.setRunMode(RUN_MODE_STOPPED);
+                    notifyDriver(Component.literal("Track Layer: Reached end of track line!").withStyle(ChatFormatting.GOLD));
+                    return;
+                }
+
+                // Check clearance & headroom
+                if (!isPassable(existingRail.above()) || (existingRail.getY() > this.currentRailPos.getY() && !isPassable(this.currentRailPos.above(2)))) {
+                    this.setRunMode(RUN_MODE_STOPPED);
+                    notifyDriver(Component.literal("Track Layer: Track path blocked!").withStyle(ChatFormatting.RED));
+                    return;
+                }
+
+                this.targetRailPos = existingRail;
+                this.isStepMoving = true;
+                this.stepTicks = 0;
+            } else if (this.getWorkMode() == WORK_MODE_LAY) {
+                // First check if rail already exists ahead
+                BlockPos existingRail = findExistingRailAhead(this.currentRailPos, travelDir);
+                if (existingRail != null) {
+                    // Drive onto existing rail without consuming inventory
+                    if (!isPassable(existingRail.above()) || (existingRail.getY() > this.currentRailPos.getY() && !isPassable(this.currentRailPos.above(2)))) {
+                        this.setRunMode(RUN_MODE_STOPPED);
+                        notifyDriver(Component.literal("Track Layer: Track path blocked!").withStyle(ChatFormatting.RED));
+                        return;
+                    }
+                    this.targetRailPos = existingRail;
+                    this.isStepMoving = true;
+                    this.stepTicks = 0;
+                } else {
+                    // Determine valid terrain step for new rail:
+                    BlockPos chosenTarget = null;
+                    boolean groundInvalid = false;
+
+                    if (isGroundSturdy(forwardPos)) {
+                        // Terrain steps UP: 1-block climb
+                        BlockPos candUp = forwardPos.above();
+                        if (isClearForTrack(candUp) && isPassable(candUp.above()) && isPassable(this.currentRailPos.above(2))) {
+                            chosenTarget = candUp;
+                        }
+                    } else if (isGroundSturdy(forwardPos.below())) {
+                        // Flat terrain: standard ground level
+                        BlockPos candFlat = forwardPos;
+                        if (isClearForTrack(candFlat) && isPassable(candFlat.above())) {
+                            chosenTarget = candFlat;
+                        }
+                    } else if (isPassable(forwardPos) && isPassable(forwardPos.below()) && isGroundSturdy(forwardPos.below(2))) {
+                        // Terrain steps DOWN: 1-block descent
+                        BlockPos candDown = forwardPos.below();
+                        if (isClearForTrack(candDown) && isPassable(forwardPos) && isPassable(forwardPos.above())) {
+                            chosenTarget = candDown;
+                        }
+                    } else {
+                        groundInvalid = true;
+                    }
+
+                    if (groundInvalid) {
                         this.setRunMode(RUN_MODE_STOPPED);
                         notifyDriver(Component.literal("Track Layer: Ground ahead is not sturdy!").withStyle(ChatFormatting.RED));
                         return;
                     }
 
-                    // Check clearance at track position
-                    if (!nextState.isAir() && !nextState.canBeReplaced()) {
+                    if (chosenTarget == null) {
                         this.setRunMode(RUN_MODE_STOPPED);
                         notifyDriver(Component.literal("Track Layer: Track path blocked!").withStyle(ChatFormatting.RED));
                         return;
@@ -351,30 +495,32 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
                     ItemStack railStack = this.getItem(railSlot);
                     if (railStack.getItem() instanceof BlockItem bi && bi.getBlock() instanceof BaseRailBlock railBlock) {
                         railStack.shrink(1);
-                        this.level().setBlock(nextPos, railBlock.defaultBlockState(), 3);
+                        // Clean up any replaceable vegetation before placing
+                        BlockState existingState = this.level().getBlockState(chosenTarget);
+                        if (!existingState.isAir() && existingState.canBeReplaced()) {
+                            this.level().destroyBlock(chosenTarget, true);
+                        }
+
+                        this.level().setBlock(chosenTarget, railBlock.defaultBlockState(), 3);
+                        // Trigger neighbor updates so current rail and new rail link together as slopes
+                        this.level().updateNeighborsAt(chosenTarget, railBlock);
+                        this.level().updateNeighborsAt(this.currentRailPos, this.level().getBlockState(this.currentRailPos).getBlock());
+
                         SoundType st = railBlock.defaultBlockState().getSoundType();
-                        this.level().playSound(null, nextPos, st.getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
+                        this.level().playSound(null, chosenTarget, st.getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
                         if (this.level() instanceof net.minecraft.server.level.ServerLevel sl) {
-                            sl.sendParticles(ParticleTypes.CRIT, nextPos.getX() + 0.5D, nextPos.getY() + 0.2D, nextPos.getZ() + 0.5D, 5, 0.2D, 0.1D, 0.2D, 0.05D);
+                            sl.sendParticles(ParticleTypes.CRIT, chosenTarget.getX() + 0.5D, chosenTarget.getY() + 0.2D, chosenTarget.getZ() + 0.5D, 5, 0.2D, 0.1D, 0.2D, 0.05D);
                         }
                     } else {
                         this.setRunMode(RUN_MODE_STOPPED);
                         return;
                     }
-                }
-            } else if (this.getWorkMode() == WORK_MODE_REMOVE) {
-                // In Remove Mode, ensure rail exists ahead to drive on
-                BlockState nextState = this.level().getBlockState(nextPos);
-                if (!nextState.is(BlockTags.RAILS) && !(nextState.getBlock() instanceof BaseRailBlock)) {
-                    this.setRunMode(RUN_MODE_STOPPED);
-                    notifyDriver(Component.literal("Track Layer: Reached end of track line!").withStyle(ChatFormatting.GOLD));
-                    return;
+
+                    this.targetRailPos = chosenTarget;
+                    this.isStepMoving = true;
+                    this.stepTicks = 0;
                 }
             }
-
-            this.isStepMoving = true;
-            this.stepTicks = 0;
-            this.targetRailPos = nextPos;
         }
 
         // Calibrated 1.5 blocks/s travel speed: 13 ticks per block step
@@ -384,6 +530,16 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
         Vec3 end = Vec3.atBottomCenterOf(this.targetRailPos).add(0.0, 0.0625, 0.0);
         Vec3 currentPos = start.lerp(end, Math.min(frac, 1.0D));
         this.setPos(currentPos.x, currentPos.y, currentPos.z);
+
+        // Adjust entity pitch on slopes
+        if (this.targetRailPos.getY() > this.currentRailPos.getY()) {
+            this.setXRot(-35.0F);
+        } else if (this.targetRailPos.getY() < this.currentRailPos.getY()) {
+            this.setXRot(35.0F);
+        } else {
+            this.setXRot(0.0F);
+        }
+
         this.pullTrailingCartsOnMove();
 
         if (this.stepTicks >= WORK_MOVE_TICKS_PER_BLOCK) {
@@ -391,6 +547,7 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
             this.currentRailPos = this.targetRailPos;
             this.targetRailPos = null;
             this.isStepMoving = false;
+            this.setXRot(0.0F);
 
             // In Removing Mode: Pick up track behind the cart now that it has traveled over it
             if (this.getWorkMode() == WORK_MODE_REMOVE && this.previousRailPos != null && !this.previousRailPos.equals(this.currentRailPos)) {
@@ -461,7 +618,20 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
             case LocomotiveControlPayload.ACTION_STOP -> {
                 // S key: Stop
                 this.setRunMode(RUN_MODE_STOPPED);
+                this.setDeltaMovement(Vec3.ZERO);
                 player.sendOverlayMessage(Component.literal("Track Layer: Stopped").withStyle(ChatFormatting.RED));
+            }
+            case LocomotiveControlPayload.ACTION_SPEED_DOWN -> {
+                // A key: Turn Left (counter-clockwise)
+                Direction newFacing = this.getFacing().getCounterClockWise();
+                this.setFacing(newFacing);
+                player.sendOverlayMessage(Component.literal("Track Layer: Turned Left to " + newFacing.getName().toUpperCase()).withStyle(ChatFormatting.YELLOW));
+            }
+            case LocomotiveControlPayload.ACTION_SPEED_UP -> {
+                // D key: Turn Right (clockwise)
+                Direction newFacing = this.getFacing().getClockWise();
+                this.setFacing(newFacing);
+                player.sendOverlayMessage(Component.literal("Track Layer: Turned Right to " + newFacing.getName().toUpperCase()).withStyle(ChatFormatting.YELLOW));
             }
             case LocomotiveControlPayload.ACTION_REVERSE -> {
                 // R key: Toggle Reverse
@@ -520,7 +690,12 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
                 double pull = Math.min(dist - targetDist, 0.25D);
                 double nx = cart.getX() + (diff.x / dist) * pull;
                 double nz = cart.getZ() + (diff.z / dist) * pull;
-                cart.setPos(nx, cart.getY(), nz);
+                Vec3 snapped = TrainChainingUtil.getRailPosForEntity(cart, nx, cart.getY(), nz);
+                if (snapped != null) {
+                    cart.setPos(snapped.x, snapped.y, snapped.z);
+                } else {
+                    cart.setPos(nx, cart.getY(), nz);
+                }
             }
             prevEnt = cart;
             prevAnchor = cart.position();
