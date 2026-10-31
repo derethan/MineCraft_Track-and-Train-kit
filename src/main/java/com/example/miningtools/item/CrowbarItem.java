@@ -216,6 +216,9 @@ public class CrowbarItem extends Item {
                     Component.literal("Sneak + Right-click a cart to disconnect.").withStyle(ChatFormatting.GRAY)
             );
             tooltipOutput.accept(
+                    Component.literal("Right-click Turnout Rail to flip branch (Left / Right).").withStyle(ChatFormatting.GRAY)
+            );
+            tooltipOutput.accept(
                     Component.literal("No iron chains required.").withStyle(ChatFormatting.DARK_GREEN)
             );
         }

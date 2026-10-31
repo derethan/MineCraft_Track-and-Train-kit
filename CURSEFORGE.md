@@ -271,8 +271,8 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 
 * **Braking / Holding Rail**: Clamps and freezes passing or resting carts and locomotives when unpowered (zero velocity). Releases brakes and gives a launch impulse when powered.
 * **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts cross over perpendicularly without turning or derailing.
-* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades.
-* **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication and smart directional routing.
+* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades. Sneak + Right-click rotates facing clockwise (and cycles branch after full rotation); right-click with Railroad Crowbar toggles left/right divergent branch.
+* **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication, full 3-way directional routing (straight mainline pass-through alongside active branch routing), and dynamic top mainline rail completion for seamless straight-through traffic in both switch states.
 * **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
 * **Locomotive Horn Rail**: Pressure-sensitive rail that triggers locomotive whistles and horns (ideal for level crossings and tunnel entrances).
 * **Coupler Rail**: Toggleable specialty track that automatically couples or uncouples locomotives and rolling stock carts upon arrival, with single-trigger trip protection.
@@ -348,6 +348,11 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.8**:
+  - **Wye Rail Model & Gap Fix**: Added the missing top straight rail segment dynamically to both Wye switch modes (`wye_rail_right` and `wye_rail_left`), ensuring the continuous straight mainline path is complete and visually seamless in both switch states.
+  - **Turnout Track Rotation**: Sneak + Right-click now rotates the Turnout Rail clockwise (matching Wye Rail behavior). Full 360° rotation cycles branch direction, allowing full configuration with bare hands.
+  - **Crowbar Turnout Branch Toggle**: Right-clicking a Turnout Rail with the Railroad Crowbar directly toggles divergent branch direction (Left vs. Right) with audible feedback and action bar notification.
+  - **Turnout Track Switch Animation**: Overhauled the Turnout Rail visual switch indicator and throw bar to visibly articulate and animate between Normal Mainline (Straight) and Divergent (Curved) switch states, rotating the indicator target 90° and shifting the switch rod.
 * **v1.1.6**:
   - **Track Layer Cart Climbing & Descending Slopes**: Implemented automatic 1-block terrain step climbing and descending in Laying Mode, slope tracking in Removing Mode, steering controls (`A`/`D`), and enhanced transport mode propulsion along railway gradients.
 * **v1.1.5**:
@@ -432,5 +437,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.6.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.8.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

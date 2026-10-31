@@ -2,7 +2,7 @@
     "credit":  "Made for MiningTools",
     "textures":  {
                      "0":  "miningtools:block/cmodels/rail",
-                     "1":  "miningtools:block/cmodels/wire_off",
+                     "1":  "miningtools:block/cmodels/wire_on",
                      "3":  "miningtools:block/cmodels/rail_curve",
                      "particle":  "miningtools:block/cmodels/rail"
                  },
@@ -5000,12 +5000,12 @@
                      },
                      {
                          "from":  [
-                                      4.1,
+                                      4.6,
                                       0.3,
                                       9.5
                                   ],
                          "to":  [
-                                    4.3999999999999995,
+                                    4.9,
                                     0.9,
                                     14.5
                                 ],
@@ -5118,14 +5118,14 @@
                      },
                      {
                          "from":  [
-                                      0.2,
+                                      0.1,
                                       0.8,
-                                      13.7
+                                      13.9
                                   ],
                          "to":  [
-                                    0.9,
+                                    1,
                                     1.2,
-                                    14.3
+                                    14.1
                                 ],
                          "faces":  {
                                        "north":  {

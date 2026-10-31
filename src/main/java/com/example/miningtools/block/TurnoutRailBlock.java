@@ -134,18 +134,24 @@ public class TurnoutRailBlock extends BaseRailBlock {
         boolean powered = state.getValue(POWERED);
 
         if (player.isShiftKeyDown()) {
-            curveLeft = !curveLeft;
-            RailShape newShape = calculateShape(facing, curveLeft, powered);
-            level.setBlock(pos, state.setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape), 3);
+            Direction newFacing = facing.getClockWise();
+            // Full 360 rotation wraps to NORTH and cycles branch for players configuring without a crowbar
+            if (newFacing == Direction.NORTH) {
+                curveLeft = !curveLeft;
+            }
+            RailShape newShape = calculateShape(newFacing, curveLeft, powered);
+            BlockState newState = state.setValue(FACING, newFacing).setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape);
+            level.setBlock(pos, newState, 3);
             level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5F, 1.2F);
-            player.sendOverlayMessage(Component.literal("Turnout Branch: " + (curveLeft ? "Left" : "Right")));
-        } else {
-            powered = !powered;
-            RailShape newShape = calculateShape(facing, curveLeft, powered);
-            level.setBlock(pos, state.setValue(POWERED, powered).setValue(SHAPE, newShape), 3);
-            level.playSound(null, pos, SoundEvents.LEVER_CLICK, SoundSource.BLOCKS, 0.5F, powered ? 0.7F : 0.5F);
-            player.sendOverlayMessage(Component.literal("Turnout Switch: " + (powered ? "Divergent (Curved)" : "Mainline (Straight)")));
+            player.sendOverlayMessage(Component.literal("Turnout Facing: " + newFacing.getName() + " (Branch: " + (curveLeft ? "Left" : "Right") + ")"));
+            return InteractionResult.SUCCESS;
         }
+
+        powered = !powered;
+        RailShape newShape = calculateShape(facing, curveLeft, powered);
+        level.setBlock(pos, state.setValue(POWERED, powered).setValue(SHAPE, newShape), 3);
+        level.playSound(null, pos, SoundEvents.LEVER_CLICK, SoundSource.BLOCKS, 0.5F, powered ? 0.7F : 0.5F);
+        player.sendOverlayMessage(Component.literal("Turnout Switch: " + (powered ? "Divergent (Curved)" : "Mainline (Straight)")));
         return InteractionResult.SUCCESS;
     }
 
@@ -153,6 +159,19 @@ public class TurnoutRailBlock extends BaseRailBlock {
     protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         if (!stack.isEmpty() && stack.getItem() instanceof BlockItem && player.isShiftKeyDown()) {
             return InteractionResult.PASS;
+        }
+        if (!stack.isEmpty() && stack.is(com.example.miningtools.MiningTools.CROWBAR_ITEM.get())) {
+            if (level.isClientSide()) {
+                return InteractionResult.SUCCESS;
+            }
+            Direction facing = state.getValue(FACING);
+            boolean curveLeft = !state.getValue(CURVE_LEFT);
+            boolean powered = state.getValue(POWERED);
+            RailShape newShape = calculateShape(facing, curveLeft, powered);
+            level.setBlock(pos, state.setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape), 3);
+            level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5F, 1.2F);
+            player.sendOverlayMessage(Component.literal("Turnout Branch: " + (curveLeft ? "Left" : "Right")));
+            return InteractionResult.SUCCESS;
         }
         return this.useWithoutItem(state, level, pos, player, hitResult);
     }

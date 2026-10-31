@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.8] - 2026-10-31
+
+### Added
+- **Turnout Rail Facing Rotation on Sneak-Use**:
+  - Sneak + Right-clicking a Turnout Rail with an empty hand now rotates its horizontal facing 90° clockwise (matching Wye Rail behavior).
+  - Completing a full 360° rotation (wrapping around from West back to North) cycles the divergent branch between Left and Right, allowing players to fully configure both facing and curve branch direction with bare hands.
+- **Crowbar Quick Branch Switching**:
+  - Right-clicking a Turnout Rail while holding the Railroad Crowbar directly toggles the divergent curve branch between Left and Right, complete with wrenching sound effects and action bar notification.
+
+### Changed
+- **Turnout Track Switch Animation & Visual Indication**:
+  - Overhauled Turnout Rail 3D models (`turnout_rail_straight_right`, `turnout_rail_curved_right`, `turnout_rail_straight_left`, and `turnout_rail_curved_left`) to physically articulate between Normal Mainline (Straight) and Divergent (Curved) modes.
+  - The switch target flag now rotates 90° between closed (parallel to the mainline) and open (perpendicular to the mainline) states with active color-coded status textures (`wire_off` vs. `wire_on`).
+  - The switch tie rod and point blades now noticeably shift laterally across the track gauge when thrown.
+
+### Fixed
+- **Wye Rail Straight Mainline Visual Gap Fix**:
+  - Added the missing top straight rail segment dynamically to both Wye switch modes (`wye_rail_right` and `wye_rail_left`), ensuring the straight mainline path across the top is physically continuous and visually seamless in both switch states.
+  - When the switch is open (Right Branch mode), the left top rail is rendered to bridge the straight mainline path; when the switch is closed (Left Branch mode), the right top rail is rendered to bridge the straight mainline path.
+
+---
+
 ## [1.1.6] - 2026-10-31
 
 ### Fixed
