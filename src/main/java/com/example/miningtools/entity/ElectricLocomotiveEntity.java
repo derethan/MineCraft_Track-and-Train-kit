@@ -706,12 +706,19 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
             this.setDeltaMovement(actualMovement);
 
-            boolean hitObstacle = pathBlocked;
+            boolean hitObstacle = pathBlocked || (this.horizontalCollision && actualHoriz < maxSpeed * 0.5D);
             if (hitObstacle) {
-                this.setRunning(false);
-                this.setActive(false);
-                this.setDeltaMovement(Vec3.ZERO);
+                this.setPos(initialX, initialY, initialZ);
+                Vec3 rPos = this.getRailPos(initialX, initialY, initialZ);
+                if (rPos != null) {
+                    this.setPos(rPos.x, rPos.y, rPos.z);
+                }
+                TrainChainingUtil.stopTrainConsist(this);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.6F, 1.4F);
+
+                Direction moveDir = this.getTravelDirection();
+                BlockPos ahead = railPos.relative(moveDir);
+                TrainChainingUtil.checkAndTriggerBufferStop(this, railPos, ahead);
             } else {
                 // Update facing only if track turned around a curve (orthogonal axis change)
                 Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);

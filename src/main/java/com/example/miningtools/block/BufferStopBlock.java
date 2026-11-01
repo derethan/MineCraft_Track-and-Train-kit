@@ -9,6 +9,7 @@ import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -50,6 +51,10 @@ public class BufferStopBlock extends Block {
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
 
     protected static final VoxelShape SHAPE = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 14.0D, 16.0D);
+    protected static final VoxelShape COLLISION_NORTH = Block.box(0.0D, 0.0D, 2.0D, 16.0D, 14.0D, 16.0D);
+    protected static final VoxelShape COLLISION_SOUTH = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 14.0D, 14.0D);
+    protected static final VoxelShape COLLISION_WEST = Block.box(2.0D, 0.0D, 0.0D, 16.0D, 14.0D, 16.0D);
+    protected static final VoxelShape COLLISION_EAST = Block.box(0.0D, 0.0D, 0.0D, 14.0D, 14.0D, 16.0D);
 
     public BufferStopBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -65,7 +70,14 @@ public class BufferStopBlock extends Block {
 
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
-        return SHAPE;
+        Direction facing = state.getValue(FACING);
+        return switch (facing) {
+            case NORTH -> COLLISION_NORTH;
+            case SOUTH -> COLLISION_SOUTH;
+            case WEST -> COLLISION_WEST;
+            case EAST -> COLLISION_EAST;
+            default -> SHAPE;
+        };
     }
 
     @Override
@@ -88,6 +100,14 @@ public class BufferStopBlock extends Block {
         if (entity instanceof AbstractMinecart cart) {
             handleCartCollision(state, level, pos, cart);
         }
+    }
+
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean isMoving) {
+        if (!state.is(oldState.getBlock())) {
+            checkAdjacentCarts(state, level, pos);
+        }
+        super.onPlace(state, level, pos, oldState, isMoving);
     }
 
     @Override
@@ -132,22 +152,12 @@ public class BufferStopBlock extends Block {
 
     public static void handleCartCollision(BlockState state, Level level, BlockPos pos, AbstractMinecart cart) {
         Vec3 motion = cart.getDeltaMovement();
-        boolean moving = motion.horizontalDistanceSqr() > 1.0E-4D;
+        boolean moving = motion.horizontalDistanceSqr() > 1.0E-4D
+                || TrainChainingUtil.isPartOfRunningTrain(cart)
+                || TrainChainingUtil.isLocomotiveActive(cart);
 
-        // Halt cart immediately
-        cart.setDeltaMovement(0.0D, motion.y, 0.0D);
-
-        // If locomotive or tunnel bore, shut down the engine
-        if (cart instanceof BasicLocomotiveEntity loco) {
-            loco.stopLocomotiveFromRail();
-        } else if (cart instanceof DieselLocomotiveEntity loco) {
-            loco.stopLocomotiveFromRail();
-        } else if (cart instanceof ElectricLocomotiveEntity loco) {
-            loco.stopLocomotiveFromRail();
-        } else if (cart instanceof TunnelBoreEntity bore) {
-            bore.setRunMode(TunnelBoreEntity.MODE_STOPPED);
-            bore.setActive(false);
-        }
+        // Stop the entire train consist immediately (all locomotives, tunnel bores, and rolling stock)
+        TrainChainingUtil.stopTrainConsist(cart);
 
         if (moving) {
             level.playSound(null, pos, SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.8F, 1.2F);
@@ -192,10 +202,7 @@ public class BufferStopBlock extends Block {
         List<AbstractMinecart> carts = level.getEntitiesOfClass(AbstractMinecart.class, searchBox);
         if (!carts.isEmpty()) {
             for (AbstractMinecart cart : carts) {
-                Vec3 motion = cart.getDeltaMovement();
-                if (motion.horizontalDistanceSqr() > 1.0E-4D) {
-                    cart.setDeltaMovement(0.0D, motion.y, 0.0D);
-                }
+                TrainChainingUtil.stopTrainConsist(cart);
             }
             if (!state.getValue(POWERED)) {
                 level.setBlock(pos, state.setValue(POWERED, true), 3);

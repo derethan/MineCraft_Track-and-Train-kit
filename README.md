@@ -260,8 +260,8 @@ A stationary, heavy-duty chunk loader block for mines, quarries, mob farms, and 
 A heavy-duty end-of-track railway barrier modeled after authentic industrial buffer stops:
 * **True Rail Clamping**: Dual A-frame structural steel legs clamp onto incoming tracks at standard rail gauge.
 * **Heavy Timber Bumper & Pads**: Massive rustic creosote beam with metal end straps, dual vulcanized rubber impact bumper pads, and a red/white reflective center warning plate.
-* **Safe Physical Halting**: Stops incoming minecarts, freight cars, and locomotives immediately on contact with zero clipping and zero bouncy derailing.
-* **Engine Auto-Shutdown**: When struck by a running locomotive or tunnel bore, it safely cuts throttle and stops the engine while emitting an authentic impact clatter and spark particles.
+* **Safe Physical Halting & Anti-Bunching**: Stops incoming minecarts, freight cars, and locomotives immediately on contact with zero clipping, zero bouncy derailing, and zero bunching/telescoping even when pushed from the rear by a locomotive.
+* **Full Consist Auto-Shutdown**: When struck by any cart in a train or by a running locomotive or tunnel bore, it safely cuts throttle and stops all engines across the consist while emitting an authentic impact clatter and spark particles.
 * **Terminal Redstone Detection**: Emits a continuous redstone signal (strength 15) while a train or cart is resting against the buffer, perfect for terminal station automation and signaling.
 * **Crowbar Reorient**: Right-click or Sneak+Right-Click with the Railroad Crowbar to quickly rotate facing direction.
 
@@ -270,7 +270,7 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 ## 🛤️ Specialty Switch & Power Rails
 
 * **Braking / Holding Rail**: Clamps and freezes passing or resting carts and locomotives when unpowered (zero velocity). Releases brakes and gives a launch impulse when powered.
-* **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts cross over perpendicularly without turning or derailing.
+* **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts and pushed/pulled train consists cross over perpendicularly without turning or derailing, maintaining momentum and approach heading straight through the intersection.
 * **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades. Sneak + Right-click rotates facing clockwise (and cycles branch after full rotation); right-click with Railroad Crowbar toggles left/right divergent branch.
 * **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication, full 3-way directional routing (straight mainline pass-through alongside active branch routing), and dynamic top mainline rail completion for seamless straight-through traffic in both switch states.
 * **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
@@ -348,6 +348,11 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.11**:
+  - **Railway Buffer Stop Collision & Consist-Wide Stopping**: Buffer Stops now stop the entire train consist whenever any minecart (pushed freight car, lead car, trailing car, or locomotive) hits the buffer stop, immediately cutting engine throttles, stopping tunnel bores, zeroing velocities, and powering terminal redstone.
+  - **Anti-Bunching & Obstacle Collision Fix When Pushing**: Resolved an issue where pushing a train from the opposite end into an immovable object (buffer stops, stone walls, dead ends) caused cars to telescope and get tangled. Implemented obstacle collision detection in `TrainChainingUtil` with instant tick rollback that preserves uncompressed cart spacing and shuts down all locomotives across the consist.
+* **v1.1.10**:
+  - **Junction Rail (Cross Track) Pushing & Travel Direction Fix**: Fixed inverted yaw angle logic on Junction Rails and implemented multi-stage approach direction detection (active velocity, previous tick movement, approach vector relative to junction center, and consist coupling alignment). Updated `TrainChainingUtil` so trains pushed from the rear by a locomotive maintain their forward travel heading across cross intersections instead of veering sideways.
 * **v1.1.9**:
   - **Pipe Connectivity for Trackside Cargo & Coal Loaders**: Registered item handler capabilities (`Capabilities.Item.BLOCK`) across Trackside Cargo Loaders, Trackside Cargo Unloaders, and Locomotive Coaling Stations, enabling seamless item pipe connections and automation with mods like Pipez, Mekanism, Thermal, and LaserIO.
   - **Entity Automation Capabilities**: Registered `Capabilities.Item.ENTITY` and `Capabilities.Item.ENTITY_AUTOMATION` on freight carts and locomotives for complete modded automation interoperability.
@@ -439,5 +444,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.9.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.11.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

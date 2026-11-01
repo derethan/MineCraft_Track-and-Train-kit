@@ -774,12 +774,19 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
             this.setDeltaMovement(actualMovement);
 
-            boolean hitObstacle = pathBlocked;
+            boolean hitObstacle = pathBlocked || (this.horizontalCollision && actualHoriz < maxSpeed * 0.5D);
             if (hitObstacle) {
-                this.setRunning(false);
-                this.setActive(false);
-                this.setDeltaMovement(Vec3.ZERO);
+                this.setPos(initialX, initialY, initialZ);
+                Vec3 rPos = this.getRailPos(initialX, initialY, initialZ);
+                if (rPos != null) {
+                    this.setPos(rPos.x, rPos.y, rPos.z);
+                }
+                TrainChainingUtil.stopTrainConsist(this);
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.8F, 1.0F);
+
+                Direction moveDir = this.getTravelDirection();
+                BlockPos ahead = railPos.relative(moveDir);
+                TrainChainingUtil.checkAndTriggerBufferStop(this, railPos, ahead);
             } else {
                 Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
                 Direction targetFacing = this.isReversed() ? currentMoveDir.getOpposite() : currentMoveDir;
@@ -816,7 +823,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 this.setDeltaMovement(Vec3.ZERO);
             }
             if (onRails) {
-                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing(), this.getOrderedTrainLinks(), new HashMap<>(), this.getX(), this.getY(), this.getZ());
+                TrainChainingUtil.handleChainedCartsMovement(this, this.getFacing());
             }
         }
     }

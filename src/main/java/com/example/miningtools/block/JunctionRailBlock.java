@@ -1,8 +1,14 @@
 package com.example.miningtools.block;
 
+import java.util.UUID;
+
 import org.jspecify.annotations.Nullable;
 
+import com.example.miningtools.util.TrainChainingUtil;
+
 import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -66,19 +72,64 @@ public class JunctionRailBlock extends BaseRailBlock {
     @Override
     public RailShape getRailDirection(BlockState state, BlockGetter level, BlockPos pos, @Nullable AbstractMinecart cart) {
         if (cart != null) {
+            // 1. Check cart's active velocity vector
             Vec3 movement = cart.getDeltaMovement();
-            double dx = Math.abs(movement.x);
-            double dz = Math.abs(movement.z);
-            if (dx > 1.0E-4 || dz > 1.0E-4) {
-                return dx > dz ? RailShape.EAST_WEST : RailShape.NORTH_SOUTH;
+            double absVx = Math.abs(movement.x);
+            double absVz = Math.abs(movement.z);
+            if (absVx > 1.0E-4D || absVz > 1.0E-4D) {
+                if (absVx > absVz * 1.05D) {
+                    return RailShape.EAST_WEST;
+                }
+                if (absVz > absVx * 1.05D) {
+                    return RailShape.NORTH_SOUTH;
+                }
             }
 
-            // Fallback to cart yaw angle (matching Railcraft's TrackKitJunction behavior)
-            float yaw = cart.getYRot() % 180.0F;
-            if (yaw < 0.0F) {
-                yaw += 180.0F;
+            // 2. Check position change since previous tick (direction of travel the cart came from)
+            double histDx = Math.abs(cart.getX() - cart.xo);
+            double histDz = Math.abs(cart.getZ() - cart.zo);
+            if (histDx > 1.0E-4D || histDz > 1.0E-4D) {
+                if (histDx > histDz * 1.05D) {
+                    return RailShape.EAST_WEST;
+                }
+                if (histDz > histDx * 1.05D) {
+                    return RailShape.NORTH_SOUTH;
+                }
             }
-            if (yaw >= 45.0F && yaw <= 135.0F) {
+
+            // 3. Check approach position relative to the junction center
+            double relX = Math.abs(cart.getX() - (pos.getX() + 0.5D));
+            double relZ = Math.abs(cart.getZ() - (pos.getZ() + 0.5D));
+            if (Math.abs(relX - relZ) > 0.05D) {
+                return relX > relZ ? RailShape.EAST_WEST : RailShape.NORTH_SOUTH;
+            }
+
+            // 4. Check chained train consist alignment if coupled
+            UUID parentId = TrainChainingUtil.getCartParentUUID(cart);
+            UUID childId = TrainChainingUtil.getCartChildUUID(cart);
+            if (level instanceof Level lvl) {
+                Entity neighbor = null;
+                if (parentId != null) {
+                    neighbor = lvl.getEntity(parentId);
+                }
+                if (neighbor == null && childId != null) {
+                    neighbor = lvl.getEntity(childId);
+                }
+                if (neighbor != null) {
+                    double nDx = Math.abs(cart.getX() - neighbor.getX());
+                    double nDz = Math.abs(cart.getZ() - neighbor.getZ());
+                    if (nDx > 1.0E-4D || nDz > 1.0E-4D) {
+                        return nDx > nDz ? RailShape.EAST_WEST : RailShape.NORTH_SOUTH;
+                    }
+                }
+            }
+
+            // 5. Check cart yaw orientation in Minecraft coordinates:
+            // South = 0 deg, North = 180/-180 deg (North-South axis: abs(yaw) <= 45 or abs(yaw) >= 135)
+            // East = -90/270 deg, West = 90 deg (East-West axis: 45 < abs(yaw) < 135)
+            float yaw = Mth.wrapDegrees(cart.getYRot());
+            float absYaw = Math.abs(yaw);
+            if (absYaw <= 45.0F || absYaw >= 135.0F) {
                 return RailShape.NORTH_SOUTH;
             }
             return RailShape.EAST_WEST;

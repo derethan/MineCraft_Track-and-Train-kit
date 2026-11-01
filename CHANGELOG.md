@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.11] - 2026-11-01
+
+### Fixed
+- **Railway Buffer Stop Collision & Consist-Wide Emergency Stopping**:
+  - Buffer Stops now safely shut down and stop the entire train consist whenever any car (whether a pushed freight cart, lead car, trailing car, or locomotive) impacts or contacts the buffer stop.
+  - Calling `TrainChainingUtil.stopTrainConsist` traverses all connected parent and child carts in the consist, halting delta movements to zero, shutting down all locomotives (`BasicLocomotiveEntity`, `DieselLocomotiveEntity`, and `ElectricLocomotiveEntity`) with `stopLocomotiveFromRail()`, and stopping all active `TunnelBoreEntity` units.
+  - Updated the physical collision shape of `BufferStopBlock` to be recessed 2 pixels on its facing direction. Incoming minecarts now reliably intersect the buffer stop block volume upon impact with the timber pads, immediately triggering Minecraft's `entityInside` callback, impact clatter audio, spark particles, and powering terminal redstone (signal strength 15).
+  - Added `onPlace` neighbor scanning to ensure buffer stops placed adjacent to resting trains immediately detect the train and emit redstone.
+- **Train Consist Anti-Bunching & Obstacle Collision Handling When Pushing**:
+  - Fixed an issue where pushing a train consist from the rear into an immovable object (buffer stops, stone walls, dead ends, or solid obstacles) caused the lead carts to stop while the rear locomotive kept pushing, causing all carts to telescope, compress, bunch up, and get tangled.
+  - Updated `TrainChainingUtil.moveConsistCartAlongRails` to detect horizontal collision (`cart.horizontalCollision`) and lack of progress against obstacles, returning `false` rather than ignoring the obstruction.
+  - Implemented consist-wide rollback in `TrainChainingUtil.handleChainedCartsMovement`: when any cart in a pushed or pulled consist encounters an immovable obstacle, all moved carts in the consist and the locomotive are instantly reverted back to their uncompressed pre-tick positions, zeroing velocities and shutting down all engines without any bunching or tangling.
+  - Updated `pushCartFromLocomotiveBumper` and `pushEntitiesInLocomotivePath` to immediately halt the pushing locomotive when unlinked carts ahead encounter an immovable obstacle or buffer stop.
+
+---
+
+## [1.1.10] - 2026-11-01
+
+### Fixed
+- **Junction Rail (Cross Track) Consist Pushing & Direction Alignment**:
+  - Fixed an inverted yaw angle calculation on `JunctionRailBlock` that caused minecarts facing North or South to evaluate as `EAST_WEST` when their delta movement was zero.
+  - Implemented multi-stage approach direction detection for Junction Rails: prioritizes active velocity, previous tick movement (`xo`/`zo`), approach vector relative to the junction center, and chained consist neighbor coupling alignment before falling back to corrected Minecraft yaw.
+  - Updated train consist movement in `TrainChainingUtil` (`traceRailLink` and `moveConsistCartAlongRails`) to respect the train's actual push/pull travel direction (`dirX`/`dirZ`) when traversing Junction Rails, ensuring trains pushed from the rear continue straight through cross intersections.
+  - Expanded `findRailPath` to search all four exit directions across Junction Rails.
+
+---
+
 ## [1.1.9] - 2026-10-31
 
 ### Fixed
