@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.13] - 2026-11-01
+
+### Fixed
+- **Track Layer Cart Position Snapping on Work Mode Switch**:
+  - Fixed a position desynchronization bug where moving the Track Layer Cart forward in Transport/Off mode (`WORK_MODE_OFF`) and then switching back to Laying Mode (`WORK_MODE_LAY`) or Removing Mode snapped the cart backward to the location where work mode was originally disengaged.
+  - `setWorkMode`, `setRunMode`, and `tick` now actively track and synchronize `currentRailPos` to the cart's actual current rail position (`getCurrentBlockPosOrRailBelow`) during non-work travel and upon mode switching.
+  - Automatically clears stale stepping state (`isStepMoving`, `targetRailPos`, and `stepTicks`) whenever work mode changes or when the cart's current rail position diverges from its previous step origin.
+
+---
+
 ## [1.1.12] - 2026-11-01
 
 ### Fixed

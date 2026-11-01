@@ -172,7 +172,15 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
     }
 
     public void setWorkMode(int mode) {
+        int oldMode = this.getWorkMode();
         this.entityData.set(DATA_WORK_MODE, mode);
+        if (oldMode != mode) {
+            this.isStepMoving = false;
+            this.targetRailPos = null;
+            this.stepTicks = 0;
+            this.currentRailPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+            this.setXRot(0.0F);
+        }
     }
 
     public boolean isWorkMode() {
@@ -188,7 +196,11 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
         this.setActive(mode != RUN_MODE_STOPPED);
         if (mode == RUN_MODE_STOPPED) {
             this.isStepMoving = false;
+            this.targetRailPos = null;
+            this.stepTicks = 0;
+            this.currentRailPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
             this.setDeltaMovement(Vec3.ZERO);
+            this.setXRot(0.0F);
         }
     }
 
@@ -293,6 +305,12 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
 
         // When Work Mode is OFF: act as normal minecart, but respect driver propulsion
         if (!this.isWorkMode()) {
+            this.isStepMoving = false;
+            this.targetRailPos = null;
+            this.stepTicks = 0;
+            this.currentRailPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+            this.setXRot(0.0F);
+
             if (this.getRunMode() != RUN_MODE_STOPPED) {
                 boolean isRev = (this.getRunMode() == RUN_MODE_REVERSE);
                 Direction dir = isRev ? this.getFacing().getOpposite() : this.getFacing();
@@ -394,18 +412,28 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
     private void tickWorkModeMovement() {
         if (this.getRunMode() == RUN_MODE_STOPPED) {
             this.isStepMoving = false;
+            this.targetRailPos = null;
+            this.stepTicks = 0;
+            this.currentRailPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
             this.setDeltaMovement(Vec3.ZERO);
+            this.setXRot(0.0F);
             TrainChainingUtil.tickConsistMovement(this);
             return;
+        }
+
+        BlockPos actualRail = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+        if (this.currentRailPos == null || !isRailAt(this.currentRailPos) || this.currentRailPos.distSqr(actualRail) > 2) {
+            this.isStepMoving = false;
+            this.targetRailPos = null;
+            this.stepTicks = 0;
+            this.currentRailPos = actualRail;
         }
 
         boolean isReversing = (this.getRunMode() == RUN_MODE_REVERSE);
         Direction travelDir = isReversing ? this.getFacing().getOpposite() : this.getFacing();
 
         if (!this.isStepMoving) {
-            if (this.currentRailPos == null || !isRailAt(this.currentRailPos)) {
-                this.currentRailPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
-            }
+            this.currentRailPos = actualRail;
 
             BlockPos forwardPos = this.currentRailPos.relative(travelDir);
 
@@ -772,5 +800,9 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
         this.setRunMode(input.getIntOr("RunMode", RUN_MODE_STOPPED));
         this.setActive(input.getBooleanOr("Active", false));
         this.setTrainName(input.getStringOr("TrainName", ""));
+        this.currentRailPos = null;
+        this.targetRailPos = null;
+        this.isStepMoving = false;
+        this.stepTicks = 0;
     }
 }
