@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.9] - 2026-10-31
+
+### Fixed
+- **Pipe Connectivity for Trackside Cargo & Coal Loaders**:
+  - Registered `Capabilities.Item.BLOCK` on the Trackside Cargo Loader (`cargo_loader`), Trackside Cargo Unloader (`cargo_unloader`), and Locomotive Coaling Station (`coal_fueler`) block entity. Modded item pipes, conduits, and logistic automation systems (such as Pipez, Mekanism, Thermal, and LaserIO) can now directly connect to and transfer items through any accessible face.
+  - Sided and directional capability handling respects station role filters: Cargo Loaders accept valid filtered freight items, Cargo Unloaders allow external pipe extraction, and Locomotive Coaling Stations accept valid coal and furnace fuels while preventing unintended fuel drainage.
+  - Implemented automatic capability-based transfer for push and pull interactions with containers, pipes, and modded inventories placed directly beneath cargo stations.
+  - Registered `Capabilities.Item.ENTITY` and `Capabilities.Item.ENTITY_AUTOMATION` across container minecarts and locomotives (`cargo_minecart`, `hopper_cart`, `basic_locomotive`, `tunnel_bore`, `track_paver`, `track_layer_cart`, and `turret_cart`), enabling direct item handler interaction from external automation.
+
+---
+
 ## [1.1.8] - 2026-10-31
 
 ### Added

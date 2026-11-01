@@ -130,6 +130,7 @@ import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.transfer.item.VanillaContainerWrapper;
 
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.network.TrainLinkSyncPayload;
@@ -812,6 +813,11 @@ public class MiningTools {
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(
+                Capabilities.Item.BLOCK,
+                CARGO_TRANSFER_BLOCK_ENTITY.get(),
+                (be, side) -> be.getItemHandler(side)
+        );
+        event.registerBlockEntity(
                 Capabilities.Fluid.BLOCK,
                 FLUID_LOADER_BLOCK_ENTITY.get(),
                 (be, side) -> be.getFluidHandler(side)
@@ -825,6 +831,76 @@ public class MiningTools {
                 Capabilities.Fluid.ENTITY,
                 LARGE_LIQUID_MINECART_ENTITY.get(),
                 (entity, side) -> entity.getFluidHandler()
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                CARGO_MINECART_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                CARGO_MINECART_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                HOPPER_CART_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                HOPPER_CART_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                BASIC_LOCOMOTIVE_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                BASIC_LOCOMOTIVE_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                TUNNEL_BORE_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                TUNNEL_BORE_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                TRACK_PAVER_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                TRACK_PAVER_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                TRACK_LAYER_CART_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                TRACK_LAYER_CART_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                TURRET_CART_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                TURRET_CART_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
         );
         event.registerBlockEntity(
                 Capabilities.Energy.BLOCK,

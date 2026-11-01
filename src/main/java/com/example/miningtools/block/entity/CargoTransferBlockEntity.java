@@ -1,7 +1,9 @@
 package com.example.miningtools.block.entity;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 
@@ -43,6 +45,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
+import net.neoforged.neoforge.transfer.item.ItemResource;
+import net.neoforged.neoforge.transfer.item.WorldlyContainerWrapper;
 
 public class CargoTransferBlockEntity extends BlockEntity implements MenuProvider, WorldlyContainer {
     public static final int BUFFER_SIZE = 9;
@@ -216,6 +223,19 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     public void setCartBlacklist(String val) {
         this.cartBlacklist = val != null ? val.trim() : "";
         this.setChanged();
+    }
+
+    private final Map<Direction, ResourceHandler<ItemResource>> itemHandlers = new EnumMap<>(Direction.class);
+    private @Nullable ResourceHandler<ItemResource> nullSideItemHandler;
+
+    public ResourceHandler<ItemResource> getItemHandler(@Nullable Direction side) {
+        if (side == null) {
+            if (this.nullSideItemHandler == null) {
+                this.nullSideItemHandler = new WorldlyContainerWrapper(this, null);
+            }
+            return this.nullSideItemHandler;
+        }
+        return this.itemHandlers.computeIfAbsent(side, s -> new WorldlyContainerWrapper(this, s));
     }
 
     public NonNullList<ItemStack> getItems() {
@@ -661,6 +681,18 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     }
 
     private void tryPushBufferToNeighbor(Level level, BlockPos targetPos) {
+        var cap = level.getCapability(Capabilities.Item.BLOCK, targetPos, Direction.UP);
+        if (cap != null) {
+            ResourceHandlerUtil.moveStacking(
+                    this.getItemHandler(Direction.DOWN),
+                    cap,
+                    res -> true,
+                    4,
+                    null
+            );
+            return;
+        }
+
         BlockEntity neighborBe = level.getBlockEntity(targetPos);
         if (neighborBe instanceof Container neighborContainer) {
             int limit = neighborContainer.getContainerSize();
@@ -681,6 +713,18 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     }
 
     private void tryPullNeighborToBuffer(Level level, BlockPos sourcePos) {
+        var cap = level.getCapability(Capabilities.Item.BLOCK, sourcePos, Direction.UP);
+        if (cap != null) {
+            ResourceHandlerUtil.moveStacking(
+                    cap,
+                    this.getItemHandler(Direction.DOWN),
+                    res -> this.matchesItemFilter(res.toStack(1)),
+                    4,
+                    null
+            );
+            return;
+        }
+
         BlockEntity neighborBe = level.getBlockEntity(sourcePos);
         if (neighborBe instanceof Container neighborContainer) {
             int limit = neighborContainer.getContainerSize();
@@ -753,6 +797,11 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     @Override
     public int[] getSlotsForFace(Direction side) {
         return SLOTS;
+    }
+
+    @Override
+    public boolean canPlaceItem(int slot, ItemStack stack) {
+        return this.matchesItemFilter(stack);
     }
 
     @Override

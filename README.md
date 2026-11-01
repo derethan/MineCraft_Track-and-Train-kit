@@ -216,16 +216,16 @@ A compact, rugged, industrial 1-block machine built with a custom monolithic 3D 
 
 ### Trackside Cargo Loader & Unloader
 Placed directly underneath tracks to automate solid freight transfer:
-* **Cargo Loader (`cargo_loader`)**: Automatically loads items from its 9-slot internal buffer into passing Cargo Minecarts and Hopper Cars.
-* **Cargo Unloader (`cargo_unloader`)**: Empties items from passing freight carts into its internal buffer for piping or hopper extraction.
+* **Cargo Loader (`cargo_loader`)**: Automatically loads items from its 9-slot internal buffer into passing Cargo Minecarts and Hopper Cars. Fully connects with modded item pipes, hoppers, and automated logistics.
+* **Cargo Unloader (`cargo_unloader`)**: Empties items from passing freight carts into its internal buffer for item pipe, conduit, or hopper extraction.
 * **Advanced Filtering**: Features an Item Filter slot with **Whitelist / Blacklist** toggles and a custom Train/Cart Name filter.
 * **Threshold Control**: Configurable to hold carts until **100% Full / Empty** or allow partial transfers.
 * **Braking Rail Synergy**: Automatically depowers overhead Braking Rails to hold the cart stationary until transfer is complete!
 
 ### Dedicated Locomotive Fuelers (Fuel Isolation)
 Specialized trackside fueling stations that separate locomotive refueling from freight logistics:
-* **Diesel Locomotive Fueler (`diesel_fueler`)**: Exclusively pumps diesel/biofuel into Diesel Locomotives. Will never fill general cargo liquid tankers.
-* **Steam Locomotive Coal Fueler (`coal_fueler`)**: Exclusively feeds coal and furnace fuel into Steam Locomotives. Will never deposit coal into freight carts.
+* **Diesel Locomotive Fueler (`diesel_fueler`)**: Exclusively pumps diesel/biofuel into Diesel Locomotives. Connects with fluid pipes, buckets, and canisters. Will never fill general cargo liquid tankers.
+* **Steam Locomotive Coal Fueler (`coal_fueler`)**: Exclusively feeds coal and furnace fuel into Steam Locomotives. Connects with item pipes and hoppers for automatic coal delivery. Will never deposit coal into freight carts.
 * **Fuel Protection**: Standard cargo and fluid stations strictly ignore locomotive operational fuel tanks, preventing freight depots from draining locomotive fuel.
 
 ### Trackside Fluid Loader & Unloader
@@ -348,6 +348,9 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.9**:
+  - **Pipe Connectivity for Trackside Cargo & Coal Loaders**: Registered item handler capabilities (`Capabilities.Item.BLOCK`) across Trackside Cargo Loaders, Trackside Cargo Unloaders, and Locomotive Coaling Stations, enabling seamless item pipe connections and automation with mods like Pipez, Mekanism, Thermal, and LaserIO.
+  - **Entity Automation Capabilities**: Registered `Capabilities.Item.ENTITY` and `Capabilities.Item.ENTITY_AUTOMATION` on freight carts and locomotives for complete modded automation interoperability.
 * **v1.1.8**:
   - **Wye Rail Model & Gap Fix**: Added the missing top straight rail segment dynamically to both Wye switch modes (`wye_rail_right` and `wye_rail_left`), ensuring the continuous straight mainline path is complete and visually seamless in both switch states.
   - **Turnout Track Rotation**: Sneak + Right-click now rotates the Turnout Rail clockwise (matching Wye Rail behavior). Full 360° rotation cycles branch direction, allowing full configuration with bare hands.
@@ -436,5 +439,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.8.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.9.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
