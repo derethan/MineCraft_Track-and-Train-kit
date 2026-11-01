@@ -988,6 +988,25 @@ public final class TrainChainingUtil {
         return loco.getMotionDirection();
     }
 
+    public static @Nullable Direction getConsistTravelDirection(AbstractMinecart cart) {
+        if (cart == null) return null;
+        if (cart instanceof BasicLocomotiveEntity || cart instanceof DieselLocomotiveEntity || cart instanceof ElectricLocomotiveEntity) {
+            return getLocomotiveTravelDirection(cart);
+        }
+        List<AbstractMinecart> consist = getConnectedConsist(cart);
+        for (AbstractMinecart c : consist) {
+            if (c instanceof BasicLocomotiveEntity bl && bl.isRunning()) return bl.getTravelDirection();
+            if (c instanceof DieselLocomotiveEntity dl && dl.isRunning()) return dl.getTravelDirection();
+            if (c instanceof ElectricLocomotiveEntity el && el.isRunning()) return el.getTravelDirection();
+        }
+        for (AbstractMinecart c : consist) {
+            if (c instanceof BasicLocomotiveEntity || c instanceof DieselLocomotiveEntity || c instanceof ElectricLocomotiveEntity) {
+                return getLocomotiveTravelDirection(c);
+            }
+        }
+        return cart.getMotionDirection();
+    }
+
     public static void stopLocomotive(AbstractMinecart loco) {
         stopTrainConsist(loco);
     }
@@ -1025,11 +1044,14 @@ public final class TrainChainingUtil {
     }
 
     /**
-     * Checks if the cart is adjacent to or contacting a BufferStopBlock, and triggers its collision handler.
+     * Checks if the cart is moving towards and contacting/approaching a BufferStopBlock, and triggers its collision handler.
      */
-    public static boolean checkAndTriggerBufferStop(AbstractMinecart cart, BlockPos railPos, BlockPos aheadPos) {
+    public static boolean checkAndTriggerBufferStop(AbstractMinecart cart, BlockPos railPos, double dirX, double dirZ) {
         if (cart == null || cart.level() == null) return false;
         Level level = cart.level();
+
+        Direction moveFacing = Direction.getApproximateNearest(dirX, 0.0, dirZ);
+        BlockPos aheadPos = railPos.relative(moveFacing);
 
         BlockPos[] candidates = {
             aheadPos,
@@ -1043,11 +1065,20 @@ public final class TrainChainingUtil {
         for (BlockPos p : candidates) {
             BlockState s = level.getBlockState(p);
             if (s.getBlock() instanceof BufferStopBlock) {
-                BufferStopBlock.handleCartCollision(s, level, p, cart);
-                return true;
+                Direction bufferFacing = s.getValue(BufferStopBlock.FACING);
+                double dot = dirX * bufferFacing.getStepX() + dirZ * bufferFacing.getStepZ();
+                // dot < -0.05D means cart is moving INTO the buffer stop (opposite to buffer's outward facing)
+                if (dot < -0.05D) {
+                    BufferStopBlock.handleCartCollision(s, level, p, cart);
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    public static boolean checkAndTriggerBufferStop(AbstractMinecart cart, BlockPos railPos, Direction moveDir) {
+        return checkAndTriggerBufferStop(cart, railPos, moveDir.getStepX(), moveDir.getStepZ());
     }
 
     private static final Map<UUID, Long> CONSIST_TICK_MAP = new HashMap<>();
@@ -2110,12 +2141,9 @@ public final class TrainChainingUtil {
 
         // Detect if cart movement was blocked by an obstacle, buffer stop, or collision
         boolean collisionBlocked = offRails
-                || (cart.horizontalCollision && actualHoriz < horizStep * 0.7D)
-                || (horizStep > 0.02D && actualHoriz < 0.005D);
+                || (cart.horizontalCollision && actualHoriz < horizStep * 0.7D);
 
-        Direction moveFacing = Direction.getApproximateNearest(dirX, 0.0, dirZ);
-        BlockPos aheadPos = railPos.relative(moveFacing);
-        boolean hitBuffer = checkAndTriggerBufferStop(cart, railPos, aheadPos);
+        boolean hitBuffer = checkAndTriggerBufferStop(cart, railPos, dirX, dirZ);
 
         if (collisionBlocked || hitBuffer) {
             cart.setDeltaMovement(Vec3.ZERO);

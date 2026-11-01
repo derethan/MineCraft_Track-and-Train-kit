@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.12] - 2026-11-01
+
+### Fixed
+- **Smooth Train Departure from Railway Buffer Stops**:
+  - Implemented directional motion and consist travel detection (`isCartMovingAway`) on `BufferStopBlock` and `TrainChainingUtil.checkAndTriggerBufferStop`. Trains resting at or against a buffer stop can now smoothly power up and drive away into the station without repeatedly shutting down or inching.
+  - Resolved an issue in `BufferStopBlock.tick` where periodic 10-tick terminal scans unconditionally invoked `stopTrainConsist` on resting minecarts, repeatedly killing engine throttle while attempting to pull away.
+  - Updated `stepOn`, `entityInside`, `checkAdjacentCarts`, and `checkAndTriggerBufferStop` to only trigger emergency halting when carts are moving *into* the buffer stop (`dot < -0.05D`), completely bypassing collision stops when moving in the departure direction.
+  - Removed an overly aggressive distance check in `TrainChainingUtil.moveConsistCartAlongRails` that could falsely flag startup acceleration as a collision blockage.
+
+---
+
 ## [1.1.11] - 2026-11-01
 
 ### Fixed

@@ -785,8 +785,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.8F, 1.0F);
 
                 Direction moveDir = this.getTravelDirection();
-                BlockPos ahead = railPos.relative(moveDir);
-                TrainChainingUtil.checkAndTriggerBufferStop(this, railPos, ahead);
+                TrainChainingUtil.checkAndTriggerBufferStop(this, railPos, moveDir);
             } else {
                 Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
                 Direction targetFacing = this.isReversed() ? currentMoveDir.getOpposite() : currentMoveDir;

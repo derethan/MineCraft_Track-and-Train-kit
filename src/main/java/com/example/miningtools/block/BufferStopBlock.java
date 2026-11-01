@@ -89,7 +89,7 @@ public class BufferStopBlock extends Block {
 
     @Override
     public void stepOn(Level level, BlockPos pos, BlockState state, Entity entity) {
-        if (entity instanceof AbstractMinecart cart) {
+        if (entity instanceof AbstractMinecart cart && !isCartMovingAway(state, cart)) {
             handleCartCollision(state, level, pos, cart);
         }
         super.stepOn(level, pos, state, entity);
@@ -97,7 +97,7 @@ public class BufferStopBlock extends Block {
 
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity, InsideBlockEffectApplier effectApplier, boolean isPrecise) {
-        if (entity instanceof AbstractMinecart cart) {
+        if (entity instanceof AbstractMinecart cart && !isCartMovingAway(state, cart)) {
             handleCartCollision(state, level, pos, cart);
         }
     }
@@ -150,7 +150,38 @@ public class BufferStopBlock extends Block {
         return super.useWithoutItem(state, level, pos, player, hitResult);
     }
 
+    public static boolean isCartMovingAway(BlockState state, AbstractMinecart cart) {
+        Direction facing = state.getValue(FACING);
+        Vec3 motion = cart.getDeltaMovement();
+        double dot = motion.x * facing.getStepX() + motion.z * facing.getStepZ();
+        if (dot > 0.005D) {
+            return true;
+        }
+
+        if (cart instanceof BasicLocomotiveEntity loco && loco.isRunning()) {
+            Direction travelDir = loco.getTravelDirection();
+            if (travelDir == facing) return true;
+        } else if (cart instanceof DieselLocomotiveEntity loco && loco.isRunning()) {
+            Direction travelDir = loco.getTravelDirection();
+            if (travelDir == facing) return true;
+        } else if (cart instanceof ElectricLocomotiveEntity loco && loco.isRunning()) {
+            Direction travelDir = loco.getTravelDirection();
+            if (travelDir == facing) return true;
+        }
+
+        Direction consistDir = TrainChainingUtil.getConsistTravelDirection(cart);
+        if (consistDir == facing && TrainChainingUtil.isConsistWithLocomotive(cart)) {
+            return true;
+        }
+
+        return false;
+    }
+
     public static void handleCartCollision(BlockState state, Level level, BlockPos pos, AbstractMinecart cart) {
+        if (isCartMovingAway(state, cart)) {
+            return;
+        }
+
         Vec3 motion = cart.getDeltaMovement();
         boolean moving = motion.horizontalDistanceSqr() > 1.0E-4D
                 || TrainChainingUtil.isPartOfRunningTrain(cart)
@@ -187,7 +218,9 @@ public class BufferStopBlock extends Block {
         List<AbstractMinecart> carts = level.getEntitiesOfClass(AbstractMinecart.class, searchBox);
         if (!carts.isEmpty()) {
             for (AbstractMinecart cart : carts) {
-                handleCartCollision(state, level, pos, cart);
+                if (!isCartMovingAway(state, cart)) {
+                    handleCartCollision(state, level, pos, cart);
+                }
             }
         }
     }
@@ -202,7 +235,14 @@ public class BufferStopBlock extends Block {
         List<AbstractMinecart> carts = level.getEntitiesOfClass(AbstractMinecart.class, searchBox);
         if (!carts.isEmpty()) {
             for (AbstractMinecart cart : carts) {
-                TrainChainingUtil.stopTrainConsist(cart);
+                if (isCartMovingAway(state, cart)) {
+                    continue;
+                }
+                Vec3 motion = cart.getDeltaMovement();
+                double dot = motion.x * facing.getStepX() + motion.z * facing.getStepZ();
+                if (dot < -0.01D) {
+                    TrainChainingUtil.stopTrainConsist(cart);
+                }
             }
             if (!state.getValue(POWERED)) {
                 level.setBlock(pos, state.setValue(POWERED, true), 3);

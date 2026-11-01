@@ -261,7 +261,7 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 * **True Rail Clamping**: Dual A-frame structural steel legs clamp onto incoming tracks at standard rail gauge.
 * **Heavy Timber Bumper & Pads**: Massive rustic creosote beam with metal end straps, dual vulcanized rubber impact bumper pads, and a red/white reflective center warning plate.
 * **Safe Physical Halting & Anti-Bunching**: Stops incoming minecarts, freight cars, and locomotives immediately on contact with zero clipping, zero bouncy derailing, and zero bunching/telescoping even when pushed from the rear by a locomotive.
-* **Full Consist Auto-Shutdown**: When struck by any cart in a train or by a running locomotive or tunnel bore, it safely cuts throttle and stops all engines across the consist while emitting an authentic impact clatter and spark particles.
+* **Full Consist Auto-Shutdown & Smooth Departure**: When struck by any cart in a train or by a running locomotive or tunnel bore, it safely cuts throttle and stops all engines across the consist. Once stopped, trains can immediately engage departure throttle and pull away smoothly without false shutdowns or inching.
 * **Terminal Redstone Detection**: Emits a continuous redstone signal (strength 15) while a train or cart is resting against the buffer, perfect for terminal station automation and signaling.
 * **Crowbar Reorient**: Right-click or Sneak+Right-Click with the Railroad Crowbar to quickly rotate facing direction.
 
@@ -348,6 +348,8 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.12**:
+  - **Smooth Train Departure from Buffer Stops**: Resolved an issue where trains stopped at a buffer stop would repeatedly shut down or only inch forward when trying to drive away. Added directional motion and consist travel detection (`isCartMovingAway`) across `BufferStopBlock` and `TrainChainingUtil`, allowing trains to start up and pull away cleanly without triggering emergency stops.
 * **v1.1.11**:
   - **Railway Buffer Stop Collision & Consist-Wide Stopping**: Buffer Stops now stop the entire train consist whenever any minecart (pushed freight car, lead car, trailing car, or locomotive) hits the buffer stop, immediately cutting engine throttles, stopping tunnel bores, zeroing velocities, and powering terminal redstone.
   - **Anti-Bunching & Obstacle Collision Fix When Pushing**: Resolved an issue where pushing a train from the opposite end into an immovable object (buffer stops, stone walls, dead ends) caused cars to telescope and get tangled. Implemented obstacle collision detection in `TrainChainingUtil` with instant tick rollback that preserves uncompressed cart spacing and shuts down all locomotives across the consist.
@@ -445,5 +447,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.11.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.12.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

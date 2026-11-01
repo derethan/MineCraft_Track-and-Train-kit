@@ -717,8 +717,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
                 this.level().playSound(null, this.blockPosition(), SoundEvents.IRON_GOLEM_DAMAGE, SoundSource.BLOCKS, 0.6F, 1.4F);
 
                 Direction moveDir = this.getTravelDirection();
-                BlockPos ahead = railPos.relative(moveDir);
-                TrainChainingUtil.checkAndTriggerBufferStop(this, railPos, ahead);
+                TrainChainingUtil.checkAndTriggerBufferStop(this, railPos, moveDir);
             } else {
                 // Update facing only if track turned around a curve (orthogonal axis change)
                 Direction currentMoveDir = Direction.getApproximateNearest(actualDx, 0.0, actualDz);
