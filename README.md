@@ -219,8 +219,8 @@ Placed directly underneath tracks to automate solid freight transfer:
 * **Cargo Loader (`cargo_loader`)**: Automatically loads items from its 9-slot internal buffer into passing Cargo Minecarts and Hopper Cars. Fully connects with modded item pipes, hoppers, and automated logistics.
 * **Cargo Unloader (`cargo_unloader`)**: Empties items from passing freight carts into its internal buffer for item pipe, conduit, or hopper extraction.
 * **Advanced Filtering**: Features an Item Filter slot with **Whitelist / Blacklist** toggles and a custom Train/Cart Name filter.
-* **Threshold Control**: Configurable to hold carts until **100% Full / Empty** or allow partial transfers.
-* **Braking Rail Synergy**: Automatically depowers overhead Braking Rails to hold the cart stationary until transfer is complete!
+* **Threshold & Delay Control**: Configurable to hold carts until **100% Full / Empty**, allow partial transfers, and configure a post-transfer release delay (0s, 1s, 2s, 3s, 4s, 5s, 10s) to keep trains held while items trickle in from pipes before departing.
+* **Braking Rail Synergy & Single-Car Isolation**: Automatically depowers overhead Braking Rails to hold the cart stationary until transfer is complete! Precisely targets only the cart directly occupying the station rail, never accidentally loading or unloading adjacent coupled cars.
 
 ### Dedicated Locomotive Fuelers (Fuel Isolation)
 Specialized trackside fueling stations that separate locomotive refueling from freight logistics:
@@ -271,12 +271,12 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 
 * **Braking / Holding Rail**: Clamps and freezes passing or resting carts and locomotives when unpowered (zero velocity). Releases brakes and gives a launch impulse when powered.
 * **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts and pushed/pulled train consists cross over perpendicularly without turning or derailing, maintaining momentum and approach heading straight through the intersection.
-* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades. Sneak + Right-click rotates facing clockwise (and cycles branch after full rotation); right-click with Railroad Crowbar toggles left/right divergent branch.
+* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades. Sneak + Right-click immediately inverts between Left and Right divergent branches; right-click with Railroad Crowbar rotates track facing 90° clockwise.
 * **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication, full 3-way directional routing (straight mainline pass-through alongside active branch routing), and dynamic top mainline rail completion for seamless straight-through traffic in both switch states.
 * **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
 * **Locomotive Horn Rail**: Pressure-sensitive rail that triggers locomotive whistles and horns (ideal for level crossings and tunnel entrances).
 * **Coupler Rail**: Toggleable specialty track that automatically couples or uncouples locomotives and rolling stock carts upon arrival, with single-trigger trip protection.
-* **Speed Control Rail**: Specialty track with an interactive configuration GUI to set locomotive speed/gears (0 = Stop, 1–5 = Forward/Reverse gears), direction modes, and selective train name filtering.
+* **Speed Control Rail**: Specialty track with an interactive configuration GUI to set locomotive speed/gears (0 = Stop, 1–5 = Forward/Reverse gears), direction modes (Keep, Force Forward, Force Reverse, or Invert/Switch coming direction), and selective train name filtering. Only activates when a locomotive touches the rail, ignoring other carts in a consist.
 * **Electric Rail**: Conductive third rail that transmits Forge Energy (FE) along your network to charge Electric Locomotives on the fly.
 
 ---
@@ -348,6 +348,14 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.19**:
+  - **Turnout Rail Sneak Invert Fix**: Sneak + Right-clicking a Turnout Rail with an empty hand (or crowbar) now immediately inverts the curve branch between Left and Right, allowing players to easily configure left-curving turnouts. Crowbar right-clicking rotates facing 90° clockwise.
+  - **Speed Control Rail Direction Invert**: Added a new "Direction: Invert / Switch" mode to the Speed Control Rail GUI that switches locomotive direction from whatever it entered at (reversing forward to reverse or vice versa).
+* **v1.1.18**:
+  - **Station Adjacent Car Isolation Fix**: Loaders and unloaders now strictly target only the cart centered directly over their rail block. When a caboose, locomotive, or passenger car sits on the station, neighboring coupled cars are completely ignored.
+  - **Configurable Train Release Delay**: Added an in-GUI Release Delay toggle (0s to 10s, default 3s) across cargo loaders, coaling stations, and fluid fuelers to hold trains until external pipes finish feeding items/fluids.
+* **v1.1.16**:
+  - **Speed Control Rail Locomotive-Only Activation**: Speed Control Rails now only activate when an actual locomotive directly touches the track. Other carts in a consist (freight cars, tank cars, chest carts, passenger cars, cabooses, etc.) are ignored when passing over the rail, preventing premature or unintended activations.
 * **v1.1.15**:
   - **Track Layer Cart Position Snapping Fix**: Resolved an issue where moving the Track Layer Cart forward in Transport/Off mode and switching back to Laying or Removing Mode snapped the cart backward to where work mode was originally disengaged. Rail positions are now continuously tracked during transport motion and synchronized upon mode switching.
 * **v1.1.12**:
@@ -448,5 +456,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.15.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.19.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

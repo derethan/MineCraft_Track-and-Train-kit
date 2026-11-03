@@ -134,16 +134,12 @@ public class TurnoutRailBlock extends BaseRailBlock {
         boolean powered = state.getValue(POWERED);
 
         if (player.isShiftKeyDown()) {
-            Direction newFacing = facing.getClockWise();
-            // Full 360 rotation wraps to NORTH and cycles branch for players configuring without a crowbar
-            if (newFacing == Direction.NORTH) {
-                curveLeft = !curveLeft;
-            }
-            RailShape newShape = calculateShape(newFacing, curveLeft, powered);
-            BlockState newState = state.setValue(FACING, newFacing).setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape);
+            curveLeft = !curveLeft;
+            RailShape newShape = calculateShape(facing, curveLeft, powered);
+            BlockState newState = state.setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape);
             level.setBlock(pos, newState, 3);
             level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5F, 1.2F);
-            player.sendOverlayMessage(Component.literal("Turnout Facing: " + newFacing.getName() + " (Branch: " + (curveLeft ? "Left" : "Right") + ")"));
+            player.sendOverlayMessage(Component.literal("Turnout Branch: " + (curveLeft ? "Left (Curve Left)" : "Right (Curve Right)")));
             return InteractionResult.SUCCESS;
         }
 
@@ -165,12 +161,22 @@ public class TurnoutRailBlock extends BaseRailBlock {
                 return InteractionResult.SUCCESS;
             }
             Direction facing = state.getValue(FACING);
-            boolean curveLeft = !state.getValue(CURVE_LEFT);
+            boolean curveLeft = state.getValue(CURVE_LEFT);
             boolean powered = state.getValue(POWERED);
-            RailShape newShape = calculateShape(facing, curveLeft, powered);
-            level.setBlock(pos, state.setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape), 3);
-            level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5F, 1.2F);
-            player.sendOverlayMessage(Component.literal("Turnout Branch: " + (curveLeft ? "Left" : "Right")));
+
+            if (player.isShiftKeyDown()) {
+                curveLeft = !curveLeft;
+                RailShape newShape = calculateShape(facing, curveLeft, powered);
+                level.setBlock(pos, state.setValue(CURVE_LEFT, curveLeft).setValue(SHAPE, newShape), 3);
+                level.playSound(null, pos, SoundEvents.DISPENSER_DISPENSE, SoundSource.BLOCKS, 0.5F, 1.2F);
+                player.sendOverlayMessage(Component.literal("Turnout Branch: " + (curveLeft ? "Left (Curve Left)" : "Right (Curve Right)")));
+            } else {
+                Direction newFacing = facing.getClockWise();
+                RailShape newShape = calculateShape(newFacing, curveLeft, powered);
+                level.setBlock(pos, state.setValue(FACING, newFacing).setValue(SHAPE, newShape), 3);
+                level.playSound(null, pos, SoundEvents.ARMOR_EQUIP_IRON.value(), SoundSource.BLOCKS, 0.8F, 1.2F);
+                player.sendOverlayMessage(Component.literal("Rotated Turnout to face " + newFacing.getName().toUpperCase()));
+            }
             return InteractionResult.SUCCESS;
         }
         return this.useWithoutItem(state, level, pos, player, hitResult);

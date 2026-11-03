@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class CargoTransferMenu extends AbstractContainerMenu {
     public static final int BUFFER_SIZE = CargoTransferBlockEntity.BUFFER_SIZE; // 9
-    public static final int DATA_COUNT = 9;
+    public static final int DATA_COUNT = 10;
 
     private final Container container;
     private final ContainerData data;
@@ -97,6 +97,10 @@ public class CargoTransferMenu extends AbstractContainerMenu {
         return this.data.get(8);
     }
 
+    public int getReleaseDelaySeconds() {
+        return this.data.get(9);
+    }
+
     public boolean isCoalFueler() {
         return this.getStationRole() == CargoTransferBlock.ROLE_COAL_FUELER;
     }
@@ -116,6 +120,19 @@ public class CargoTransferMenu extends AbstractContainerMenu {
                 next = CargoTransferBlockEntity.REDSTONE_WHEN_FULL;
             }
             this.data.set(3, next);
+            return true;
+        } else if (id == 2) {
+            int current = getReleaseDelaySeconds();
+            int next = switch (current) {
+                case 0 -> 1;
+                case 1 -> 2;
+                case 2 -> 3;
+                case 3 -> 4;
+                case 4 -> 5;
+                case 5 -> 10;
+                default -> 0;
+            };
+            this.data.set(9, next);
             return true;
         }
         return false;

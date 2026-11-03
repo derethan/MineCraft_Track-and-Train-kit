@@ -33,6 +33,7 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
     private boolean suppressResponder = false;
     private @Nullable Button modeButton;
     private @Nullable Button redstoneButton;
+    private @Nullable Button delayButton;
     private @Nullable EditBox itemWhiteBox;
     private @Nullable EditBox itemBlackBox;
     private @Nullable EditBox cartWhiteBox;
@@ -77,7 +78,7 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
                     }
-                }).bounds(xo + 66, yo + 17, 102, 16).build()
+                }).bounds(xo + 66, yo + 15, 102, 12).build()
         );
 
         // Redstone / Hold Mode Toggle Button (matches FluidLoaderScreen)
@@ -86,7 +87,16 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 1);
                     }
-                }).bounds(xo + 66, yo + 35, 102, 16).build()
+                }).bounds(xo + 66, yo + 28, 102, 12).build()
+        );
+
+        // Release Delay Toggle Button
+        this.delayButton = this.addRenderableWidget(
+                Button.builder(this.getDelayButtonLabel(), btn -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 2);
+                    }
+                }).bounds(xo + 66, yo + 41, 102, 12).build()
         );
 
         this.suppressResponder = true;
@@ -144,6 +154,15 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
         if (this.redstoneButton != null) {
             this.redstoneButton.setMessage(this.getRedstoneButtonLabel());
         }
+        if (this.delayButton != null) {
+            this.delayButton.setMessage(this.getDelayButtonLabel());
+        }
+    }
+
+    private Component getDelayButtonLabel() {
+        int delay = this.menu.getReleaseDelaySeconds();
+        return Component.literal(delay == 0 ? "Delay: None (0s)" : "Delay: " + delay + "s")
+                .withStyle(delay > 0 ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.GRAY);
     }
 
     private Component getModeButtonLabel() {

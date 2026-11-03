@@ -27,6 +27,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
@@ -79,6 +80,8 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     private int transferCooldown = 0;
     private @Nullable UUID releasedCartId = null;
     private int releaseGraceTicks = 0;
+    private int releaseDelaySeconds = 3; // Delay in seconds after transfer before releasing train
+    private int remainingDelayTicks = 0;
 
     // Synced status for GUI gauges & labels
     private int stationItemCount = 0;
@@ -100,6 +103,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
                 case 6 -> CargoTransferBlockEntity.this.cartDetected ? 1 : 0;
                 case 7 -> CargoTransferBlockEntity.this.holdingCart ? 1 : 0;
                 case 8 -> CargoTransferBlockEntity.this.getStationRole();
+                case 9 -> CargoTransferBlockEntity.this.getReleaseDelaySeconds();
                 default -> 0;
             };
         }
@@ -109,12 +113,13 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
             switch (index) {
                 case 2 -> CargoTransferBlockEntity.this.setTransferMode(value);
                 case 3 -> CargoTransferBlockEntity.this.setRedstoneMode(value);
+                case 9 -> CargoTransferBlockEntity.this.setReleaseDelaySeconds(value);
             }
         }
 
         @Override
         public int getCount() {
-            return 9;
+            return 10;
         }
     };
 
@@ -186,6 +191,15 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         } else {
             this.redstoneMode = Math.floorMod(mode, 4);
         }
+        this.setChanged();
+    }
+
+    public int getReleaseDelaySeconds() {
+        return this.releaseDelaySeconds;
+    }
+
+    public void setReleaseDelaySeconds(int seconds) {
+        this.releaseDelaySeconds = Mth.clamp(seconds, 0, 30);
         this.setChanged();
     }
 
@@ -368,36 +382,70 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         }
 
         BlockPos trackPos = pos.above();
-        AABB trackBox = new AABB(trackPos).inflate(1.1D, 0.65D, 1.1D);
+        AABB trackBox = new AABB(trackPos).inflate(0.35D, 0.65D, 0.35D);
         List<AbstractMinecart> carts = level.getEntitiesOfClass(
                 AbstractMinecart.class,
                 trackBox,
-                c -> {
-                    if (!c.isAlive() || c.isRemoved() || !(c instanceof Container)) {
-                        return false;
-                    }
-                    if (coalFueler) {
-                        // Dedicated Coaling Station ONLY targets coal-burning locomotives & tunnel bores!
-                        return (c instanceof BasicLocomotiveEntity) || (c instanceof TunnelBoreEntity);
-                    } else {
-                        // Freight Cargo Loader & Unloader NEVER touch any locomotive or tunnel bore!
-                        return !(c instanceof BasicLocomotiveEntity)
-                                && !(c instanceof DieselLocomotiveEntity)
-                                && !(c instanceof ElectricLocomotiveEntity)
-                                && !(c instanceof TunnelBoreEntity)
-                                && !(c instanceof MinecartFurnace);
-                    }
-                }
+                c -> c.isAlive() && !c.isRemoved()
         );
 
-        AbstractMinecart targetCart = null;
-        for (AbstractMinecart candidate : carts) {
-            if (be.releasedCartId != null && be.releasedCartId.equals(candidate.getUUID())) {
-                continue;
+        if (carts.isEmpty()) {
+            be.cartDetected = false;
+            be.holdingCart = false;
+            be.cartItemCount = 0;
+            be.cartItemCapacity = 0;
+            be.remainingDelayTicks = 0;
+            setRailPowerState(level, pos, state, true);
+            return;
+        }
+
+        // Find the cart closest to the center of the track above this loader
+        double cx = trackPos.getX() + 0.5D;
+        double cz = trackPos.getZ() + 0.5D;
+        AbstractMinecart closestCart = null;
+        double closestDistSq = Double.MAX_VALUE;
+        for (AbstractMinecart c : carts) {
+            double dx = c.getX() - cx;
+            double dz = c.getZ() - cz;
+            double dSq = dx * dx + dz * dz;
+            if (dSq < closestDistSq) {
+                closestDistSq = dSq;
+                closestCart = c;
             }
-            if (TrainChainingUtil.matchesCartNameFilter(candidate, be.cartWhitelist, be.cartBlacklist)) {
-                targetCart = candidate;
-                break;
+        }
+
+        // Validate that closestCart is centered over this loader rail (not a neighboring rail car)
+        if (closestCart == null || closestDistSq > 0.85D * 0.85D) {
+            be.cartDetected = false;
+            be.holdingCart = false;
+            be.cartItemCount = 0;
+            be.cartItemCapacity = 0;
+            be.remainingDelayTicks = 0;
+            setRailPowerState(level, pos, state, true);
+            return;
+        }
+
+        // Validate that the cart directly on the loader is an eligible target
+        boolean isValidTarget;
+        if (coalFueler) {
+            isValidTarget = (closestCart instanceof BasicLocomotiveEntity) || (closestCart instanceof TunnelBoreEntity);
+        } else {
+            isValidTarget = (closestCart instanceof Container)
+                    && !(closestCart instanceof BasicLocomotiveEntity)
+                    && !(closestCart instanceof DieselLocomotiveEntity)
+                    && !(closestCart instanceof ElectricLocomotiveEntity)
+                    && !(closestCart instanceof TunnelBoreEntity)
+                    && !(closestCart instanceof MinecartFurnace);
+        }
+
+        if (isValidTarget && !TrainChainingUtil.matchesCartNameFilter(closestCart, be.cartWhitelist, be.cartBlacklist)) {
+            isValidTarget = false;
+        }
+
+        AbstractMinecart targetCart = null;
+        if (isValidTarget) {
+            if (be.releasedCartId == null || !be.releasedCartId.equals(closestCart.getUUID())) {
+                targetCart = closestCart;
             }
         }
 
@@ -406,6 +454,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
             be.holdingCart = false;
             be.cartItemCount = 0;
             be.cartItemCapacity = 0;
+            be.remainingDelayTicks = 0;
             setRailPowerState(level, pos, state, true);
             return;
         }
@@ -471,6 +520,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
             }
             if (movedThisCycle) {
                 be.transferCooldown = 4; // 4 ticks per batch (up to 8 items)
+                be.remainingDelayTicks = be.releaseDelaySeconds * 20; // Refresh delay timer on item movement
                 be.setChanged();
             }
         }
@@ -512,14 +562,24 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         }
         be.cartItemCount = totalItems;
 
-        boolean shouldHoldCart = false;
+        boolean conditionWantsHold = false;
         if (be.redstoneMode != REDSTONE_DISABLED) {
             if (be.redstoneMode == REDSTONE_WHEN_EMPTY) {
-                shouldHoldCart = hasMatchingItemsInCart;
+                conditionWantsHold = hasMatchingItemsInCart;
             } else if (be.redstoneMode == REDSTONE_WHEN_FULL) {
-                shouldHoldCart = !isCartCompletelyFull;
+                conditionWantsHold = !isCartCompletelyFull;
             } else if (be.redstoneMode == REDSTONE_WHEN_DONE) {
-                shouldHoldCart = doUnload ? canUnloadMoveNow : canLoadMoveNow;
+                conditionWantsHold = doUnload ? canUnloadMoveNow : canLoadMoveNow;
+            }
+        }
+
+        boolean shouldHoldCart = false;
+        if (be.redstoneMode != REDSTONE_DISABLED) {
+            if (conditionWantsHold) {
+                shouldHoldCart = true;
+            } else if (be.remainingDelayTicks > 0) {
+                be.remainingDelayTicks--;
+                shouldHoldCart = true;
             }
         }
 
@@ -530,6 +590,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         } else {
             boolean wasHolding = be.holdingCart || !state.getValue(CargoTransferBlock.POWERED);
             be.holdingCart = false;
+            be.remainingDelayTicks = 0;
             be.releasedCartId = targetCart.getUUID();
             be.releaseGraceTicks = 35;
             setRailPowerState(level, pos, state, true);
@@ -820,6 +881,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         ContainerHelper.saveAllItems(output, this.items);
         output.putInt("TransferMode", this.getTransferMode());
         output.putInt("RedstoneMode", this.redstoneMode);
+        output.putInt("ReleaseDelaySeconds", this.releaseDelaySeconds);
         output.putString("ItemWhitelist", this.itemWhitelist);
         output.putString("ItemBlacklist", this.itemBlacklist);
         output.putString("CartWhitelist", this.cartWhitelist);
@@ -834,6 +896,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         int defaultRedstone = (this.isCoalFueler() || !this.isUnloader()) ? REDSTONE_WHEN_FULL : REDSTONE_WHEN_EMPTY;
         this.transferMode = this.isCoalFueler() ? MODE_LOAD : input.getIntOr("TransferMode", defaultTransfer);
         this.redstoneMode = input.getIntOr("RedstoneMode", defaultRedstone);
+        this.releaseDelaySeconds = input.getIntOr("ReleaseDelaySeconds", 3);
         this.itemWhitelist = input.getStringOr("ItemWhitelist", "");
         this.itemBlacklist = input.getStringOr("ItemBlacklist", "");
         this.cartWhitelist = input.getStringOr("CartWhitelist", "");

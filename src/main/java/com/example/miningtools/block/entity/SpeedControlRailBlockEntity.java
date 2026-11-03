@@ -28,17 +28,19 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * Speed Control Rail Block Entity:
- * Detects arriving locomotives and train consists, setting their speed/gear
- * and optional travel direction mode. Supports selective filtering by train name.
+ * Detects arriving locomotives, setting their speed/gear and optional travel
+ * direction mode. Only activates when a locomotive touches the rail, ignoring other carts.
+ * Supports selective filtering by train name.
  */
 public class SpeedControlRailBlockEntity extends BlockEntity {
 
     public static final int DIR_KEEP = 0;
     public static final int DIR_FORWARD = 1;
     public static final int DIR_REVERSE = 2;
+    public static final int DIR_INVERT = 3;
 
     private int targetGear = 3; // 0 = Stop / Neutral, 1-5 = Speed gears 1 to 5
-    private int directionMode = DIR_KEEP; // 0 = Keep, 1 = Force Forward, 2 = Force Reverse
+    private int directionMode = DIR_KEEP; // 0 = Keep, 1 = Force Forward, 2 = Force Reverse, 3 = Invert / Switch
     private String trainNameFilter = ""; // Empty = all trains
 
     private @Nullable UUID lastTriggeredLocoUUID = null;
@@ -62,7 +64,7 @@ public class SpeedControlRailBlockEntity extends BlockEntity {
     }
 
     public void setDirectionMode(int mode) {
-        this.directionMode = Mth.clamp(mode, 0, 2);
+        this.directionMode = Mth.clamp(mode, 0, 3);
         this.setChanged();
     }
 
@@ -81,40 +83,19 @@ public class SpeedControlRailBlockEntity extends BlockEntity {
         }
 
         AABB trackBox = new AABB(pos).inflate(0.35, 0.8, 0.35);
-        List<AbstractMinecart> carts = level.getEntitiesOfClass(
+        List<AbstractMinecart> locos = level.getEntitiesOfClass(
                 AbstractMinecart.class,
                 trackBox,
-                c -> c.isAlive() && !c.isRemoved()
+                c -> c.isAlive() && !c.isRemoved() && TrainChainingUtil.isLocomotive(c)
         );
 
-        if (carts.isEmpty()) {
+        if (locos.isEmpty()) {
             be.lastTriggeredLocoUUID = null;
             return;
         }
 
-        // Find locomotive on track or connected in consist
-        AbstractMinecart loco = null;
-        for (AbstractMinecart c : carts) {
-            if (TrainChainingUtil.isLocomotive(c)) {
-                loco = c;
-                break;
-            }
-        }
-        if (loco == null) {
-            for (AbstractMinecart c : carts) {
-                for (AbstractMinecart member : TrainChainingUtil.getConnectedConsist(c)) {
-                    if (TrainChainingUtil.isLocomotive(member)) {
-                        loco = member;
-                        break;
-                    }
-                }
-                if (loco != null) break;
-            }
-        }
-
-        if (loco == null) {
-            return;
-        }
+        // Only activate when a locomotive touches the rail, not other carts
+        AbstractMinecart loco = locos.get(0);
 
         // Prevent repeated activations while train rolls over or parks on rail
         if (loco.getUUID().equals(be.lastTriggeredLocoUUID)) {
@@ -153,6 +134,8 @@ public class SpeedControlRailBlockEntity extends BlockEntity {
             setReversed = false;
         } else if (dirMode == DIR_REVERSE) {
             setReversed = true;
+        } else if (dirMode == DIR_INVERT) {
+            setReversed = !setReversed;
         }
 
         if (loco instanceof BasicLocomotiveEntity bl) {

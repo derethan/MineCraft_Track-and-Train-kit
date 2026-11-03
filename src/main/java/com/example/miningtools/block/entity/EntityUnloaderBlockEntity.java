@@ -7,6 +7,7 @@ import com.example.miningtools.block.EntityUnloaderBlock;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
@@ -34,16 +35,11 @@ public class EntityUnloaderBlockEntity extends AbstractEntityTransferBlockEntity
         }
 
         BlockPos trackPos = pos.above();
-        AABB trackBox = new AABB(trackPos).inflate(0.85, 0.5, 0.85);
+        AABB trackBox = new AABB(trackPos).inflate(0.35, 0.5, 0.35);
         List<AbstractMinecart> carts = level.getEntitiesOfClass(
                 AbstractMinecart.class,
                 trackBox,
-                c -> c.isAlive()
-                        && !c.isRemoved()
-                        && !(c instanceof BasicLocomotiveEntity)
-                        && !(c instanceof DieselLocomotiveEntity)
-                        && !(c instanceof ElectricLocomotiveEntity)
-                        && !c.getPassengers().isEmpty()
+                c -> c.isAlive() && !c.isRemoved()
         );
 
         if (carts.isEmpty()) {
@@ -51,7 +47,37 @@ public class EntityUnloaderBlockEntity extends AbstractEntityTransferBlockEntity
             return;
         }
 
-        AbstractMinecart cart = carts.get(0);
+        double cx = trackPos.getX() + 0.5D;
+        double cz = trackPos.getZ() + 0.5D;
+        AbstractMinecart closestCart = null;
+        double closestDistSq = Double.MAX_VALUE;
+        for (AbstractMinecart c : carts) {
+            double dx = c.getX() - cx;
+            double dz = c.getZ() - cz;
+            double dSq = dx * dx + dz * dz;
+            if (dSq < closestDistSq) {
+                closestDistSq = dSq;
+                closestCart = c;
+            }
+        }
+
+        if (closestCart == null || closestDistSq > 0.85D * 0.85D) {
+            setRailPower(level, pos, state, true);
+            return;
+        }
+
+        boolean isValidTarget = !(closestCart instanceof BasicLocomotiveEntity)
+                && !(closestCart instanceof DieselLocomotiveEntity)
+                && !(closestCart instanceof ElectricLocomotiveEntity)
+                && !(closestCart instanceof TunnelBoreEntity)
+                && !closestCart.getPassengers().isEmpty();
+
+        if (!isValidTarget) {
+            setRailPower(level, pos, state, true);
+            return;
+        }
+
+        AbstractMinecart cart = closestCart;
         List<Entity> passengers = List.copyOf(cart.getPassengers());
         Entity matchingPassenger = null;
         int matchingCount = 0;

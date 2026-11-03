@@ -22,6 +22,7 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
@@ -96,6 +97,8 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
 
     private @Nullable UUID releasedCartId = null;
     private int releaseGraceTicks = 0;
+    private int releaseDelaySeconds = 3; // Delay in seconds after transfer before releasing train
+    private int remainingDelayTicks = 0;
 
     // Ephemeral status for GUI syncing
     private int cartFluidAmount = 0;
@@ -116,6 +119,7 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
                 case 6 -> FluidLoaderBlockEntity.this.cartPresent ? 1 : 0;
                 case 7 -> FluidLoaderBlockEntity.this.holdingCart ? 1 : 0;
                 case 8 -> FluidLoaderBlockEntity.this.getStationRole();
+                case 9 -> FluidLoaderBlockEntity.this.getReleaseDelaySeconds();
                 default -> 0;
             };
         }
@@ -125,12 +129,13 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
             switch (index) {
                 case 2 -> FluidLoaderBlockEntity.this.setTransferMode(value);
                 case 3 -> FluidLoaderBlockEntity.this.setRedstoneMode(value);
+                case 9 -> FluidLoaderBlockEntity.this.setReleaseDelaySeconds(value);
             }
         }
 
         @Override
         public int getCount() {
-            return 9;
+            return 10;
         }
     };
 
@@ -211,6 +216,15 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
         } else {
             this.redstoneMode = Math.floorMod(mode, 4);
         }
+        this.setChanged();
+    }
+
+    public int getReleaseDelaySeconds() {
+        return this.releaseDelaySeconds;
+    }
+
+    public void setReleaseDelaySeconds(int seconds) {
+        this.releaseDelaySeconds = Mth.clamp(seconds, 0, 30);
         this.setChanged();
     }
 
@@ -331,48 +345,78 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
 
         // 2. Scan for target vehicle on the track above
         BlockPos trackPos = pos.above();
-        AABB trackBox = new AABB(trackPos).inflate(1.1, 0.65, 1.1);
+        AABB trackBox = new AABB(trackPos).inflate(0.35D, 0.65D, 0.35D);
         List<Entity> entities = level.getEntities((Entity) null, trackBox, e -> e.isAlive() && !e.isRemoved());
+
+        if (entities.isEmpty()) {
+            blockEntity.cartPresent = false;
+            blockEntity.holdingCart = false;
+            blockEntity.cartFluidAmount = 0;
+            blockEntity.cartFluidCapacity = 0;
+            blockEntity.remainingDelayTicks = 0;
+            setPoweredState(level, pos, state, true);
+            return;
+        }
+
+        // Find the vehicle closest to the center of the track above this loader
+        double cx = trackPos.getX() + 0.5D;
+        double cz = trackPos.getZ() + 0.5D;
+        Entity closestEnt = null;
+        double closestDistSq = Double.MAX_VALUE;
+        for (Entity ent : entities) {
+            double dx = ent.getX() - cx;
+            double dz = ent.getZ() - cz;
+            double dSq = dx * dx + dz * dz;
+            if (dSq < closestDistSq) {
+                closestDistSq = dSq;
+                closestEnt = ent;
+            }
+        }
+
+        if (closestEnt == null || closestDistSq > 0.85D * 0.85D) {
+            blockEntity.cartPresent = false;
+            blockEntity.holdingCart = false;
+            blockEntity.cartFluidAmount = 0;
+            blockEntity.cartFluidCapacity = 0;
+            blockEntity.remainingDelayTicks = 0;
+            setPoweredState(level, pos, state, true);
+            return;
+        }
 
         boolean dieselFueler = blockEntity.isDieselFueler();
         Entity targetCart = null;
         ResourceHandler<FluidResource> cartFluidHandler = null;
 
-        for (Entity ent : entities) {
-            if (blockEntity.releasedCartId != null && blockEntity.releasedCartId.equals(ent.getUUID())) {
-                continue;
-            }
-
+        if (blockEntity.releasedCartId == null || !blockEntity.releasedCartId.equals(closestEnt.getUUID())) {
             if (dieselFueler) {
                 // Dedicated Diesel Locomotive Fueling Station ONLY targets DieselLocomotiveEntity
-                if (ent instanceof DieselLocomotiveEntity dieselLoco) {
+                if (closestEnt instanceof DieselLocomotiveEntity dieselLoco) {
                     if (TrainChainingUtil.matchesCartNameFilter(dieselLoco, blockEntity.cartWhitelist, blockEntity.cartBlacklist)) {
                         targetCart = dieselLoco;
                         cartFluidHandler = dieselLoco.getFluidHandler();
-                        break;
                     }
                 }
             } else {
                 // Freight Fluid Loader / Unloader NEVER touches any locomotive or tunnel bore!
-                if (ent instanceof DieselLocomotiveEntity
-                        || ent instanceof BasicLocomotiveEntity
-                        || ent instanceof ElectricLocomotiveEntity
-                        || ent instanceof TunnelBoreEntity) {
-                    continue;
-                }
-                if (ent instanceof AbstractMinecart mc) {
-                    if (!TrainChainingUtil.matchesCartNameFilter(mc, blockEntity.cartWhitelist, blockEntity.cartBlacklist)) {
-                        continue;
+                boolean isLoco = closestEnt instanceof DieselLocomotiveEntity
+                        || closestEnt instanceof BasicLocomotiveEntity
+                        || closestEnt instanceof ElectricLocomotiveEntity
+                        || closestEnt instanceof TunnelBoreEntity;
+                if (!isLoco) {
+                    boolean nameMatches = true;
+                    if (closestEnt instanceof AbstractMinecart mc) {
+                        nameMatches = TrainChainingUtil.matchesCartNameFilter(mc, blockEntity.cartWhitelist, blockEntity.cartBlacklist);
                     }
-                }
-                ResourceHandler<FluidResource> handler = Capabilities.Fluid.ENTITY.getCapability(ent, Direction.DOWN);
-                if (handler == null && ent instanceof LiquidMinecartEntity lme) {
-                    handler = lme.getFluidHandler();
-                }
-                if (handler != null) {
-                    targetCart = ent;
-                    cartFluidHandler = handler;
-                    break;
+                    if (nameMatches) {
+                        ResourceHandler<FluidResource> handler = Capabilities.Fluid.ENTITY.getCapability(closestEnt, Direction.DOWN);
+                        if (handler == null && closestEnt instanceof LiquidMinecartEntity lme) {
+                            handler = lme.getFluidHandler();
+                        }
+                        if (handler != null) {
+                            targetCart = closestEnt;
+                            cartFluidHandler = handler;
+                        }
+                    }
                 }
             }
         }
@@ -413,6 +457,7 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
             }
 
             if (movedAny) {
+                blockEntity.remainingDelayTicks = blockEntity.releaseDelaySeconds * 20; // Refresh delay timer on fluid movement
                 if (targetCart instanceof LiquidMinecartEntity lme) {
                     lme.syncFluidData();
                 } else if (targetCart instanceof DieselLocomotiveEntity dle) {
@@ -428,14 +473,24 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
             // Check whether remaining fluid in cart matches filter (for unload mode)
             boolean hasMatchingFluidInCart = newCartAmount > 0 && blockEntity.matchesFluidFilter(cartRes);
 
-            boolean shouldHold = false;
+            boolean conditionWantsHold = false;
             if (blockEntity.redstoneMode != REDSTONE_DISABLED) {
                 if (blockEntity.redstoneMode == REDSTONE_WHEN_EMPTY) {
-                    shouldHold = hasMatchingFluidInCart;
+                    conditionWantsHold = hasMatchingFluidInCart;
                 } else if (blockEntity.redstoneMode == REDSTONE_WHEN_FULL) {
-                    shouldHold = !cartFull;
+                    conditionWantsHold = !cartFull;
                 } else if (blockEntity.redstoneMode == REDSTONE_WHEN_DONE) {
-                    shouldHold = movedAny;
+                    conditionWantsHold = movedAny;
+                }
+            }
+
+            boolean shouldHold = false;
+            if (blockEntity.redstoneMode != REDSTONE_DISABLED) {
+                if (conditionWantsHold) {
+                    shouldHold = true;
+                } else if (blockEntity.remainingDelayTicks > 0) {
+                    blockEntity.remainingDelayTicks--;
+                    shouldHold = true;
                 }
             }
 
@@ -448,6 +503,7 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
             } else {
                 boolean wasHolding = blockEntity.holdingCart || !state.getValue(FluidLoaderBlock.POWERED);
                 blockEntity.holdingCart = false;
+                blockEntity.remainingDelayTicks = 0;
                 blockEntity.releasedCartId = targetCart.getUUID();
                 blockEntity.releaseGraceTicks = 35;
                 setPoweredState(level, pos, state, true);
@@ -460,6 +516,7 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
             blockEntity.holdingCart = false;
             blockEntity.cartFluidAmount = 0;
             blockEntity.cartFluidCapacity = 0;
+            blockEntity.remainingDelayTicks = 0;
             setPoweredState(level, pos, state, true);
         }
     }
@@ -593,6 +650,7 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
         this.tank.serialize(output);
         output.putInt("TransferMode", this.getTransferMode());
         output.putInt("RedstoneMode", this.redstoneMode);
+        output.putInt("ReleaseDelaySeconds", this.releaseDelaySeconds);
         output.putString("FluidWhitelist", this.fluidWhitelist);
         output.putString("FluidBlacklist", this.fluidBlacklist);
         output.putString("CartWhitelist", this.cartWhitelist);
@@ -608,6 +666,7 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
         int defaultRedstone = (this.isDieselFueler() || this.getStationRole() == FluidLoaderBlock.ROLE_LOADER) ? REDSTONE_WHEN_FULL : REDSTONE_WHEN_EMPTY;
         this.transferMode = this.isDieselFueler() ? MODE_LOAD : input.getIntOr("TransferMode", defaultTransfer);
         this.redstoneMode = input.getIntOr("RedstoneMode", defaultRedstone);
+        this.releaseDelaySeconds = input.getIntOr("ReleaseDelaySeconds", 3);
         this.fluidWhitelist = input.getStringOr("FluidWhitelist", "");
         this.fluidBlacklist = input.getStringOr("FluidBlacklist", "");
         this.cartWhitelist = input.getStringOr("CartWhitelist", "");

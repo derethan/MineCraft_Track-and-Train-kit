@@ -16,7 +16,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class FluidLoaderMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = FluidLoaderBlockEntity.CONTAINER_SIZE; // 2
-    public static final int DATA_COUNT = 9;
+    public static final int DATA_COUNT = 10;
 
     private final Container container;
     private final ContainerData data;
@@ -95,6 +95,10 @@ public class FluidLoaderMenu extends AbstractContainerMenu {
         return this.data.get(8);
     }
 
+    public int getReleaseDelaySeconds() {
+        return this.data.get(9);
+    }
+
     public boolean isDieselFueler() {
         return this.getStationRole() == FluidLoaderBlock.ROLE_DIESEL_FUELER;
     }
@@ -114,6 +118,19 @@ public class FluidLoaderMenu extends AbstractContainerMenu {
                 next = FluidLoaderBlockEntity.REDSTONE_WHEN_FULL;
             }
             this.data.set(3, next);
+            return true;
+        } else if (id == 2) {
+            int current = getReleaseDelaySeconds();
+            int next = switch (current) {
+                case 0 -> 1;
+                case 1 -> 2;
+                case 2 -> 3;
+                case 3 -> 4;
+                case 4 -> 5;
+                case 5 -> 10;
+                default -> 0;
+            };
+            this.data.set(9, next);
             return true;
         }
         return false;

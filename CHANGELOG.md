@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.19] - 2026-11-03
+
+### Fixed
+- **Turnout Rail Sneak-Click Branch Inversion**:
+  - Restored Sneak + Right-Clicking a Turnout Rail with an empty hand (or crowbar) to immediately toggle and invert the divergent curve branch between Left and Right (`curve_left`).
+  - Players can now configure left-curving and right-curving turnout switches bare-handed without facing drift.
+  - Right-clicking with the Railroad Crowbar rotates track facing 90° clockwise.
+
+### Added
+- **Speed Control Rail Invert/Switch Direction Mode**:
+  - Added a new **"Direction: Invert / Switch"** (`DIR_INVERT`) mode to the Speed Control Rail configuration GUI.
+  - When a locomotive touches the rail in this mode, it automatically inverts its travel heading from whatever direction it arrived in (i.e. forward becomes reverse, reverse becomes forward), seamlessly switching the travel direction of the consist.
+
+---
+
+## [1.1.18] - 2026-11-03
+
+### Fixed
+- **Station Cart Targeting & Adjacent Car Isolation**:
+  - Fixed an issue where Cargo Loaders/Unloaders, Fluid Loaders/Unloaders, and Entity Loaders/Unloaders would load or unload a train car beside the car actually resting on the station track (such as transferring into a coupled freight car when a caboose, locomotive, or passenger car is over the loader).
+  - Reduced the entity detection bounding box from `inflate(1.1)` to `inflate(0.35)` and implemented precise center-distance tracking so the station only ever interacts with the cart directly occupying its rail block.
+  - If the cart directly over the station rail is not an eligible target for transfer, neighboring coupled cars are completely ignored.
+
+### Added
+- **Configurable Train Release Delay on Loaders & Unloaders**:
+  - Added an interactive **Release Delay** option (`None (0s)`, `1s`, `2s`, `3s`, `4s`, `5s`, `10s`, default 3s) in the GUI of Cargo Loaders, Cargo Unloaders, Locomotive Coaling Stations, and Fluid Loaders/Unloaders.
+  - The station now continues holding the train for the configured delay duration after the last item or fluid transfer. This prevents trains from departing prematurely when items/fluids are still trickling in from external pipes, hoppers, or conduits.
+  - Any new transfer during the delay window automatically resets the countdown timer.
+
+---
+
+## [1.1.16] - 2026-11-03
+
+### Changed
+- **Speed Control Rail Locomotive-Only Activation**:
+  - Speed Control Rails now only activate when an actual locomotive (`BasicLocomotiveEntity`, `DieselLocomotiveEntity`, or `ElectricLocomotiveEntity`) directly touches the track.
+  - Trailing or pushed non-locomotive carts (freight cars, tank cars, chest carts, passenger cars, cabooses, etc.) within a consist no longer trigger the speed control rail when rolling over it.
+  - Consist speed and direction synchronization remains active when the locomotive itself passes over the rail, smoothly updating the full train consist.
+
+---
+
 ## [1.1.15] - 2026-11-02
 
 ### Fixed

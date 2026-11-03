@@ -90,7 +90,7 @@ public class SpeedControlRailScreen extends Screen {
         int dirY = yo + 84;
         this.dirButton = this.addRenderableWidget(
                 Button.builder(this.getDirectionButtonLabel(), btn -> {
-                    this.directionMode = (this.directionMode + 1) % 3;
+                    this.directionMode = (this.directionMode + 1) % 4;
                     if (this.dirButton != null) {
                         this.dirButton.setMessage(this.getDirectionButtonLabel());
                     }
@@ -134,6 +134,7 @@ public class SpeedControlRailScreen extends Screen {
         return switch (this.directionMode) {
             case SpeedControlRailBlockEntity.DIR_FORWARD -> Component.literal("Direction: Force Forward").withStyle(ChatFormatting.GREEN);
             case SpeedControlRailBlockEntity.DIR_REVERSE -> Component.literal("Direction: Force Reverse").withStyle(ChatFormatting.AQUA);
+            case SpeedControlRailBlockEntity.DIR_INVERT -> Component.literal("Direction: Invert / Switch").withStyle(ChatFormatting.LIGHT_PURPLE);
             default -> Component.literal("Direction: Keep Current").withStyle(ChatFormatting.YELLOW);
         };
     }
