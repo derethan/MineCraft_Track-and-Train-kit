@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.1.13] - 2026-11-01
+## [1.1.15] - 2026-11-02
 
 ### Fixed
 - **Track Layer Cart Position Snapping on Work Mode Switch**:

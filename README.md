@@ -348,7 +348,7 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
-* **v1.1.13**:
+* **v1.1.15**:
   - **Track Layer Cart Position Snapping Fix**: Resolved an issue where moving the Track Layer Cart forward in Transport/Off mode and switching back to Laying or Removing Mode snapped the cart backward to where work mode was originally disengaged. Rail positions are now continuously tracked during transport motion and synchronized upon mode switching.
 * **v1.1.12**:
   - **Smooth Train Departure from Buffer Stops**: Resolved an issue where trains stopped at a buffer stop would repeatedly shut down or only inch forward when trying to drive away. Added directional motion and consist travel detection (`isCartMovingAway`) across `BufferStopBlock` and `TrainChainingUtil`, allowing trains to start up and pull away cleanly without triggering emergency stops.
@@ -448,5 +448,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.13.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.15.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
