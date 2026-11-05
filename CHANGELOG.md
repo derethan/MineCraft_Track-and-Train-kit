@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.32] - 2026-11-04
+
+### Changed
+- **Reference-Based 3D Pixel-Art Item Icon Overhaul for All Rails**:
+  - Overhauled all 11 rail item icons across the mod using the user-provided 2:1 isometric pixel-art rail baseline, featuring rich wooden sleeper ties with end-grain depth, dark hex tie spikes, and raised steel rail heads with specular glints and shaded web profiles.
+  - Implemented bespoke visual apparatus and configurations for every single rail type:
+    - **Junction Rail** ([`junction_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/junction_rail.png)): Perpendicular 4-way diamond cross intersection with central crossing frogs, flangeway wheel clearances, unified sleeper foundation, and internal corner guard rails.
+    - **Turnout Rail (Right)** ([`turnout_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/turnout_rail.png)): Straight mainline track with diverging right-hand branch curve, tapered switch blade points, switch tie-rod, grounded head-block tie extension, and a classic railroad ground switch stand with green rightward directional arrow.
+    - **Turnout Rail (Left)** ([`left_turnout_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/left_turnout_rail.png)): Straight mainline track with diverging left-hand branch curve, switch blade points, tie-rod, extended sleeper tie, and a grounded railroad switch stand with green leftward directional arrow.
+    - **Wye Rail** ([`wye_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/wye_rail.png)): True 3-way equilateral Y-junction splitting an incoming line into symmetrical diverging curves with central crossing frog and glowing redstone directional Y-lantern indicator.
+    - **Locomotive Control Rail** ([`control_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/control_rail.png)): Centered golden power plates with a dispatch activator casing and glowing redstone crystal.
+    - **Electric Rail** ([`electric_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/electric_rail.png)): High-voltage third-rail conductor running along porcelain insulator mounts with energized cyan core and electrical sparks.
+    - **Braking & Holding Rail** ([`braking_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/braking_rail.png)): Friction retarder braking shoes along the inner steel rails with pneumatic clamp housing and amber hazard accents.
+    - **Coupler Rail** ([`coupler_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/coupler_rail.png)): Heavy cast-iron shunting knuckle apparatus on Tie 3 with emerald green couple (+) and crimson red decouple (x) indicators.
+    - **Station Delay Rail** ([`delay_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/delay_rail.png)): Octagonal brass station chronometer clock face on Tie 3 with luminous white dial face, black clock hands, and amber dwell status bezel.
+    - **Locomotive Horn Rail** ([`horn_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/horn_rail.png)): Triple polished brass chime locomotive horns pointing down-track on Tie 3 with radiant golden acoustic shockwave arcs.
+    - **Speed Control Rail** ([`speed_control_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/speed_control_rail.png)): Heavy cast-iron tachometer housing with graduated green/yellow/red speedometer gauge and red pointer needle.
+
+---
+
 ## [1.1.31] - 2026-11-04
 
 ### Changed

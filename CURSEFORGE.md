@@ -353,6 +353,21 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.32**:
+  - **Reference-Based 3D Pixel-Art Item Icon Overhaul for All Rails**:
+    - Overhauled all 11 rail item icons across the mod based on the user-provided 2:1 isometric pixel-art baseline, featuring rich wooden sleeper ties with end-grain depth, dark tie spikes, and raised steel rails with glint highlights.
+    - Designed bespoke visual apparatus and configurations for every individual rail type:
+      - **Junction Rail**: 4-way diamond cross intersection with frog flangeways, unified crossing foundation, and internal corner guard rails.
+      - **Turnout Rail (Right)**: Mainline track with right diverging branch curve, switch blade points, tie-rod, and grounded switch stand with green rightward arrow.
+      - **Turnout Rail (Left)**: Mainline track with left diverging branch curve, switch blade points, tie-rod, and grounded switch stand with green leftward arrow.
+      - **Wye Rail**: 3-way equilateral Y-junction with central frog flangeways and glowing redstone directional Y-lantern indicator.
+      - **Locomotive Control Rail**: Golden center conductor bar with dispatch activator module and glowing redstone crystal.
+      - **Electric Rail**: Cyan high-voltage third-rail conductor on porcelain insulator mounts with electric sparks.
+      - **Braking & Holding Rail**: Dual red/amber friction retarder braking shoes along inner rails with pneumatic retarder housing.
+      - **Coupler Rail**: Cast-iron shunting knuckle apparatus on Tie 3 with emerald couple (+) and crimson decouple (x) indicators.
+      - **Station Delay Rail**: Octagonal brass chronometer clock face on Tie 3 with white dial, black hands, and amber dwell status ring.
+      - **Locomotive Horn Rail**: Triple polished brass chime locomotive horns pointing down-track with radiant golden acoustic shockwave arcs.
+      - **Speed Control Rail**: Cast-iron tachometer housing with graduated green/yellow/red speedometer gauge and red needle.
 * **v1.1.31**:
   - **3D Isometric Pixel-Art Item Icons for Switch, Junction, Control & Electric Rails**:
     - Converted item icons for Junction Rail, Locomotive Control Rail, Turnout Rail (Right), Turnout Rail (Left), Wye Rail, and Electric Rail to 32×32 3D isometric pixel-art sprites with wooden sleeper ties, raised steel rails, and distinctive central apparatus/frog detailing.
@@ -502,5 +517,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.31.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.32.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
