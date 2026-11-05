@@ -20,6 +20,9 @@ public class TrackPaverMenu extends AbstractContainerMenu {
     public static final int CONTAINER_SIZE = TrackPaverEntity.INVENTORY_SIZE;
     public static final int DATA_COUNT = 7;
 
+    public static final int SLOT_PATTERN_LEFT = TrackPaverEntity.SLOT_PATTERN_LEFT;
+    public static final int SLOT_PATTERN_CENTER = TrackPaverEntity.SLOT_PATTERN_CENTER;
+    public static final int SLOT_PATTERN_RIGHT = TrackPaverEntity.SLOT_PATTERN_RIGHT;
     public static final int SLOT_PAVER_BLOCK = TrackPaverEntity.SLOT_PAVER_BLOCK;
     public static final int SLOT_FUEL = TrackPaverEntity.SLOT_FUEL;
     public static final int SLOT_MATERIAL_START = TrackPaverEntity.SLOT_MATERIAL_START;
@@ -42,8 +45,8 @@ public class TrackPaverMenu extends AbstractContainerMenu {
         this.data = data;
         container.startOpen(playerInventory.player);
 
-        // Slot 0: Paver Pattern / Target Block Slot (Accepts any placeable full block)
-        this.addSlot(new Slot(container, SLOT_PAVER_BLOCK, 54, 20) {
+        // Slot 0: Left Tile Pattern (Accepts any placeable full block)
+        this.addSlot(new Slot(container, SLOT_PATTERN_LEFT, 30, 21) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock);
@@ -55,15 +58,41 @@ public class TrackPaverMenu extends AbstractContainerMenu {
             }
         });
 
-        // Slot 1: Fuel Slot (Any burnable fuel)
-        this.addSlot(new Slot(container, SLOT_FUEL, 18, 20) {
+        // Slot 1: Center Tile Pattern (Accepts any placeable full block)
+        this.addSlot(new Slot(container, SLOT_PATTERN_CENTER, 48, 21) {
+            @Override
+            public boolean mayPlace(ItemStack stack) {
+                return stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock);
+            }
+
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
+        });
+
+        // Slot 2: Right Tile Pattern (Accepts any placeable full block)
+        this.addSlot(new Slot(container, SLOT_PATTERN_RIGHT, 66, 21) {
+            @Override
+            public boolean mayPlace(ItemStack stack) {
+                return stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock);
+            }
+
+            @Override
+            public int getMaxStackSize() {
+                return 1;
+            }
+        });
+
+        // Slot 3: Fuel Slot (Any burnable fuel)
+        this.addSlot(new Slot(container, SLOT_FUEL, 8, 18) {
             @Override
             public boolean mayPlace(ItemStack stack) {
                 return BasicLocomotiveEntity.isBurnableFuel(stack);
             }
         });
 
-        // Slots 2..28: 27 Material Inventory Slots (3 rows of 9)
+        // Slots 4..30: 27 Material Inventory Slots (3 rows of 9)
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 int index = SLOT_MATERIAL_START + col + row * 9;
@@ -194,12 +223,18 @@ public class TrackPaverMenu extends AbstractContainerMenu {
                             return ItemStack.EMPTY;
                         }
                     }
-                } else if (slotStack.getItem() instanceof BlockItem) {
-                    if (this.slots.get(SLOT_PAVER_BLOCK).getItem().isEmpty()) {
-                        ItemStack single = slotStack.copyWithCount(1);
-                        this.slots.get(SLOT_PAVER_BLOCK).set(single);
-                        slotStack.shrink(1);
-                    } else if (!this.moveItemStackTo(slotStack, SLOT_MATERIAL_START, CONTAINER_SIZE, false)) {
+                } else if (slotStack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock)) {
+                    boolean placedInPattern = false;
+                    for (int patternSlot = SLOT_PATTERN_LEFT; patternSlot <= SLOT_PATTERN_RIGHT; patternSlot++) {
+                        if (this.slots.get(patternSlot).getItem().isEmpty()) {
+                            ItemStack single = slotStack.copyWithCount(1);
+                            this.slots.get(patternSlot).set(single);
+                            slotStack.shrink(1);
+                            placedInPattern = true;
+                            break;
+                        }
+                    }
+                    if (!placedInPattern && !this.moveItemStackTo(slotStack, SLOT_MATERIAL_START, CONTAINER_SIZE, false)) {
                         return ItemStack.EMPTY;
                     }
                 } else if (!this.moveItemStackTo(slotStack, SLOT_MATERIAL_START, CONTAINER_SIZE, false)) {

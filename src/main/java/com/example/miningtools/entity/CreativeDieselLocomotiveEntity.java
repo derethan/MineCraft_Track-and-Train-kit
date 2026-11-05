@@ -75,7 +75,7 @@ public class CreativeDieselLocomotiveEntity extends DieselLocomotiveEntity {
     protected void tickFuelAndMovement() {
         BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
-        boolean onRails = BaseRailBlock.isRail(railState);
+        boolean onRails = TrainChainingUtil.isRail(railState);
 
         if (railState.is(MiningTools.CONTROL_RAIL.get()) || railState.is(MiningTools.BRAKING_RAIL.get())) {
             boolean powered = railState.getValue(PoweredRailBlock.POWERED);

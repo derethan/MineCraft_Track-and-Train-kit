@@ -42,14 +42,25 @@ public class TurnoutRailBlock extends BaseRailBlock {
             RailShape.SOUTH_EAST, RailShape.SOUTH_WEST,
             RailShape.NORTH_WEST, RailShape.NORTH_EAST);
 
+    private final boolean defaultLeft;
+
     public TurnoutRailBlock(BlockBehaviour.Properties properties) {
+        this(false, properties);
+    }
+
+    public TurnoutRailBlock(boolean defaultLeft, BlockBehaviour.Properties properties) {
         super(true, properties);
+        this.defaultLeft = defaultLeft;
         this.registerDefaultState(this.stateDefinition.any()
                 .setValue(FACING, Direction.NORTH)
-                .setValue(CURVE_LEFT, false)
+                .setValue(CURVE_LEFT, defaultLeft)
                 .setValue(POWERED, false)
-                .setValue(SHAPE, RailShape.NORTH_SOUTH)
+                .setValue(SHAPE, calculateShape(Direction.NORTH, defaultLeft, false))
                 .setValue(WATERLOGGED, false));
+    }
+
+    public boolean isDefaultLeft() {
+        return this.defaultLeft;
     }
 
     public static RailShape getStraightShape(Direction facing) {
@@ -95,7 +106,7 @@ public class TurnoutRailBlock extends BaseRailBlock {
         Direction facing = context.getHorizontalDirection();
         Boolean switchState = TrackSwitchBlock.getAdjacentSwitchState(context.getLevel(), context.getClickedPos());
         boolean powered = switchState != null ? switchState : context.getLevel().hasNeighborSignal(context.getClickedPos());
-        boolean curveLeft = false;
+        boolean curveLeft = this.defaultLeft;
         FluidState fluid = context.getLevel().getFluidState(context.getClickedPos());
         boolean waterlogged = fluid.getType() == Fluids.WATER;
         RailShape shape = calculateShape(facing, curveLeft, powered);

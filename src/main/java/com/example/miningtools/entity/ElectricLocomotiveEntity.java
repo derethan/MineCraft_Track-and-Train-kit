@@ -495,7 +495,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
     private void tickMovementAndPower() {
         BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
-        boolean onRails = BaseRailBlock.isRail(railState);
+        boolean onRails = TrainChainingUtil.isRail(railState);
 
         // Control & Braking rail interaction
         if (railState.is(MiningTools.CONTROL_RAIL.get()) || railState.is(MiningTools.BRAKING_RAIL.get())) {
@@ -673,7 +673,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
             }
             this.setPos(x, moveY, z);
             this.setDeltaMovement(newVx, 0.0, newVz);
-            this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
+            TrainChainingUtil.moveLocomotiveIgnoringConsist(this, new Vec3(newVx, 0.0, newVz));
 
             // Vanilla slope step-up / step-down check
             if (exit0.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit0.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit0.getZ()) {
@@ -1103,7 +1103,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
 
         BlockPos currentRail = TrainChainingUtil.getCurrentBlockPosOrRailBelow(cart);
         BlockState state = cart.level().getBlockState(currentRail);
-        if (!BaseRailBlock.isRail(state)) {
+        if (!TrainChainingUtil.isRail(state)) {
             cart.setPos(cart.getX() + dirX, cart.getY(), cart.getZ() + dirZ);
             return false;
         }

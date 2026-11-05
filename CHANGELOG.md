@@ -7,6 +7,149 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.30] - 2026-11-04
+
+### Changed
+- **Railroader's Field Manual Item Icon Overhaul**:
+  - Upgraded the guidebook item icon ([`guide_book.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/guide_book.png)) from a 16×16 black binder to a bespoke 32×32 pixel-art crimson red railway binder.
+  - Features rich crimson leather grain shading, heavy reinforced dark leather spine binding with brass staples, polished brass corner brackets, cream paper page blocks, a dangling golden bookmark ribbon, a brass locking clasp, and an embossed golden locomotive & track insignia on the front cover to prevent confusion with the Industrial Refinery guidebook.
+
+---
+
+## [1.1.29] - 2026-11-04
+
+### Changed
+- **3D Blockbench Rail Models Overhaul**:
+  - Replaced flat 2D vanilla `rail_flat` block models for **Locomotive Horn Rail**, **Coupler Rail**, **Speed Control Rail**, and **Station Delay Rail** with full 3D HD Blockbench models featuring 3D wooden sleeper ties, raised 3D steel rails, cast-iron tie plates, and hex spikes to match **Braking & Holding Rail**, **Turnout Rails**, and **Electric Rails**.
+  - Engineered 3D central apparatus modules sitting directly on the ties between the rails for each specialty track:
+    - **Speed Control Rail**: 3D cast-iron tachometer housing and speed governor dial.
+    - **Horn Rail**: 3D acoustic apparatus with dual brass trumpet horns (with active radiating soundwave shockwaves when powered).
+    - **Coupler Rail**: 3D heavy shunting knuckle chassis with glowing emerald green couple arrows (`couple_mode=true`) or crimson red decouple arrows (`couple_mode=false`).
+    - **Station Delay Rail**: 3D octagonal marine brass chronometer station clock face (with luminous amber dwell status ring when holding).
+  - Added full 3D ascending slope models (`_raised_ne` and `_raised_sw`) for all 4 specialty rails to connect seamlessly across elevation changes.
+  - Created 7 dedicated 128×128 HD device textures in `assets/miningtools/textures/block/cmodels/` and upgraded all corresponding block textures to 128×128.
+
+---
+
+## [1.1.28] - 2026-11-04
+
+### Added
+- **Track Paver 3-Tile Pattern Programming**:
+  - Expanded the Heavy Track & Road Paver (`TrackPaverEntity`) interface and inventory from 29 to 31 slots to introduce 3 dedicated roadbed filter slots: **Left**, **Center** (beneath rail track), and **Right**.
+  - Players can now program specific roadbed cross-section patterns (e.g. stone brick curbs on the flanks with gravel ballast under the rail, concrete borders, or hazard striping).
+  - Flexible layout programming: leaving an outer filter slot empty preserves existing ground on that side (enabling 1-wide or 2-wide roadbeds).
+  - Backward compatibility & material fallback: if all three filter slots are empty, the paver falls back to uniform ballast placement from bulk material storage.
+  - Automatic inventory migration: older world saves (`PaverVersion` = 0) seamlessly migrate existing inventories without item loss.
+- **Enhanced Paver GUI & Visuals**:
+  - Reorganized GUI layout (`track_paver.png`): positioned 3 pattern slots side-by-side (`Pattern (L/C/R)`), moved the fuel slot and combustion burn flame to a dedicated left column, and repositioned action buttons with crisp status labels (`Work ON/OFF`, `Holo ON/OFF`).
+  - Added interactive hover tooltips explaining the function of each filter slot, the fuel slot, and remaining combustion ticks.
+- **Field Manual Integration**:
+  - Updated the Heavy Machinery entry in the Railroader's Field Manual with instructions on configuring 3-tile roadbed patterns.
+
+### Changed
+- Consolidated trackside loader/unloader functionality documentation noting in-GUI mode toggles.
+
+---
+
+## [1.1.27] - 2026-11-04
+
+### Changed
+- **Standardized Rail Block Textures**:
+  - Rebuilt block textures for **Speed Control Rail**, **Locomotive Horn Rail** (idle & active), **Coupler Rail** (couple & decouple modes), and **Station Delay Rail** (idle & active hold) to match standard track geometry, metal rail highlights (`#A4A4A4`/`#686868`), and oak/spruce wood sleeper ties.
+  - Implemented crisp central mechanism artwork: tachometer and speed governor on Speed Control Rail, acoustic brass horn trumpets with radiating sound waves on Horn Rail, mechanical shunting knuckles with directional status indicators on Coupler Rail, and octagonal brass chronometer dial with luminous amber dwell holding glow on Station Delay Rail.
+- **3D Isometric Pixel-Art Item Icons (32×32)**:
+  - Overhauled item icons for **Braking & Holding Rail**, **Locomotive Horn Rail**, **Coupler Rail**, and **Station Delay Rail** to matching 32×32 3D isometric pixel-art style used across locomotives and rolling stock.
+  - Updated `braking_rail.json` item model definition to reference dedicated item texture.
+
+---
+
+## [1.1.25] - 2026-11-04
+
+### Added
+- **Station Delay Rail (`miningtools:delay_rail`)**:
+  - Implemented an interactive station dwell timer track that holds arriving trains and minecart consists for a configurable duration before automatically launching them onward.
+  - Interactive GUI accessed by right-clicking the track:
+    - **Timer ON/OFF Toggle**: Easily activate or bypass dwell timer operation.
+    - **Configurable Dwell Duration**: Hold time adjustable from 1 to 3600 seconds, with one-click preset buttons (`3s`, `5s`, `10s`, `15s`, `30s`, `60s`) and fine-tuning delta buttons (`-10s`, `-1s`, `+1s`, `+10s`).
+    - **Departure Direction Control**: Supports `Maintain Heading` (continues along arrival vector), `Reverse Direction` (bounces the train back the way it came), or designated cardinal directions (`North`, `South`, `East`, `West`).
+    - **Train Name Filtering**: Apply station delays selectively to specific train consists (e.g. only dwell `PASSENGER_LOCAL` while `EXPRESS_FREIGHT` rolls straight through).
+    - **Live Countdown Display**: Dynamic remaining dwell countdown rendered directly in the GUI and visual holding glow on the rail surface.
+  - Full train consist clamping: securely holds entire coupled trains (steam, diesel, electric locomotives and trailing rolling stock) during station stops, and launches them reliably when the timer elapses.
+  - Includes departure cooldown buffer to prevent trailing wagons from re-triggering the dwell timer as the consist departs.
+  - Added dedicated 16x16 pixel-art textures (normal and illuminated/holding), block models, item models, blockstate JSON, recipe, and loot table.
+  - Registered in `minecraft:rails` and `minecraft:mineable/pickaxe` block tags.
+  - Documented in the **Railroader's Field Manual** under the `Tracks & Switches` category.
+
+---
+
+## [1.1.23] - 2026-11-04
+
+### Added
+- **Railroader's Field Manual (`miningtools:guide_book`)**:
+  - Implemented the official comprehensive in-game guidebook item and GUI, styled after the industrial engineering binder theme established in the Industrial Refinery mod.
+  - Built with a dark industrial slate binder shell, heavy steel bezel borders, polished brass corner brackets, left-hand category tabs with active gold indicators, and authentic UI sound effects.
+  - Interactive Table of Contents with dynamic topic counter badges, item icon cards, and smooth mouse scrolling.
+  - Rich entry detail view with `< Contents` return button, overview tab with item icons, subtitles, paragraph descriptions, content scrolling, and golden "PRO TIP" callout boxes.
+  - Dedicated "Recipes" sub-tab showing exact input items -> arrow -> output items with interactive item tooltips and mechanical crafting notes.
+  - Complete coverage across 7 dedicated categories (`Locomotives`, `Rolling Stock`, `Tracks & Switches`, `Stations & Logistics`, `Heavy Machinery`, `Tools & Signals`, `All Contents`) documenting all 42 items, vehicles, machinery, tracks, switchgear, and mechanics in the mod.
+  - Added shapeless crafting recipe: 1x Book + 1x Iron Ingot -> Railroader's Field Manual.
+  - Added to the Track & Train Creative Tab and vanilla Tools & Utilities tab.
+
+### Fixed
+- **Missing Block Drop Loot Tables**:
+  - Fixed **Speed Control Rail** disappearing without dropping an item when destroyed or mined.
+  - Fixed **Coupler Rail** disappearing without dropping an item when destroyed or mined.
+  - Fixed **Surveyor's Seismic Charge** block disappearing without dropping an item when mined without detonation.
+  - Created dedicated block drop loot tables (`speed_control_rail.json`, `coupler_rail.json`, `surveyors_charge.json`) with `survives_explosion` conditions to guarantee items drop reliably when harvested.
+
+---
+
+## [1.1.22] - 2026-11-03
+
+### Added
+- **Multi-Criteria Directional Track Switch Routing**:
+  - Added **Travel Direction Filtering** (`All`, `North`, `South`, `East`, `West`) to Track Signal Switch rules. Resolves the true travel heading of approaching locomotives and consists via velocity and locomotive orientation.
+  - Added **Freight Cargo State Filtering** (`Any`, `Loaded`, `Empty`) to Track Signal Switch rules. Detects stored items, bulk aggregates, fluids, and passengers across coupled freight cars, liquid tankers, aggregate hoppers, and livestock cars.
+  - Added **Locomotive Fuel / Battery Threshold Filtering** (`Any`, `< 25%`, `< 50%`, `> 25%`, `> 50%`) to Track Signal Switch rules. Unified across Steam/Coal locomotives (burn time and coal reserves), Diesel locomotives (tank level), and Electric locomotives (internal battery charge). Low-fuel trains can automatically divert into refueling sidings while fueled trains remain on mainlines.
+  - Added new localized translation strings for Direction, Cargo, and Fuel switch conditions in `en_us.json`.
+
+### Changed
+- **Track Signal Switch GUI (`TrackSwitchScreen`)**:
+  - Overhauled and widened GUI to 264x224 with clean, responsive cycle buttons for Direction, Cargo, and Fuel conditions.
+  - Added compact, color-coded criteria badges to rule rows (`[Dir]`, `[Cargo]`, `[Fuel]`) with comprehensive hover tooltips.
+  - Allowed multiple coexisting routing rules for the same train name as long as their travel conditions differ.
+- **Rule Specificity Ladder**:
+  - Track switches now evaluate rules from most specific (Name + Direction + Cargo + Fuel) down to general fallbacks and wildcards, ensuring predictable routing behavior.
+
+### Fixed
+- **Wye Track & Reversing Loop Routing Conflict**:
+  - Fixed an issue where trains returning or reversing from a spur track on a Wye junction re-triggered unconditional switch rules, preventing them from returning along their intended mainline direction.
+
+---
+
+## [1.1.21] - 2026-11-03
+
+### Fixed
+- **Speed Control Rail Approach Stopping & Tag Recognition**:
+  - Registered `miningtools:speed_control_rail` and `miningtools:coupler_rail` into `minecraft:tags/block/rails.json` and `minecraft:tags/block/mineable/pickaxe.json`. Previously, approaching locomotives and rolling stock evaluated the speed control rail as a missing track gap or solid obstacle, triggering emergency consist shutdown.
+  - Hardened rail detection with `TrainChainingUtil.isRail()` across all locomotive and rolling stock movement checks (`BasicLocomotiveEntity`, `DieselLocomotiveEntity`, `ElectricLocomotiveEntity`, and `TrainChainingUtil`), preventing false-positive obstacle detection on any rail block.
+  - Temporarily suppressed coupled consist collision bounding boxes during locomotive repositioning so reverse and inverted travel never causes the locomotive to bind against its own cars.
+  - Speed Control Rails now immediately apply directional velocity in the new travel heading upon activation.
+
+---
+
+## [1.1.20] - 2026-11-03
+
+### Added
+- **Dedicated Left Turnout Rail (`Turnout Rail (Left)`)**:
+  - Added a dedicated, standalone `Turnout Rail (Left)` (`miningtools:left_turnout_rail`) block and item that branches left by default when placed.
+  - Re-labeled the original turnout rail as `Turnout Rail (Right)` (`miningtools:turnout_rail`) for clarity.
+  - Added full crafting recipes: craft 4 Left Turnout Rails using rails and a lever, or convert directly 1:1 between Right and Left Turnout Rails in any crafting grid (shapeless).
+  - Fully integrated with Track Signal Switches and redstone control: toggling a switch or redstone signal shifts the articulated switch points and switches minecart paths between mainline straight and left divergent curves.
+  - Added Railroad Crowbar `useOn` handling on turnout rails for consistent rotation and switch interaction.
+
+---
+
 ## [1.1.19] - 2026-11-03
 
 ### Fixed

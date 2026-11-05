@@ -170,6 +170,10 @@ public class MiningToolsClient {
     private static boolean wasLightPressed = false;
     private static boolean wasOpenGuiPressed = false;
 
+    public static void openGuideBook() {
+        Minecraft.getInstance().setScreenAndShow(new com.example.miningtools.client.gui.MiningToolsGuideScreen());
+    }
+
     public MiningToolsClient(IEventBus modEventBus, ModContainer container) {
         // Allows NeoForge to create a config screen for this mod's configs.
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
@@ -190,6 +194,7 @@ public class MiningToolsClient {
         CargoTransferSyncPayload.CLIENT_HANDLER = CargoTransferScreen::onSyncPayload;
         FluidLoaderSyncPayload.CLIENT_HANDLER = FluidLoaderScreen::onSyncPayload;
         com.example.miningtools.network.SpeedControlRailSyncPayload.CLIENT_HANDLER = com.example.miningtools.client.gui.SpeedControlRailScreen::open;
+        com.example.miningtools.network.DelayRailSyncPayload.CLIENT_HANDLER = com.example.miningtools.client.gui.DelayRailScreen::open;
     }
 
     private void onClientSetup(FMLClientSetupEvent event) {

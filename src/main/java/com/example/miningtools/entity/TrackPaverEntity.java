@@ -68,10 +68,13 @@ import net.minecraft.world.phys.Vec3;
  * - 27-slot bulk material inventory + filter slot + fuel slot.
  */
 public class TrackPaverEntity extends AbstractMinecartContainer {
-    public static final int INVENTORY_SIZE = 29;
-    public static final int SLOT_PAVER_BLOCK = 0;
-    public static final int SLOT_FUEL = 1;
-    public static final int SLOT_MATERIAL_START = 2;
+    public static final int INVENTORY_SIZE = 31;
+    public static final int SLOT_PATTERN_LEFT = 0;
+    public static final int SLOT_PATTERN_CENTER = 1;
+    public static final int SLOT_PATTERN_RIGHT = 2;
+    public static final int SLOT_PAVER_BLOCK = SLOT_PATTERN_CENTER; // Backward compatibility alias
+    public static final int SLOT_FUEL = 3;
+    public static final int SLOT_MATERIAL_START = 4;
     public static final int SLOT_MATERIAL_COUNT = 27;
 
     public static final int MODE_STOPPED = 0;
@@ -723,10 +726,13 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     /**
      * Paves a 1-deep x 3-wide strip (left, center, right) across the rear screed.
      * Preserves tracks intact when replacing blocks underneath railway rails!
+     * Each of the 3 tiles is configured by its corresponding pattern slot:
+     * - Tile 0 (Left): SLOT_PATTERN_LEFT
+     * - Tile 1 (Center): SLOT_PATTERN_CENTER
+     * - Tile 2 (Right): SLOT_PATTERN_RIGHT
      */
     public void executePavingStrip(BlockPos centerPos, Direction forwardDir) {
-        BlockState targetPaverState = this.getTargetPaverBlockState();
-        if (targetPaverState == null || targetPaverState.isAir()) {
+        if (!this.hasPaverMaterial()) {
             this.setRunMode(MODE_STOPPED);
             this.notifyOutOfMaterial(null);
             return;
@@ -738,22 +744,29 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         // Paving occurs at the ground foundation layer (Y - 1 beneath vehicle position)
         BlockPos groundCenter = centerPos.below();
         BlockPos[] strip = new BlockPos[] {
-                groundCenter.relative(leftDir),
-                groundCenter,
-                groundCenter.relative(rightDir)
+                groundCenter.relative(leftDir), // 0: Left
+                groundCenter,                   // 1: Center
+                groundCenter.relative(rightDir) // 2: Right
         };
 
         boolean placedAny = false;
-        for (BlockPos pos : strip) {
-            if (this.paveSingleBlock(pos, targetPaverState)) {
+        SoundType soundType = null;
+
+        for (int i = 0; i < 3; i++) {
+            BlockState targetState = this.getTargetPaverBlockState(i);
+            if (targetState == null || targetState.isAir()) {
+                continue; // Skip paving this tile if no pattern or unpaved
+            }
+
+            if (this.paveSingleBlock(strip[i], targetState)) {
                 placedAny = true;
+                soundType = targetState.getSoundType();
             } else if (this.getRunMode() == MODE_STOPPED) {
                 break;
             }
         }
 
-        if (placedAny) {
-            SoundType soundType = targetPaverState.getSoundType();
+        if (placedAny && soundType != null) {
             this.level().playSound(null, centerPos, soundType.getPlaceSound(), SoundSource.BLOCKS, 0.8F, soundType.getPitch() * 0.9F);
         }
     }
@@ -866,13 +879,51 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     }
 
     public @Nullable BlockState getTargetPaverBlockState() {
-        // 1. Check Slot 0 (Filter / Target Block Slot)
-        ItemStack filterStack = this.getItem(SLOT_PAVER_BLOCK);
+        return getTargetPaverBlockState(1); // Default to Center tile
+    }
+
+    /**
+     * Gets the target blockstate for a specific tile across the 3-wide screed:
+     * - tileIndex 0: Left tile (SLOT_PATTERN_LEFT)
+     * - tileIndex 1: Center tile (SLOT_PATTERN_CENTER)
+     * - tileIndex 2: Right tile (SLOT_PATTERN_RIGHT)
+     */
+    public @Nullable BlockState getTargetPaverBlockState(int tileIndex) {
+        int slot = switch (tileIndex) {
+            case 0 -> SLOT_PATTERN_LEFT;
+            case 1 -> SLOT_PATTERN_CENTER;
+            case 2 -> SLOT_PATTERN_RIGHT;
+            default -> SLOT_PATTERN_CENTER;
+        };
+
+        ItemStack filterStack = this.getItem(slot);
         if (!filterStack.isEmpty() && filterStack.getItem() instanceof BlockItem bi) {
-            return bi.getBlock().defaultBlockState();
+            Block b = bi.getBlock();
+            if (!(b instanceof BaseRailBlock)) {
+                return b.defaultBlockState();
+            }
         }
 
-        // 2. If Slot 0 is empty, take the first valid full block found in the material inventory
+        // If all 3 pattern slots are empty, fall back to first valid full block in bulk inventory
+        if (this.areAllPatternSlotsEmpty()) {
+            return this.getFirstValidBulkMaterialState();
+        }
+
+        // Specific pattern is active, but this specific tile slot is empty -> skip paving this tile
+        return null;
+    }
+
+    public boolean areAllPatternSlotsEmpty() {
+        for (int s = SLOT_PATTERN_LEFT; s <= SLOT_PATTERN_RIGHT; s++) {
+            ItemStack stack = this.getItem(s);
+            if (!stack.isEmpty() && stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public @Nullable BlockState getFirstValidBulkMaterialState() {
         for (int i = SLOT_MATERIAL_START; i < SLOT_MATERIAL_START + SLOT_MATERIAL_COUNT; i++) {
             ItemStack stack = this.getItem(i);
             if (!stack.isEmpty() && stack.getItem() instanceof BlockItem bi) {
@@ -891,30 +942,38 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             return true;
         }
 
-        ItemStack filterStack = this.getItem(SLOT_PAVER_BLOCK);
-        if (!filterStack.isEmpty() && filterStack.getItem() instanceof BlockItem bi) {
-            Block filterBlock = bi.getBlock();
+        if (this.areAllPatternSlotsEmpty()) {
+            // Check if ANY valid block exists in material inventory
             for (int i = SLOT_MATERIAL_START; i < SLOT_MATERIAL_START + SLOT_MATERIAL_COUNT; i++) {
                 ItemStack stack = this.getItem(i);
-                if (!stack.isEmpty() && stack.getItem() instanceof BlockItem matBi && matBi.getBlock() == filterBlock) {
+                if (!stack.isEmpty() && stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock)) {
                     return true;
                 }
             }
-            // Try pulling matching blocks from linked carts
-            int pulled = TrainChainingUtil.pullItemsFromConsist(this, s -> s.getItem() instanceof BlockItem bi2 && bi2.getBlock() == filterBlock, 16);
+            // Try pulling any valid block from linked consist carts
+            int pulled = TrainChainingUtil.pullItemsFromConsist(this, s -> s.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock), 16);
             return pulled > 0;
         }
 
-        // If filter slot is empty, check if any valid block exists in the material inventory
-        for (int i = SLOT_MATERIAL_START; i < SLOT_MATERIAL_START + SLOT_MATERIAL_COUNT; i++) {
-            ItemStack stack = this.getItem(i);
-            if (!stack.isEmpty() && stack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock)) {
-                return true;
+        // If specific pattern slots are set, check if material exists for at least one configured block
+        for (int s = SLOT_PATTERN_LEFT; s <= SLOT_PATTERN_RIGHT; s++) {
+            ItemStack filterStack = this.getItem(s);
+            if (!filterStack.isEmpty() && filterStack.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock)) {
+                Block filterBlock = bi.getBlock();
+                for (int i = SLOT_MATERIAL_START; i < SLOT_MATERIAL_START + SLOT_MATERIAL_COUNT; i++) {
+                    ItemStack stack = this.getItem(i);
+                    if (!stack.isEmpty() && stack.getItem() instanceof BlockItem matBi && matBi.getBlock() == filterBlock) {
+                        return true;
+                    }
+                }
+                int pulled = TrainChainingUtil.pullItemsFromConsist(this, cStack -> cStack.getItem() instanceof BlockItem bi2 && bi2.getBlock() == filterBlock, 16);
+                if (pulled > 0) {
+                    return true;
+                }
             }
         }
-        // Try pulling any valid placeable block from linked consist carts
-        int pulled = TrainChainingUtil.pullItemsFromConsist(this, s -> s.getItem() instanceof BlockItem bi && !(bi.getBlock() instanceof BaseRailBlock), 16);
-        return pulled > 0;
+
+        return false;
     }
 
     public void notifyOutOfMaterial(@Nullable Player targetPlayer) {
@@ -1132,6 +1191,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     @Override
     protected void addAdditionalSaveData(ValueOutput output) {
         super.addAdditionalSaveData(output);
+        output.putInt("PaverVersion", 1);
         output.putInt("Facing", this.getFacing().get3DDataValue());
         output.putInt("Fuel", this.fuel);
         output.putInt("FuelTotal", this.fuelTotal);
@@ -1147,6 +1207,29 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
         super.readAdditionalSaveData(input);
+
+        int version = input.getIntOr("PaverVersion", 0);
+        if (version == 0 && this.itemStacks.size() >= INVENTORY_SIZE) {
+            // Version 0 migration:
+            // Old Slot 0: filter
+            // Old Slot 1: fuel
+            // Old Slots 2..28: 27 materials
+            ItemStack oldPattern = this.itemStacks.get(0).copy();
+            ItemStack oldFuel = this.itemStacks.get(1).copy();
+            NonNullList<ItemStack> oldMaterials = NonNullList.withSize(SLOT_MATERIAL_COUNT, ItemStack.EMPTY);
+            for (int i = 0; i < SLOT_MATERIAL_COUNT && (2 + i) < this.itemStacks.size(); i++) {
+                oldMaterials.set(i, this.itemStacks.get(2 + i).copy());
+            }
+
+            this.itemStacks.set(SLOT_PATTERN_LEFT, oldPattern.copy());
+            this.itemStacks.set(SLOT_PATTERN_CENTER, oldPattern.copy());
+            this.itemStacks.set(SLOT_PATTERN_RIGHT, oldPattern.copy());
+            this.itemStacks.set(SLOT_FUEL, oldFuel);
+            for (int i = 0; i < SLOT_MATERIAL_COUNT; i++) {
+                this.itemStacks.set(SLOT_MATERIAL_START + i, oldMaterials.get(i));
+            }
+        }
+
         int facingVal = input.getIntOr("Facing", Direction.NORTH.get3DDataValue());
         this.setFacing(Direction.from3DDataValue(facingVal));
         this.fuel = input.getIntOr("Fuel", 0);

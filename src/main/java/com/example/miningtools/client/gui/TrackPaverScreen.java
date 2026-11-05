@@ -84,7 +84,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 0);
                     }
-                }).bounds(this.leftPos + 78, this.topPos + 12, 44, 12).build()
+                }).bounds(this.leftPos + 85, this.topPos + 12, 40, 12).build()
         );
 
         this.reverseButton = this.addRenderableWidget(
@@ -92,7 +92,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 1);
                     }
-                }).bounds(this.leftPos + 125, this.topPos + 12, 44, 12).build()
+                }).bounds(this.leftPos + 127, this.topPos + 12, 41, 12).build()
         );
 
         // Row 2: Work Mode and Work Light
@@ -101,7 +101,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 3);
                     }
-                }).bounds(this.leftPos + 78, this.topPos + 26, 44, 12).build()
+                }).bounds(this.leftPos + 85, this.topPos + 26, 40, 12).build()
         );
 
         this.lightButton = this.addRenderableWidget(
@@ -109,7 +109,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 4);
                     }
-                }).bounds(this.leftPos + 125, this.topPos + 26, 44, 12).build()
+                }).bounds(this.leftPos + 127, this.topPos + 26, 41, 12).build()
         );
 
         // Row 3: Hologram Guide and Cardinal Lock
@@ -118,7 +118,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 5);
                     }
-                }).bounds(this.leftPos + 78, this.topPos + 40, 44, 12).build()
+                }).bounds(this.leftPos + 85, this.topPos + 40, 40, 12).build()
         );
 
         this.lockButton = this.addRenderableWidget(
@@ -126,7 +126,7 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 2);
                     }
-                }).bounds(this.leftPos + 125, this.topPos + 40, 44, 12).build()
+                }).bounds(this.leftPos + 127, this.topPos + 40, 41, 12).build()
         );
     }
 
@@ -148,8 +148,8 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
 
     private Component getWorkButtonLabel() {
         return this.menu.isWorkMode()
-                ? Component.literal("Work: ON").withStyle(ChatFormatting.GREEN)
-                : Component.literal("Work: OFF").withStyle(ChatFormatting.GOLD);
+                ? Component.literal("Work ON").withStyle(ChatFormatting.GREEN)
+                : Component.literal("Work OFF").withStyle(ChatFormatting.GOLD);
     }
 
     private Component getLightButtonLabel() {
@@ -160,8 +160,8 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
 
     private Component getHologramButtonLabel() {
         return this.menu.isHologramEnabled()
-                ? Component.literal("Holo: ON").withStyle(ChatFormatting.AQUA)
-                : Component.literal("Holo: OFF").withStyle(ChatFormatting.GRAY);
+                ? Component.literal("Holo ON").withStyle(ChatFormatting.AQUA)
+                : Component.literal("Holo OFF").withStyle(ChatFormatting.GRAY);
     }
 
     private Component getLockButtonLabel() {
@@ -201,6 +201,8 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
     @Override
     protected void extractLabels(GuiGraphicsExtractor graphics, int xm, int ym) {
         super.extractLabels(graphics, xm, ym);
+        graphics.text(this.font, Component.literal("Fuel"), 7, 7, 0x404040, false);
+        graphics.text(this.font, Component.literal("Pattern (L/C/R)"), 28, 8, 0x404040, false);
         graphics.text(this.font, Component.literal("Paving Material"), 8, 44, 0x404040, false);
     }
 
@@ -225,11 +227,52 @@ public class TrackPaverScreen extends AbstractContainerScreen<TrackPaverMenu> {
                     14,
                     0,
                     14 - litHeight,
-                    xo + 36,
-                    yo + 21 + 14 - litHeight,
+                    xo + 9,
+                    yo + 36 + 14 - litHeight,
                     14,
                     litHeight
             );
+        }
+    }
+
+    @Override
+    protected void extractTooltip(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        super.extractTooltip(graphics, mouseX, mouseY);
+        int xo = this.leftPos;
+        int yo = this.topPos;
+
+        // Hover over Fuel Slot
+        if (mouseX >= xo + 7 && mouseX <= xo + 25 && mouseY >= yo + 17 && mouseY <= yo + 35) {
+            if (this.hoveredSlot == null || this.hoveredSlot.getItem().isEmpty()) {
+                graphics.setTooltipForNextFrame(Component.literal("Fuel Slot: Insert burnable fuel (Coal, Charcoal, Logs, etc.)").withStyle(ChatFormatting.GOLD), mouseX, mouseY);
+            }
+        }
+        // Hover over Left Pattern Slot
+        else if (mouseX >= xo + 29 && mouseX <= xo + 47 && mouseY >= yo + 20 && mouseY <= yo + 38) {
+            if (this.hoveredSlot == null || this.hoveredSlot.getItem().isEmpty()) {
+                graphics.setTooltipForNextFrame(Component.literal("Left Roadbed Filter: Block placed on left tile (empty = ignore/clear)").withStyle(ChatFormatting.AQUA), mouseX, mouseY);
+            }
+        }
+        // Hover over Center Pattern Slot
+        else if (mouseX >= xo + 47 && mouseX <= xo + 65 && mouseY >= yo + 20 && mouseY <= yo + 38) {
+            if (this.hoveredSlot == null || this.hoveredSlot.getItem().isEmpty()) {
+                graphics.setTooltipForNextFrame(Component.literal("Center Roadbed Filter: Block placed under rail (empty = use materials)").withStyle(ChatFormatting.AQUA), mouseX, mouseY);
+            }
+        }
+        // Hover over Right Pattern Slot
+        else if (mouseX >= xo + 65 && mouseX <= xo + 83 && mouseY >= yo + 20 && mouseY <= yo + 38) {
+            if (this.hoveredSlot == null || this.hoveredSlot.getItem().isEmpty()) {
+                graphics.setTooltipForNextFrame(Component.literal("Right Roadbed Filter: Block placed on right tile (empty = ignore/clear)").withStyle(ChatFormatting.AQUA), mouseX, mouseY);
+            }
+        }
+        // Hover over Burn Progress Flame
+        else if (mouseX >= xo + 8 && mouseX <= xo + 24 && mouseY >= yo + 36 && mouseY <= yo + 50) {
+            int fuel = this.menu.getFuel();
+            int total = this.menu.getFuelTotal();
+            Component text = fuel > 0
+                    ? Component.literal("Combustion Fuel: " + fuel + " / " + total + " ticks").withStyle(ChatFormatting.GOLD)
+                    : Component.literal("Engine Cold (No Fuel Active)").withStyle(ChatFormatting.GRAY);
+            graphics.setTooltipForNextFrame(text, mouseX, mouseY);
         }
     }
 

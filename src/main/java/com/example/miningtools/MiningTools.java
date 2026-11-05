@@ -7,8 +7,10 @@ import org.slf4j.Logger;
 
 import com.example.miningtools.block.BufferStopBlock;
 import com.example.miningtools.block.CouplerRailBlock;
+import com.example.miningtools.block.DelayRailBlock;
 import com.example.miningtools.block.SpeedControlRailBlock;
 import com.example.miningtools.block.entity.CouplerRailBlockEntity;
+import com.example.miningtools.block.entity.DelayRailBlockEntity;
 import com.example.miningtools.block.entity.SpeedControlRailBlockEntity;
 import com.example.miningtools.block.SurveyorsChargeBlock;
 import com.example.miningtools.item.RemoteDetonatorItem;
@@ -21,6 +23,8 @@ import com.example.miningtools.menu.CargoTransferMenu;
 import com.example.miningtools.network.CargoTransferFilterPayload;
 import com.example.miningtools.network.TurretCartFilterPayload;
 import com.example.miningtools.network.CargoTransferSyncPayload;
+import com.example.miningtools.network.DelayRailSyncPayload;
+import com.example.miningtools.network.DelayRailUpdatePayload;
 import com.example.miningtools.network.FluidLoaderFilterPayload;
 import com.example.miningtools.network.FluidLoaderSyncPayload;
 import com.example.miningtools.network.SpeedControlRailSyncPayload;
@@ -68,6 +72,7 @@ import com.example.miningtools.item.BasicLocomotiveItem;
 import com.example.miningtools.item.CabooseItem;
 import com.example.miningtools.item.CargoMinecartItem;
 import com.example.miningtools.item.CrowbarItem;
+import com.example.miningtools.item.GuideBookItem;
 import com.example.miningtools.item.DieselLocomotiveItem;
 import com.example.miningtools.item.ElectricLocomotiveItem;
 import com.example.miningtools.item.LargeLiquidMinecartItem;
@@ -236,6 +241,21 @@ public class MiningTools {
             () -> new BlockEntityType<>(SpeedControlRailBlockEntity::new, SPEED_CONTROL_RAIL.get())
     );
 
+    // Station Delay Rail Block, Item & BlockEntity
+    public static final DeferredBlock<DelayRailBlock> DELAY_RAIL = BLOCKS.registerBlock(
+            "delay_rail",
+            DelayRailBlock::new,
+            p -> p.noCollision().strength(0.7F).sound(SoundType.METAL).lightLevel(state -> state.getValue(DelayRailBlock.HOLDING) ? 7 : 0)
+    );
+    public static final DeferredItem<BlockItem> DELAY_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
+            "delay_rail",
+            DELAY_RAIL
+    );
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DelayRailBlockEntity>> DELAY_RAIL_BLOCK_ENTITY = BLOCK_ENTITY_TYPES.register(
+            "delay_rail",
+            () -> new BlockEntityType<>(DelayRailBlockEntity::new, DELAY_RAIL.get())
+    );
+
 
     // Turnout Rail Block & Item
     public static final DeferredBlock<TurnoutRailBlock> TURNOUT_RAIL = BLOCKS.registerBlock(
@@ -246,6 +266,17 @@ public class MiningTools {
     public static final DeferredItem<BlockItem> TURNOUT_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
             "turnout_rail",
             TURNOUT_RAIL
+    );
+
+    // Left Turnout Rail Block & Item
+    public static final DeferredBlock<TurnoutRailBlock> LEFT_TURNOUT_RAIL = BLOCKS.registerBlock(
+            "left_turnout_rail",
+            p -> new TurnoutRailBlock(true, p),
+            p -> p.noCollision().strength(0.7F).sound(SoundType.METAL)
+    );
+    public static final DeferredItem<BlockItem> LEFT_TURNOUT_RAIL_ITEM = ITEMS.registerSimpleBlockItem(
+            "left_turnout_rail",
+            LEFT_TURNOUT_RAIL
     );
 
     // Wye Rail Block & Item
@@ -735,6 +766,12 @@ public class MiningTools {
             p -> p.stacksTo(1)
     );
 
+    public static final DeferredItem<GuideBookItem> GUIDE_BOOK_ITEM = ITEMS.registerItem(
+            "guide_book",
+            GuideBookItem::new,
+            p -> p.stacksTo(1)
+    );
+
     public static final DeferredHolder<MenuType<?>, MenuType<ElectricLocomotiveMenu>> ELECTRIC_LOCOMOTIVE_MENU = MENUS.register(
             "electric_locomotive",
             () -> new MenuType<>(ElectricLocomotiveMenu::new, FeatureFlags.DEFAULT_FLAGS)
@@ -748,6 +785,7 @@ public class MiningTools {
                     .withTabsBefore(CreativeModeTabs.COMBAT)
                     .icon(() -> BASIC_LOCOMOTIVE_ITEM.get().getDefaultInstance())
                     .displayItems((parameters, output) -> {
+                        output.accept(GUIDE_BOOK_ITEM.get());
                         output.accept(CROWBAR_ITEM.get());
                         output.accept(JUNCTION_RAIL_ITEM.get());
                         output.accept(CONTROL_RAIL_ITEM.get());
@@ -755,7 +793,9 @@ public class MiningTools {
                         output.accept(HORN_RAIL_ITEM.get());
                         output.accept(COUPLER_RAIL_ITEM.get());
                         output.accept(SPEED_CONTROL_RAIL_ITEM.get());
+                        output.accept(DELAY_RAIL_ITEM.get());
                         output.accept(TURNOUT_RAIL_ITEM.get());
+                        output.accept(LEFT_TURNOUT_RAIL_ITEM.get());
                         output.accept(WYE_RAIL_ITEM.get());
                         output.accept(TRACK_SWITCH_ITEM.get());
                         output.accept(RAILWAY_SIGNAL_ITEM.get());
@@ -1023,6 +1063,16 @@ public class MiningTools {
                 SpeedControlRailUpdatePayload.STREAM_CODEC,
                 SpeedControlRailUpdatePayload::handle
         );
+        registrar.playToClient(
+                DelayRailSyncPayload.TYPE,
+                DelayRailSyncPayload.STREAM_CODEC,
+                DelayRailSyncPayload::handle
+        );
+        registrar.playToServer(
+                DelayRailUpdatePayload.TYPE,
+                DelayRailUpdatePayload.STREAM_CODEC,
+                DelayRailUpdatePayload::handle
+        );
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
@@ -1031,6 +1081,7 @@ public class MiningTools {
 
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.REDSTONE_BLOCKS || event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(GUIDE_BOOK_ITEM);
             event.accept(CROWBAR_ITEM);
             event.accept(JUNCTION_RAIL_ITEM);
             event.accept(CONTROL_RAIL_ITEM);
@@ -1038,7 +1089,9 @@ public class MiningTools {
             event.accept(HORN_RAIL_ITEM);
             event.accept(COUPLER_RAIL_ITEM);
             event.accept(SPEED_CONTROL_RAIL_ITEM);
+            event.accept(DELAY_RAIL_ITEM);
             event.accept(TURNOUT_RAIL_ITEM);
+            event.accept(LEFT_TURNOUT_RAIL_ITEM);
             event.accept(WYE_RAIL_ITEM);
             event.accept(TRACK_SWITCH_ITEM);
             event.accept(RAILWAY_SIGNAL_ITEM);

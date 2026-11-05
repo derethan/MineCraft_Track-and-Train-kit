@@ -1,0 +1,46 @@
+{
+  "variants": {
+    "holding=false,shape=ascending_east": {
+      "model": "miningtools:block/delay_rail_raised_ne",
+      "y": 90
+    },
+    "holding=false,shape=ascending_north": {
+      "model": "miningtools:block/delay_rail_raised_ne"
+    },
+    "holding=false,shape=ascending_south": {
+      "model": "miningtools:block/delay_rail_raised_sw"
+    },
+    "holding=false,shape=ascending_west": {
+      "model": "miningtools:block/delay_rail_raised_sw",
+      "y": 90
+    },
+    "holding=false,shape=east_west": {
+      "model": "miningtools:block/delay_rail",
+      "y": 90
+    },
+    "holding=false,shape=north_south": {
+      "model": "miningtools:block/delay_rail"
+    },
+    "holding=true,shape=ascending_east": {
+      "model": "miningtools:block/delay_rail_on_raised_ne",
+      "y": 90
+    },
+    "holding=true,shape=ascending_north": {
+      "model": "miningtools:block/delay_rail_on_raised_ne"
+    },
+    "holding=true,shape=ascending_south": {
+      "model": "miningtools:block/delay_rail_on_raised_sw"
+    },
+    "holding=true,shape=ascending_west": {
+      "model": "miningtools:block/delay_rail_on_raised_sw",
+      "y": 90
+    },
+    "holding=true,shape=east_west": {
+      "model": "miningtools:block/delay_rail_on",
+      "y": 90
+    },
+    "holding=true,shape=north_south": {
+      "model": "miningtools:block/delay_rail_on"
+    }
+  }
+}

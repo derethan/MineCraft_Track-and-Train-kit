@@ -581,7 +581,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     protected void tickFuelAndMovement() {
         BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
-        boolean onRails = BaseRailBlock.isRail(railState);
+        boolean onRails = TrainChainingUtil.isRail(railState);
 
         if (railState.is(MiningTools.CONTROL_RAIL.get()) || railState.is(MiningTools.BRAKING_RAIL.get())) {
             boolean powered = railState.getValue(PoweredRailBlock.POWERED);
@@ -741,7 +741,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             }
             this.setPos(x, moveY, z);
             this.setDeltaMovement(newVx, 0.0, newVz);
-            this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
+            TrainChainingUtil.moveLocomotiveIgnoringConsist(this, new Vec3(newVx, 0.0, newVz));
 
             // Vanilla slope step-up / step-down check
             if (exit0.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit0.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit0.getZ()) {
@@ -1065,7 +1065,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
         BlockPos railPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(cart);
         BlockState railState = this.level().getBlockState(railPos);
-        if (!BaseRailBlock.isRail(railState)) {
+        if (!TrainChainingUtil.isRail(railState)) {
             cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
             return !cart.horizontalCollision;
         }
@@ -1097,7 +1097,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         Direction cartDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
                 ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
                 : cart.getMotionDirection();
-        boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(cartDir).above()));
+        boolean uphillAhead = TrainChainingUtil.isRail(this.level().getBlockState(railPos.relative(cartDir).above()));
 
         double x = x0 + xD * progress;
         double z = z0 + zD * progress;
@@ -1131,7 +1131,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 cart.setPos(cart.getX(), cart.getY() + 1.0, cart.getZ());
             } else if (Mth.floor(cart.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == lowerExit.getZ()) {
                 BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
-                if (BaseRailBlock.isRail(this.level().getBlockState(lowerRail))) {
+                if (TrainChainingUtil.isRail(this.level().getBlockState(lowerRail))) {
                     cart.setPos(cart.getX(), cart.getY() - 1.0, cart.getZ());
                 }
             }

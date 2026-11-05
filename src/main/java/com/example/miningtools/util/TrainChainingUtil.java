@@ -66,6 +66,14 @@ import net.neoforged.neoforge.transfer.fluid.FluidResource;
 import java.util.function.Predicate;
 
 public final class TrainChainingUtil {
+    public static boolean isRail(BlockState state) {
+        return state != null && (BaseRailBlock.isRail(state) || state.getBlock() instanceof BaseRailBlock || state.is(net.minecraft.tags.BlockTags.RAILS));
+    }
+
+    public static boolean isRail(Level level, BlockPos pos) {
+        return level != null && isRail(level.getBlockState(pos));
+    }
+
     /**
      * Finds the rail BlockPos at, below, or above an entity, supporting steep multi-block descents.
      * Checks entity level, 1 block below, 2 blocks below, 3 blocks below, and 1 block above.
@@ -75,15 +83,15 @@ public final class TrainChainingUtil {
         int j = Mth.floor(entity.getY());
         int k = Mth.floor(entity.getZ());
         BlockPos atPos = new BlockPos(i, j, k);
-        if (BaseRailBlock.isRail(entity.level(), atPos)) {
+        if (isRail(entity.level(), atPos)) {
             return atPos;
         }
         BlockPos belowPos = new BlockPos(i, j - 1, k);
-        if (BaseRailBlock.isRail(entity.level(), belowPos)) {
+        if (isRail(entity.level(), belowPos)) {
             return belowPos;
         }
         BlockPos abovePos = new BlockPos(i, j + 1, k);
-        if (BaseRailBlock.isRail(entity.level(), abovePos)) {
+        if (isRail(entity.level(), abovePos)) {
             return abovePos;
         }
         return atPos;
@@ -1007,6 +1015,134 @@ public final class TrainChainingUtil {
         return cart.getMotionDirection();
     }
 
+    public record ConsistCargoStatus(boolean hasCargo, boolean isEmpty) {}
+
+    public static ConsistCargoStatus getConsistCargoStatus(AbstractMinecart cart) {
+        if (cart == null) return new ConsistCargoStatus(false, true);
+        List<AbstractMinecart> consist = getConnectedConsist(cart);
+        boolean foundFreight = false;
+        boolean anyLoaded = false;
+        boolean allEmpty = true;
+
+        for (AbstractMinecart c : consist) {
+            if (isFreightCart(c)) {
+                foundFreight = true;
+                boolean loaded = checkCartHasCargo(c);
+                if (loaded) {
+                    anyLoaded = true;
+                    allEmpty = false;
+                }
+            }
+        }
+
+        if (!foundFreight) {
+            if (isFreightCart(cart)) {
+                boolean loaded = checkCartHasCargo(cart);
+                return new ConsistCargoStatus(loaded, !loaded);
+            }
+            return new ConsistCargoStatus(false, true);
+        }
+
+        return new ConsistCargoStatus(anyLoaded, allEmpty);
+    }
+
+    public static boolean isFreightCart(AbstractMinecart c) {
+        if (c == null) return false;
+        if (c instanceof CargoMinecartEntity || c instanceof LiquidMinecartEntity || c instanceof LargeLiquidMinecartEntity
+                || c instanceof AggregateHopperCartEntity || c instanceof LivestockCartEntity) {
+            return true;
+        }
+        if (c instanceof Container && !isLocomotive(c)) {
+            return true;
+        }
+        return false;
+    }
+
+    public static boolean checkCartHasCargo(AbstractMinecart c) {
+        if (c instanceof CargoMinecartEntity cm) {
+            for (int i = 0; i < CargoMinecartEntity.STORAGE_SLOTS; i++) {
+                if (!cm.getItem(i).isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (c instanceof LiquidMinecartEntity lm) {
+            return lm.getFluidAmount() > 0;
+        }
+        if (c instanceof AggregateHopperCartEntity ah) {
+            return ah.hasStoredItems();
+        }
+        if (c instanceof LivestockCartEntity lc) {
+            return !lc.getPassengers().isEmpty();
+        }
+        if (c instanceof Container cont && !isLocomotive(c)) {
+            for (int i = 0; i < cont.getContainerSize(); i++) {
+                if (!cont.getItem(i).isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return false;
+    }
+
+    public static int getConsistFuelPercent(AbstractMinecart cart) {
+        if (cart == null) return 100;
+        List<AbstractMinecart> consist = getConnectedConsist(cart);
+        for (AbstractMinecart c : consist) {
+            int pct = getLocomotiveFuelPercent(c);
+            if (pct >= 0) {
+                return pct;
+            }
+        }
+        int selfPct = getLocomotiveFuelPercent(cart);
+        return selfPct >= 0 ? selfPct : 100;
+    }
+
+    private static int getLocomotiveFuelPercent(AbstractMinecart cart) {
+        if (cart instanceof BasicLocomotiveEntity bl) {
+            int coal = bl.getCoalCount();
+            int fuelPct = bl.getFuelPercent();
+            if (coal > 0) {
+                return Math.min(100, Math.max(fuelPct, (int) ((coal * 100L) / 64L)));
+            }
+            return fuelPct;
+        }
+        if (cart instanceof DieselLocomotiveEntity dl) {
+            int cap = dl.getCapacity();
+            return cap > 0 ? (int) ((dl.getFluidAmount() * 100L) / cap) : 0;
+        }
+        if (cart instanceof ElectricLocomotiveEntity el) {
+            int cap = el.getEnergyCapacity();
+            return cap > 0 ? (int) ((el.getEnergyStored() * 100L) / cap) : 0;
+        }
+        return -1;
+    }
+
+    /**
+     * Moves a locomotive while temporarily ignoring the bounding boxes of its own coupled consist,
+     * so reversing or changing direction never makes the locomotive "collide" with its own cars
+     * (which would register as an obstacle and halt the train).
+     */
+    public static void moveLocomotiveIgnoringConsist(AbstractMinecart loco, Vec3 movement) {
+        List<AbstractMinecart> consist = getConnectedConsist(loco);
+        List<Pair<AbstractMinecart, AABB>> savedBoxes = new ArrayList<>();
+        for (AbstractMinecart other : consist) {
+            if (other != loco && other != null && !other.isRemoved()) {
+                savedBoxes.add(Pair.of(other, other.getBoundingBox()));
+                other.setBoundingBox(new AABB(0, -1000, 0, 0, -1000, 0));
+            }
+        }
+        try {
+            loco.move(MoverType.SELF, movement);
+        } finally {
+            for (Pair<AbstractMinecart, AABB> entry : savedBoxes) {
+                entry.getFirst().setBoundingBox(entry.getSecond());
+            }
+        }
+    }
+
     public static void stopLocomotive(AbstractMinecart loco) {
         stopTrainConsist(loco);
     }
@@ -1611,29 +1747,29 @@ public final class TrainChainingUtil {
 
         // 1. Vanilla check: if yt - 1 has a rail, cart is on an ascending slope from yt - 1
         BlockPos below = new BlockPos(xt, yt - 1, zt);
-        if (BaseRailBlock.isRail(level.getBlockState(below))) {
+        if (isRail(level, below)) {
             return below;
         }
 
         // 2. Direct block: cart is on rail at yt
         BlockPos current = new BlockPos(xt, yt, zt);
-        if (BaseRailBlock.isRail(level.getBlockState(current))) {
+        if (isRail(level, current)) {
             return current;
         }
 
         // 3. One block above (descending slope or step)
         BlockPos above = new BlockPos(xt, yt + 1, zt);
-        if (BaseRailBlock.isRail(level.getBlockState(above))) {
+        if (isRail(level, above)) {
             return above;
         }
 
         // 4. Multi-block tolerances (+/- 2)
         BlockPos below2 = new BlockPos(xt, yt - 2, zt);
-        if (BaseRailBlock.isRail(level.getBlockState(below2))) {
+        if (isRail(level, below2)) {
             return below2;
         }
         BlockPos above2 = new BlockPos(xt, yt + 2, zt);
-        if (BaseRailBlock.isRail(level.getBlockState(above2))) {
+        if (isRail(level, above2)) {
             return above2;
         }
 
@@ -1647,7 +1783,7 @@ public final class TrainChainingUtil {
         }
 
         BlockState state = entity.level().getBlockState(railPos);
-        if (!BaseRailBlock.isRail(state)) {
+        if (!isRail(state)) {
             return null;
         }
 
@@ -1726,7 +1862,7 @@ public final class TrainChainingUtil {
         }
 
         BlockState state = entity.level().getBlockState(railPos);
-        if (!BaseRailBlock.isRail(state)) {
+        if (!isRail(state)) {
             return null;
         }
 
@@ -1825,7 +1961,7 @@ public final class TrainChainingUtil {
         BlockState prevState = level.getBlockState(prevRail);
         BlockState nextState = level.getBlockState(nextRail);
 
-        if (!BaseRailBlock.isRail(prevState) || !BaseRailBlock.isRail(nextState)) {
+        if (!isRail(prevState) || !isRail(nextState)) {
             double dirX = horizChord > 1.0E-4D ? diffX / horizChord : 1.0D;
             double dirZ = horizChord > 1.0E-4D ? diffZ / horizChord : 0.0D;
             double dist = Math.sqrt(horizChord * horizChord + diffY * diffY);
@@ -1920,7 +2056,7 @@ public final class TrainChainingUtil {
                 }
 
                 BlockState st = level.getBlockState(current);
-                if (BaseRailBlock.isRail(st)) {
+                if (isRail(st)) {
                     Vec3i[] exitArray;
                     if (st.getBlock() instanceof JunctionRailBlock) {
                         exitArray = new Vec3i[]{
@@ -1945,7 +2081,7 @@ public final class TrainChainingUtil {
                         }
 
                         for (BlockPos cand : candidates) {
-                            if (visited.add(cand) && BaseRailBlock.isRail(level.getBlockState(cand))) {
+                            if (visited.add(cand) && isRail(level.getBlockState(cand))) {
                                 parentMap.put(cand, current);
                                 queue.add(cand);
                             }
@@ -1967,7 +2103,7 @@ public final class TrainChainingUtil {
 
         BlockPos railPos = getCurrentBlockPosOrRailBelow(cart);
         BlockState railState = cart.level().getBlockState(railPos);
-        if (!BaseRailBlock.isRail(railState)) {
+        if (!isRail(railState)) {
             cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
             return !cart.horizontalCollision;
         }

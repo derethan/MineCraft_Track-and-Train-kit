@@ -11,6 +11,7 @@ import com.example.miningtools.MiningTools;
 import com.example.miningtools.block.TrackSwitchBlock;
 import com.example.miningtools.entity.BasicLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
+import com.example.miningtools.util.TrainChainingUtil;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
@@ -33,10 +34,223 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     public static final int DEFAULT_DETECT_RANGE = 8;
     public static final int MAX_RULES = 32;
 
-    public record SwitchRule(String trainName, boolean openState) {
+    public enum DirectionFilter {
+        ANY(0, "ANY", "gui.miningtools.track_switch.dir.any", "All"),
+        NORTH(1, "NORTH", "gui.miningtools.track_switch.dir.north", "N ^"),
+        SOUTH(2, "SOUTH", "gui.miningtools.track_switch.dir.south", "S v"),
+        EAST(3, "EAST", "gui.miningtools.track_switch.dir.east", "E >"),
+        WEST(4, "WEST", "gui.miningtools.track_switch.dir.west", "W <");
+
+        private final int index;
+        private final String serializedName;
+        private final String translationKey;
+        private final String shortLabel;
+
+        DirectionFilter(int index, String serializedName, String translationKey, String shortLabel) {
+            this.index = index;
+            this.serializedName = serializedName;
+            this.translationKey = translationKey;
+            this.shortLabel = shortLabel;
+        }
+
+        public int getIndex() {
+            return this.index;
+        }
+
+        public String getSerializedName() {
+            return this.serializedName;
+        }
+
+        public String getTranslationKey() {
+            return this.translationKey;
+        }
+
+        public String getShortLabel() {
+            return this.shortLabel;
+        }
+
+        public static DirectionFilter fromIndex(int idx) {
+            for (DirectionFilter f : values()) {
+                if (f.index == idx) {
+                    return f;
+                }
+            }
+            return ANY;
+        }
+
+        public DirectionFilter next() {
+            DirectionFilter[] vals = values();
+            return vals[(this.ordinal() + 1) % vals.length];
+        }
+
+        public DirectionFilter prev() {
+            DirectionFilter[] vals = values();
+            return vals[(this.ordinal() - 1 + vals.length) % vals.length];
+        }
+
+        public boolean matches(@Nullable Direction dir) {
+            if (this == ANY) {
+                return true;
+            }
+            if (dir == null) {
+                return false;
+            }
+            return switch (this) {
+                case NORTH -> dir == Direction.NORTH;
+                case SOUTH -> dir == Direction.SOUTH;
+                case EAST -> dir == Direction.EAST;
+                case WEST -> dir == Direction.WEST;
+                default -> true;
+            };
+        }
+    }
+
+    public enum CargoCondition {
+        ANY(0, "ANY", "gui.miningtools.track_switch.cargo.any", "Cargo: Any"),
+        LOADED(1, "LOADED", "gui.miningtools.track_switch.cargo.loaded", "Cargo: Loaded"),
+        EMPTY(2, "EMPTY", "gui.miningtools.track_switch.cargo.empty", "Cargo: Empty");
+
+        private final int index;
+        private final String serializedName;
+        private final String translationKey;
+        private final String shortLabel;
+
+        CargoCondition(int index, String serializedName, String translationKey, String shortLabel) {
+            this.index = index;
+            this.serializedName = serializedName;
+            this.translationKey = translationKey;
+            this.shortLabel = shortLabel;
+        }
+
+        public int getIndex() {
+            return this.index;
+        }
+
+        public String getSerializedName() {
+            return this.serializedName;
+        }
+
+        public String getTranslationKey() {
+            return this.translationKey;
+        }
+
+        public String getShortLabel() {
+            return this.shortLabel;
+        }
+
+        public static CargoCondition fromIndex(int idx) {
+            for (CargoCondition c : values()) {
+                if (c.index == idx) {
+                    return c;
+                }
+            }
+            return ANY;
+        }
+
+        public CargoCondition next() {
+            CargoCondition[] vals = values();
+            return vals[(this.ordinal() + 1) % vals.length];
+        }
+
+        public CargoCondition prev() {
+            CargoCondition[] vals = values();
+            return vals[(this.ordinal() - 1 + vals.length) % vals.length];
+        }
+
+        public boolean matches(boolean isLoaded, boolean isEmpty) {
+            return switch (this) {
+                case ANY -> true;
+                case LOADED -> isLoaded;
+                case EMPTY -> isEmpty;
+            };
+        }
+    }
+
+    public enum FuelCondition {
+        ANY(0, "ANY", "gui.miningtools.track_switch.fuel.any", "Fuel: Any"),
+        LESS_THAN_25(1, "LT_25", "gui.miningtools.track_switch.fuel.lt25", "Fuel < 25%"),
+        LESS_THAN_50(2, "LT_50", "gui.miningtools.track_switch.fuel.lt50", "Fuel < 50%"),
+        GREATER_THAN_25(3, "GT_25", "gui.miningtools.track_switch.fuel.gt25", "Fuel > 25%"),
+        GREATER_THAN_50(4, "GT_50", "gui.miningtools.track_switch.fuel.gt50", "Fuel > 50%");
+
+        private final int index;
+        private final String serializedName;
+        private final String translationKey;
+        private final String shortLabel;
+
+        FuelCondition(int index, String serializedName, String translationKey, String shortLabel) {
+            this.index = index;
+            this.serializedName = serializedName;
+            this.translationKey = translationKey;
+            this.shortLabel = shortLabel;
+        }
+
+        public int getIndex() {
+            return this.index;
+        }
+
+        public String getSerializedName() {
+            return this.serializedName;
+        }
+
+        public String getTranslationKey() {
+            return this.translationKey;
+        }
+
+        public String getShortLabel() {
+            return this.shortLabel;
+        }
+
+        public static FuelCondition fromIndex(int idx) {
+            for (FuelCondition f : values()) {
+                if (f.index == idx) {
+                    return f;
+                }
+            }
+            return ANY;
+        }
+
+        public FuelCondition next() {
+            FuelCondition[] vals = values();
+            return vals[(this.ordinal() + 1) % vals.length];
+        }
+
+        public FuelCondition prev() {
+            FuelCondition[] vals = values();
+            return vals[(this.ordinal() - 1 + vals.length) % vals.length];
+        }
+
+        public boolean matches(int fuelPercent) {
+            return switch (this) {
+                case ANY -> true;
+                case LESS_THAN_25 -> fuelPercent < 25;
+                case LESS_THAN_50 -> fuelPercent < 50;
+                case GREATER_THAN_25 -> fuelPercent >= 25;
+                case GREATER_THAN_50 -> fuelPercent >= 50;
+            };
+        }
+    }
+
+    public record SwitchRule(
+            String trainName,
+            DirectionFilter direction,
+            CargoCondition cargo,
+            FuelCondition fuel,
+            boolean openState
+    ) {
+        public SwitchRule(String trainName, boolean openState) {
+            this(trainName, DirectionFilter.ANY, CargoCondition.ANY, FuelCondition.ANY, openState);
+        }
+
         public static final StreamCodec<ByteBuf, SwitchRule> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.stringUtf8(32),
                 SwitchRule::trainName,
+                ByteBufCodecs.VAR_INT.map(DirectionFilter::fromIndex, DirectionFilter::getIndex),
+                SwitchRule::direction,
+                ByteBufCodecs.VAR_INT.map(CargoCondition::fromIndex, CargoCondition::getIndex),
+                SwitchRule::cargo,
+                ByteBufCodecs.VAR_INT.map(FuelCondition::fromIndex, FuelCondition::getIndex),
+                SwitchRule::fuel,
                 ByteBufCodecs.BOOL,
                 SwitchRule::openState,
                 SwitchRule::new
@@ -66,7 +280,10 @@ public class TrackSwitchBlockEntity extends BlockEntity {
                 if (cleaned.length() > 32) {
                     cleaned = cleaned.substring(0, 32);
                 }
-                this.rules.add(new SwitchRule(cleaned, r.openState()));
+                DirectionFilter dir = r.direction() == null ? DirectionFilter.ANY : r.direction();
+                CargoCondition cargo = r.cargo() == null ? CargoCondition.ANY : r.cargo();
+                FuelCondition fuel = r.fuel() == null ? FuelCondition.ANY : r.fuel();
+                this.rules.add(new SwitchRule(cleaned, dir, cargo, fuel, r.openState()));
             }
         }
         this.forceCheckStationary = true;
@@ -115,8 +332,20 @@ public class TrackSwitchBlockEntity extends BlockEntity {
                 continue;
             }
 
+            Direction travelDir = TrainChainingUtil.getConsistTravelDirection(cart);
+            if (travelDir == null) {
+                Vec3 vel = cart.getDeltaMovement();
+                if (vel.horizontalDistanceSqr() > 1.0E-4) {
+                    travelDir = Math.abs(vel.x) > Math.abs(vel.z)
+                            ? (vel.x > 0 ? Direction.EAST : Direction.WEST)
+                            : (vel.z > 0 ? Direction.SOUTH : Direction.NORTH);
+                }
+            }
+            TrainChainingUtil.ConsistCargoStatus cargoStatus = TrainChainingUtil.getConsistCargoStatus(cart);
+            int fuelPercent = TrainChainingUtil.getConsistFuelPercent(cart);
+
             String trainName = BasicLocomotiveEntity.resolveTrainName(cart);
-            SwitchRule matched = blockEntity.findMatchingRule(trainName);
+            SwitchRule matched = blockEntity.findMatchingRule(trainName, travelDir, cargoStatus, fuelPercent);
             if (matched != null) {
                 boolean currentOpen = state.getValue(TrackSwitchBlock.OPEN);
                 if (currentOpen != matched.openState()) {
@@ -166,36 +395,77 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     }
 
     public @Nullable SwitchRule findMatchingRule(String trainName) {
+        return this.findMatchingRule(trainName, null, new TrainChainingUtil.ConsistCargoStatus(false, true), 100);
+    }
+
+    public @Nullable SwitchRule findMatchingRule(String trainName, @Nullable Direction travelDir, TrainChainingUtil.ConsistCargoStatus cargoStatus, int fuelPercent) {
         String cleanTrain = trainName == null ? "" : trainName.trim();
-
-        // 1. Exact case-insensitive match
-        if (!cleanTrain.isEmpty()) {
-            for (SwitchRule rule : this.rules) {
-                if (rule.trainName().equalsIgnoreCase(cleanTrain)) {
-                    return rule;
-                }
-            }
-        }
-
-        // 2. Substring or wildcard match
         String lowerTrain = cleanTrain.toLowerCase(Locale.ROOT);
+
+        SwitchRule bestRule = null;
+        int bestScore = -1;
+
         for (SwitchRule rule : this.rules) {
-            String rName = rule.trainName().trim();
-            if (rName.equals("*") || rName.equalsIgnoreCase("any")) {
-                return rule;
+            if (!rule.direction().matches(travelDir)) {
+                continue;
             }
-            if (rName.endsWith("*") && rName.length() > 1 && !lowerTrain.isEmpty()) {
-                String prefix = rName.substring(0, rName.length() - 1).trim().toLowerCase(Locale.ROOT);
-                if (lowerTrain.startsWith(prefix)) {
-                    return rule;
-                }
+            if (!rule.cargo().matches(cargoStatus.hasCargo(), cargoStatus.isEmpty())) {
+                continue;
             }
-            if (!lowerTrain.isEmpty() && lowerTrain.contains(rName.toLowerCase(Locale.ROOT))) {
-                return rule;
+            if (!rule.fuel().matches(fuelPercent)) {
+                continue;
+            }
+
+            int nameMatchScore = testTrainNameMatch(rule.trainName(), cleanTrain, lowerTrain);
+            if (nameMatchScore < 0) {
+                continue;
+            }
+
+            int specificityScore = nameMatchScore
+                    + (rule.direction() != DirectionFilter.ANY ? 30 : 0)
+                    + (rule.cargo() != CargoCondition.ANY ? 20 : 0)
+                    + (rule.fuel() != FuelCondition.ANY ? 20 : 0);
+
+            if (specificityScore > bestScore) {
+                bestScore = specificityScore;
+                bestRule = rule;
             }
         }
 
-        return null;
+        return bestRule;
+    }
+
+    private static int testTrainNameMatch(String rulePattern, String cleanTrain, String lowerTrain) {
+        String rName = rulePattern == null ? "" : rulePattern.trim();
+        if (rName.isEmpty()) {
+            return -1;
+        }
+
+        // Exact match
+        if (!cleanTrain.isEmpty() && rName.equalsIgnoreCase(cleanTrain)) {
+            return 100;
+        }
+
+        String lowerPattern = rName.toLowerCase(Locale.ROOT);
+        // Prefix wildcard match e.g. "Ore*"
+        if (rName.endsWith("*") && rName.length() > 1 && !lowerTrain.isEmpty()) {
+            String prefix = lowerPattern.substring(0, lowerPattern.length() - 1).trim();
+            if (lowerTrain.startsWith(prefix)) {
+                return 60;
+            }
+        }
+
+        // Substring match
+        if (!lowerTrain.isEmpty() && lowerTrain.contains(lowerPattern)) {
+            return 40;
+        }
+
+        // Catch-all wildcard "*" or "any"
+        if (rName.equals("*") || rName.equalsIgnoreCase("any")) {
+            return 10;
+        }
+
+        return -1;
     }
 
     @Override
@@ -206,6 +476,9 @@ public class TrackSwitchBlockEntity extends BlockEntity {
         for (int i = 0; i < this.rules.size(); i++) {
             SwitchRule rule = this.rules.get(i);
             output.putString("RuleName_" + i, rule.trainName());
+            output.putInt("RuleDir_" + i, rule.direction().getIndex());
+            output.putInt("RuleCargo_" + i, rule.cargo().getIndex());
+            output.putInt("RuleFuel_" + i, rule.fuel().getIndex());
             output.putBoolean("RuleOpen_" + i, rule.openState());
         }
     }
@@ -218,9 +491,12 @@ public class TrackSwitchBlockEntity extends BlockEntity {
         this.rules.clear();
         for (int i = 0; i < count; i++) {
             String name = input.getStringOr("RuleName_" + i, "").trim();
+            DirectionFilter dir = DirectionFilter.fromIndex(input.getIntOr("RuleDir_" + i, DirectionFilter.ANY.getIndex()));
+            CargoCondition cargo = CargoCondition.fromIndex(input.getIntOr("RuleCargo_" + i, CargoCondition.ANY.getIndex()));
+            FuelCondition fuel = FuelCondition.fromIndex(input.getIntOr("RuleFuel_" + i, FuelCondition.ANY.getIndex()));
             boolean open = input.getBooleanOr("RuleOpen_" + i, true);
             if (!name.isEmpty()) {
-                this.rules.add(new SwitchRule(name, open));
+                this.rules.add(new SwitchRule(name, dir, cargo, fuel, open));
             }
         }
     }

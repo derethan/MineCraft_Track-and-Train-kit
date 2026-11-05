@@ -50,6 +50,18 @@ public class CrowbarItem extends Item {
         return super.use(level, player, hand);
     }
 
+    @Override
+    public InteractionResult useOn(net.minecraft.world.item.context.UseOnContext context) {
+        Level level = context.getLevel();
+        net.minecraft.core.BlockPos pos = context.getClickedPos();
+        net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof com.example.miningtools.block.TurnoutRailBlock) {
+            return state.useItemOn(context.getItemInHand(), level, context.getPlayer(), context.getHand(),
+                    new net.minecraft.world.phys.BlockHitResult(context.getClickLocation(), context.getClickedFace(), pos, context.isInside()));
+        }
+        return super.useOn(context);
+    }
+
     public static InteractionResult handleCartInteraction(Player player, InteractionHand hand, ItemStack stack, AbstractMinecart cart, Level level) {
         if (level.isClientSide()) {
             return InteractionResult.SUCCESS;

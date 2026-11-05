@@ -688,7 +688,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         BlockPos railPos = this.getCurrentBlockPosOrRailBelow();
         BlockState railState = this.level().getBlockState(railPos);
-        boolean onRails = BaseRailBlock.isRail(railState);
+        boolean onRails = TrainChainingUtil.isRail(railState);
 
         if (railState.is(MiningTools.CONTROL_RAIL.get()) || railState.is(MiningTools.BRAKING_RAIL.get())) {
             boolean powered = railState.getValue(PoweredRailBlock.POWERED);
@@ -827,7 +827,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             }
             this.setPos(x, moveY, z);
             this.setDeltaMovement(newVx, 0.0, newVz);
-            this.move(MoverType.SELF, new Vec3(newVx, 0.0, newVz));
+            TrainChainingUtil.moveLocomotiveIgnoringConsist(this, new Vec3(newVx, 0.0, newVz));
 
             // Vanilla slope step-up / step-down check
             if (exit0.getY() != 0 && Mth.floor(this.getX()) - railPos.getX() == exit0.getX() && Mth.floor(this.getZ()) - railPos.getZ() == exit0.getZ()) {
@@ -924,7 +924,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     public static boolean isPathBlockedByObstacle(Level level, BlockPos currentRailPos, Direction moveDir, Entity entity) {
-        BlockPos railPos = BaseRailBlock.isRail(level.getBlockState(currentRailPos))
+        BlockPos railPos = TrainChainingUtil.isRail(level.getBlockState(currentRailPos))
                 ? currentRailPos
                 : (entity != null ? TrainChainingUtil.findRailBlock(level, entity.getX(), entity.getY(), entity.getZ()) : null);
         if (railPos == null) {
@@ -932,7 +932,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         }
 
         BlockState currentState = level.getBlockState(railPos);
-        if (BaseRailBlock.isRail(currentState)) {
+        if (TrainChainingUtil.isRail(currentState)) {
             AbstractMinecart cartEntity = (entity instanceof AbstractMinecart m) ? m : null;
             RailShape currentShape = ((BaseRailBlock) currentState.getBlock()).getRailDirection(currentState, level, railPos, cartEntity);
             boolean isCurve = !currentShape.isSlope() && currentShape != RailShape.NORTH_SOUTH && currentShape != RailShape.EAST_WEST;
@@ -947,7 +947,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 BlockPos nextRail = null;
                 for (int dy : new int[]{0, 1, -1, 2, -2}) {
                     BlockPos candidate = nextP.above(dy);
-                    if (BaseRailBlock.isRail(level.getBlockState(candidate))) {
+                    if (TrainChainingUtil.isRail(level.getBlockState(candidate))) {
                         nextRail = candidate;
                         break;
                     }
@@ -955,7 +955,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 if (nextRail != null) {
                     BlockPos clearance = nextRail.above();
                     BlockState clearanceState = level.getBlockState(clearance);
-                    if (!clearanceState.isAir() && !BaseRailBlock.isRail(clearanceState) && !clearanceState.getCollisionShape(level, clearance).isEmpty()) {
+                    if (!clearanceState.isAir() && !TrainChainingUtil.isRail(clearanceState) && !clearanceState.getCollisionShape(level, clearance).isEmpty()) {
                         return true;
                     }
                     return false;
@@ -968,7 +968,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         BlockPos nextRailPos = null;
         for (int dy : new int[]{0, 1, -1, 2, -2}) {
             BlockPos candidate = baseNext.above(dy);
-            if (BaseRailBlock.isRail(level.getBlockState(candidate))) {
+            if (TrainChainingUtil.isRail(level.getBlockState(candidate))) {
                 nextRailPos = candidate;
                 break;
             }
@@ -982,7 +982,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         // Check if an obstruction block was placed in the clearance path
         BlockPos clearancePos = nextRailPos.above();
         BlockState clearanceState = level.getBlockState(clearancePos);
-        if (!clearanceState.isAir() && !BaseRailBlock.isRail(clearanceState)) {
+        if (!clearanceState.isAir() && !TrainChainingUtil.isRail(clearanceState)) {
             if (!clearanceState.getCollisionShape(level, clearancePos).isEmpty()) {
                 return true; // Solid block obstructing cart clearance
             }
@@ -1538,7 +1538,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
 
         BlockPos railPos = TrainChainingUtil.getCurrentBlockPosOrRailBelow(cart);
         BlockState railState = this.level().getBlockState(railPos);
-        if (!BaseRailBlock.isRail(railState)) {
+        if (!TrainChainingUtil.isRail(railState)) {
             cart.move(MoverType.SELF, new Vec3(dirX * distance3D, 0.0, dirZ * distance3D));
             return !cart.horizontalCollision;
         }
@@ -1560,7 +1560,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         Direction cartDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
                 ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
                 : cart.getMotionDirection();
-        boolean uphillAhead = BaseRailBlock.isRail(this.level().getBlockState(railPos.relative(cartDir).above()));
+        boolean uphillAhead = TrainChainingUtil.isRail(this.level().getBlockState(railPos.relative(cartDir).above()));
 
         // Center X/Z on rail and pre-lift Y on slopes so move() clears the upper step block
         double x0 = railPos.getX() + 0.5 + exit0.getX() * 0.5;
@@ -1641,7 +1641,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 cart.setPos(cart.getX(), cart.getY() + 1.0, cart.getZ());
             } else if (Mth.floor(cart.getX()) - railPos.getX() == lowerExit.getX() && Mth.floor(cart.getZ()) - railPos.getZ() == lowerExit.getZ()) {
                 BlockPos lowerRail = railPos.offset(lowerExit.getX(), -1, lowerExit.getZ());
-                if (BaseRailBlock.isRail(this.level().getBlockState(lowerRail))) {
+                if (TrainChainingUtil.isRail(this.level().getBlockState(lowerRail))) {
                     cart.setPos(cart.getX(), cart.getY() - 1.0, cart.getZ());
                 }
             }

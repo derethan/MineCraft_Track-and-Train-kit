@@ -24,10 +24,11 @@ Whether you need to haul massive freight trains across long distances, automate 
 * 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers and features server-synced far-distance persistence so trains never vanish off the map across long distances.
 * 💥 **Geological Prospecting & Boreholes**: Detonate Surveyor's Charges wirelessly via the Remote Detonator to drill a clean 1×1 borehole to bedrock and receive a full-depth cylindrical column survey tallying ores, minerals, and subterranean oil deposits.
 * 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation and the **Heavy Track & Road Paver** (AP1055F) that crawls at 1 m/s replacing a 1×3 wide strip with selected paver blocks while preserving tracks underneath.
-* 🛤️ **Specialty Switch & Power Rails**: Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
+* 🛤️ **Specialty Switch & Power Rails**: Station Delay Rails (Timed Station Dwell & Automatic Consist Launch), Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), Speed Control Rails, 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
 * 📡 **Smart Track Automation & Fueling**: Automated Item Loaders/Unloaders, Fluid Loaders/Unloaders, dedicated Locomotive Fuelers (Diesel & Coal), Entity Loaders/Unloaders, and Train-Name Signal Switches.
 * 🏷️ **In-GUI Custom Cart Naming**: Name every locomotive and custom railcar directly in its GUI to automate routing, filtering, and depot switching.
 * ⚓ **Zero-Decoupling Chunk Anchors**: Both mobile (Anchor Caboose, placeable anywhere in the train) and stationary (Industrial Chunk Anchor) chunk loaders that keep automation and trains ticking across chunk borders.
+* 📖 **Railroader's Field Manual**: Interactive in-game engineering handbook styled after our industrial heavy binder theme, detailing every locomotive, cart, track, switch, station, machine, and tool with complete mechanics, operations, pro tips, and interactive crafting recipes.
 * 🧭 **Live HUD Dashboard**: On-screen speedometer showing blocks/sec, km/h, heading, throttle gear, and fuel reserves.
 
 ---
@@ -192,7 +193,7 @@ A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F t
 * **On-Rails & Off-Rails Traversal**: Does not require tracks to run! Drives smoothly over solid terrain with 1.0-block climbing step-up, but automatically snaps to rail center and orientation when placed on or driven over tracks.
 * **Cardinal Direction Lock**: GUI toggle allows locking travel strictly to **North, South, East, or West** to lay dead-straight road and railbed corridors without angular drift, or unlocking for manual steering.
 * **Manual & Automated Operations**: Mount the elevated right-side operator station to drive manually (WASD steering, R for reverse, Space to toggle auto-cruise, C for cockpit GUI), or engage automated forward paving mode.
-* **Large Material Hopper**: Dedicated Paver Pattern / Target Block Slot (Slot 0) + Fuel Slot (Slot 1) + 27 bulk material storage slots (Slots 2–28) holding up to 1,728 paving blocks.
+* **3-Tile Pattern Programming & Material Hopper**: 3 dedicated roadbed pattern filter slots (Left, Center beneath track, Right) to program custom multi-material roadbeds (e.g. curb-ballast-curb or hazard stripes) + dedicated Fuel slot + 27 bulk material storage slots holding up to 1,728 paving blocks.
 
 ### 3. Track Layer Cart (`track_layer_cart`)
 A compact, rugged, industrial 1-block machine built with a custom monolithic 3D model (armored unibody chassis, protective overhead roll-cage canopy, recessed operator cockpit, front track guide chute, rear articulated retrieval claw, and flanged wheels):
@@ -247,7 +248,10 @@ Placed directly under track to automate livestock, villager, and mob transit:
 
 ### Track Signal Switch
 A mechanical trackside switch stand with an animated signal lantern and arm.
-* **Automated Routing**: Define routing rules based on train names (e.g. send "Freight-North" onto side tracks automatically).
+* **Automated Multi-Criteria Routing**: Define routing rules conditioned on **Train Name**, **Travel Direction** (North, South, East, West, or All), **Cargo Status** (Loaded, Empty, or Any), and **Locomotive Fuel Level** (Low/Adequate thresholds: `< 25%`, `< 50%`, `> 25%`, `> 50%`).
+* **Bidirectional & Wye Loop Conflict Resolution**: Allows returning and reversing trains (such as unloaded ore trains heading back from spur tracks) to automatically set the opposite switch state instead of getting trapped or misrouted.
+* **Refueling Siding Automation**: Trains with low fuel or battery reserves automatically divert into coaling stations, diesel fuelers, or charging sidings while fully fueled trains continue along the mainline.
+* **Interactive Configuration GUI**: Sneak-right-click to open an expanded dashboard featuring one-click condition cycle buttons, visual criteria badges (`[Dir]`, `[Cargo]`, `[Fuel]`), sensitivity range controls, and manual track toggles.
 * **Manual & Redstone Modes**: Can also be toggled manually or via redstone wire.
 
 ### Industrial Chunk Anchor
@@ -271,7 +275,7 @@ A heavy-duty end-of-track railway barrier modeled after authentic industrial buf
 
 * **Braking / Holding Rail**: Clamps and freezes passing or resting carts and locomotives when unpowered (zero velocity). Releases brakes and gives a launch impulse when powered.
 * **Junction Rail**: True 4-way perpendicular flat cross rail (+). Minecarts and pushed/pulled train consists cross over perpendicularly without turning or derailing, maintaining momentum and approach heading straight through the intersection.
-* **Turnout Rail**: Mainline/divergent switch track toggled via redstone or hand/crowbar interaction, with dynamic animated switch blades. Sneak + Right-click immediately inverts between Left and Right divergent branches; right-click with Railroad Crowbar rotates track facing 90° clockwise.
+* **Turnout Rails (Left & Right)**: Dedicated mainline/divergent switch tracks (`Turnout Rail (Right)` and `Turnout Rail (Left)`) toggled via redstone, Track Signal Switches, or hand/crowbar interaction, with dynamic articulated switch blades. Dedicated left and right track blocks ensure immediate, predictable routing upon placement, and can be converted 1:1 in crafting grids. Sneak + right-click inverts branch direction; right-click with Railroad Crowbar rotates track facing 90° clockwise.
 * **Wye Rail**: Triangular 3-way junction rail with visual active-branch indication, full 3-way directional routing (straight mainline pass-through alongside active branch routing), and dynamic top mainline rail completion for seamless straight-through traffic in both switch states.
 * **Locomotive Control Rail**: Redstone-powered dispatch rail that automatically starts, halts, or reverses approaching locomotives.
 * **Locomotive Horn Rail**: Pressure-sensitive rail that triggers locomotive whistles and horns (ideal for level crossings and tunnel entrances).
@@ -319,7 +323,8 @@ When seated inside a locomotive or coupled cart:
 | **Anchor Caboose** | Ender Pearl + Lantern + Iron Ingots + Minecart |
 | **Braking / Holding Rail (Yields 6)** | Iron Ingots + Cobblestone + Stick + Redstone |
 | **Junction Rail (Yields 4)** | Standard Rails + Iron Ingot |
-| **Turnout Rail (Yields 4)** | Standard Rails + Lever |
+| **Turnout Rail - Right (Yields 4)** | Standard Rails + Lever (Center) |
+| **Turnout Rail - Left (Yields 4)** | Standard Rails + Lever (Left) or 1:1 from Right Turnout |
 | **Wye Rail (Yields 4)** | Standard Rails + Redstone Torch |
 | **Electric Third Rail (Yields 6)** | Copper Ingots + Redstone Dust + Sticks |
 | **Locomotive Control Rail (Yields 6)**| Iron Ingots + Coal + Redstone Dust |
@@ -348,6 +353,42 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.30**:
+  - **Railroader's Field Manual Item Icon Overhaul**:
+    - Replaced the 16×16 black guidebook icon with a custom 32×32 pixel-art crimson red railway engineering binder with reinforced spine staples, polished brass corner brackets, cream paper edging, dangling gold bookmark ribbon, and an embossed golden locomotive & track insignia.
+* **v1.1.29**:
+  - **3D Blockbench Rail Models Overhaul**:
+    - Replaced flat 2D vanilla `rail_flat` block models for Locomotive Horn Rail, Coupler Rail, Speed Control Rail, and Station Delay Rail with full 3D HD Blockbench models matching Braking/Holding Rail, Turnout Rails, and Electric Rails.
+    - Added 3D central apparatus modules: cast-iron tachometer housing (Speed Control Rail), dual brass trumpet horns with active acoustic soundwaves (Horn Rail), heavy shunting knuckles with glowing green/red indicators (Coupler Rail), and octagonal brass chronometer with amber dwell glow (Delay Rail).
+    - Upgraded block textures and added 7 dedicated 128×128 HD device textures in `cmodels/`, plus full 3D slope models for all elevation changes.
+* **v1.1.28**:
+  - **Track Paver 3-Tile Pattern Programming**:
+    - Added 3 roadbed pattern filter slots (Left, Center beneath track, and Right) to the Heavy Track & Road Paver to lay customized 3-tile roadbed designs (e.g. curb-ballast-curb or hazard stripes).
+    - Leaving outer pattern slots empty leaves existing terrain untouched for 1-wide or 2-wide roadbeds; leaving all 3 empty falls back to bulk storage.
+    - Added automated inventory migration for existing world saves (`PaverVersion` = 0 -> 1).
+    - Reorganized paver GUI with dedicated Fuel column, side-by-side pattern slots, status buttons, and interactive hover tooltips.
+    - Updated the Railroader's Field Manual with 3-tile paver pattern configuration instructions.
+* **v1.1.27**:
+  - **Standardized Rail Block Textures & 3D Isometric Item Icons**:
+    - Re-textured Speed Control Rail, Locomotive Horn Rail (idle & active), Coupler Rail (couple & decouple), and Station Delay Rail (idle & holding) with matching steel rail and sleeper ties geometry.
+    - Upgraded item icons for Braking & Holding Rail, Locomotive Horn Rail, Coupler Rail, and Station Delay Rail to 32×32 3D isometric pixel-art icons matching the trains and rolling stock.
+* **v1.1.25**:
+  - **Station Delay Rail (`delay_rail`)**:
+    - Added an interactive dwell timer rail that holds trains and consists for a set duration before automatically launching them onward.
+    - Features in-GUI timer toggle, duration configuration (1s to 3600s) with 3s/5s/10s/15s/30s/60s quick presets, departure direction mode (maintain heading, reverse, or cardinal direction), selective train name filtering, and dynamic GUI countdown display.
+    - Clamps brakes across entire consists during station dwell and provides clean launch impulse on release with trailing wagon cooldown prevention.
+    - Documented in the **Railroader's Field Manual** under `Tracks & Switches`.
+* **v1.1.23**:
+  - **Railroader's Field Manual (`guide_book`)**: Added the official comprehensive in-game engineering handbook styled after our industrial heavy binder theme. Features dark industrial slate aesthetics, riveted steel borders, brass brackets, 7 category tabs, dynamic topic counters, overview manuals with pro-tips, and interactive recipe cards with item tooltips.
+  - **Block Drop Loot Tables Fix**: Added missing block loot tables for Speed Control Rail, Coupler Rail, and Surveyor's Seismic Charge so they reliably drop their corresponding item when harvested.
+* **v1.1.22**:
+  - **Multi-Criteria Directional Track Switch Routing**: Added Travel Direction filtering (N/S/E/W), Freight Cargo state filtering (Loaded/Empty), and Locomotive Fuel/Battery threshold filtering (<25%, <50%) to Track Signal Switch rules, plus an expanded 264x224 configuration GUI with condition badges.
+* **v1.1.21**:
+  - **Speed Control Rail Approach & Obstacle Detection Fix**: Added speed control and coupler rails to vanilla rail and pickaxe tags, eliminated false-positive obstacle shutdowns, and added instantaneous directional velocity application.
+* **v1.1.20**:
+  - **Dedicated Left Turnout Rail**: Added a standalone `Turnout Rail (Left)` block and item that branches left upon placement. Turnout Rails are now distinctly available as `Turnout Rail (Right)` and `Turnout Rail (Left)`, and can be converted back and forth 1:1 in any crafting grid.
+  - **Switch & Redstone Integration**: Left Turnout Rails automatically link with adjacent Track Signal Switches and respond to redstone power, dynamically switching articulated points to the left divergent curve.
+  - **Railroad Crowbar Interaction**: Added dedicated crowbar interaction handling (`useOn`) on all turnout rails.
 * **v1.1.19**:
   - **Turnout Rail Sneak Invert Fix**: Sneak + Right-clicking a Turnout Rail with an empty hand (or crowbar) now immediately inverts the curve branch between Left and Right, allowing players to easily configure left-curving turnouts. Crowbar right-clicking rotates facing 90° clockwise.
   - **Speed Control Rail Direction Invert**: Added a new "Direction: Invert / Switch" mode to the Speed Control Rail GUI that switches locomotive direction from whatever it entered at (reversing forward to reverse or vice versa).
@@ -457,5 +498,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.19.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.30.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

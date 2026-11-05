@@ -12,6 +12,7 @@ import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
@@ -145,6 +146,9 @@ public class SpeedControlRailBlockEntity extends BlockEntity {
             } else {
                 bl.setRunning(true);
                 bl.setSpeedLevel(gear);
+                Direction newDir = setReversed ? bl.getFacing().getOpposite() : bl.getFacing();
+                double speed = bl.getLocomotiveSpeed();
+                bl.setDeltaMovement(newDir.getStepX() * speed, 0, newDir.getStepZ() * speed);
             }
             bl.setReversed(setReversed);
             TrainChainingUtil.syncTrainConsist(bl, bl.isRunning(), bl.getSpeedLevel(), setReversed);
@@ -155,6 +159,9 @@ public class SpeedControlRailBlockEntity extends BlockEntity {
             } else {
                 dl.setRunning(true);
                 dl.setSpeedLevel(gear);
+                Direction newDir = setReversed ? dl.getFacing().getOpposite() : dl.getFacing();
+                double speed = dl.getLocomotiveSpeed();
+                dl.setDeltaMovement(newDir.getStepX() * speed, 0, newDir.getStepZ() * speed);
             }
             dl.setReversed(setReversed);
             TrainChainingUtil.syncTrainConsist(dl, dl.isRunning(), dl.getSpeedLevel(), setReversed);
@@ -165,6 +172,9 @@ public class SpeedControlRailBlockEntity extends BlockEntity {
             } else {
                 el.setRunning(true);
                 el.setSpeedLevel(gear);
+                Direction newDir = setReversed ? el.getFacing().getOpposite() : el.getFacing();
+                double speed = el.getLocomotiveSpeed();
+                el.setDeltaMovement(newDir.getStepX() * speed, 0, newDir.getStepZ() * speed);
             }
             el.setReversed(setReversed);
             TrainChainingUtil.syncTrainConsist(el, el.isRunning(), el.getSpeedLevel(), setReversed);
