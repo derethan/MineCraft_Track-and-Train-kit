@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.31] - 2026-11-04
+
+### Changed
+- **3D Isometric Pixel-Art Item Icons for Remaining Specialty & Switch Rails (32×32)**:
+  - Converted the item icons for **Junction Rail** ([`junction_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/junction_rail.png)), **Locomotive Control Rail** ([`control_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/control_rail.png)), **Turnout Rail (Right)** ([`turnout_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/turnout_rail.png)), **Turnout Rail (Left)** ([`left_turnout_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/left_turnout_rail.png)), **Wye Rail** ([`wye_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/wye_rail.png)), and **Electric Rail** ([`electric_rail.png`](file:///c:/Users/swack/Documents/GitHub/MineCraft_Track-and-Train-kit/src/main/resources/assets/miningtools/textures/item/electric_rail.png)) to 32×32 3D isometric pixel-art sprites matching the rest of the mod's specialty rails and rolling stock.
+  - Updated item model JSON definitions (`control_rail.json`, `electric_rail.json`, `junction_rail.json`, `turnout_rail.json`, `left_turnout_rail.json`, and `wye_rail.json`) to render the new 32×32 3D pixel-art item icons.
+
+---
+
 ## [1.1.30] - 2026-11-04
 
 ### Changed

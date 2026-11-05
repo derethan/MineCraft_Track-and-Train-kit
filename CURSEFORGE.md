@@ -353,6 +353,10 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.31**:
+  - **3D Isometric Pixel-Art Item Icons for Switch, Junction, Control & Electric Rails**:
+    - Converted item icons for Junction Rail, Locomotive Control Rail, Turnout Rail (Right), Turnout Rail (Left), Wye Rail, and Electric Rail to 32×32 3D isometric pixel-art sprites with wooden sleeper ties, raised steel rails, and distinctive central apparatus/frog detailing.
+    - Updated item model JSONs (`control_rail`, `electric_rail`, `junction_rail`, `turnout_rail`, `left_turnout_rail`, `wye_rail`) to use the dedicated 32×32 3D pixel-art item textures.
 * **v1.1.30**:
   - **Railroader's Field Manual Item Icon Overhaul**:
     - Replaced the 16×16 black guidebook icon with a custom 32×32 pixel-art crimson red railway engineering binder with reinforced spine staples, polished brass corner brackets, cream paper edging, dangling gold bookmark ribbon, and an embossed golden locomotive & track insignia.
@@ -498,5 +502,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.30.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.31.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

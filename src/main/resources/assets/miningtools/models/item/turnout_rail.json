@@ -1,3 +1,6 @@
 {
-  "parent": "miningtools:block/turnout_rail_straight_right"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "miningtools:item/turnout_rail"
+  }
 }

@@ -1,3 +1,6 @@
 {
-  "parent": "miningtools:block/control_rail"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "miningtools:item/control_rail"
+  }
 }

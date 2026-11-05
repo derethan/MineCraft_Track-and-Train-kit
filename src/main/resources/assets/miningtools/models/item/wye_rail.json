@@ -1,3 +1,6 @@
 {
-  "parent": "miningtools:block/wye_rail_left"
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "miningtools:item/wye_rail"
+  }
 }
