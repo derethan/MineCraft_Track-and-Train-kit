@@ -7,7 +7,7 @@
   },
   "pattern": [
     "R R",
-    " L ",
+    "  L",
     "R R"
   ],
   "result": {

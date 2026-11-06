@@ -34,6 +34,7 @@ import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.entity.TurretCartEntity;
 import com.example.miningtools.entity.GeneratorMinecartEntity;
 import com.example.miningtools.entity.TrackLayerCartEntity;
+import com.example.miningtools.entity.TrackPaverEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
@@ -203,6 +204,10 @@ public final class TrainChainingUtil {
         if (entity instanceof TrackLayerCartEntity) {
             // Compact monolithic track laying cart frame (~20px -> 0.70m radius)
             return 0.70D;
+        }
+        if (entity instanceof TrackPaverEntity) {
+            // Track Paver frame (rear screed bumper anchor at 1.45m)
+            return 1.45D;
         }
         if (entity instanceof TunnelBoreEntity) {
             // Tunnel bore rear bumper anchor

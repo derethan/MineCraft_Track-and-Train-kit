@@ -23,7 +23,7 @@ Whether you need to haul massive freight trains across long distances, automate 
 * 🏹 **Tactical Arrow Turret Cart**: Defense cart with 2× engagement range (32 blocks), dual bow mounts, in-GUI Player Whitelist / Blacklist protection, crisp tactical woodland camo livery, and Caboose-matching flanged steel wheels.
 * 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers and features server-synced far-distance persistence so trains never vanish off the map across long distances.
 * 💥 **Geological Prospecting & Boreholes**: Detonate Surveyor's Charges wirelessly via the Remote Detonator to drill a clean 1×1 borehole to bedrock and receive a full-depth cylindrical column survey tallying ores, minerals, and subterranean oil deposits.
-* 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation and the **Heavy Track & Road Paver** (AP1055F) that crawls at 1 m/s replacing a 1×3 wide strip with selected paver blocks while preserving tracks underneath.
+* 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation and the **Under Track Paver** (AP1055F) that operates as a rail cart following tracks at 1 m/s, paving a 1×3 wide roadbed while preserving tracks underneath.
 * 🛤️ **Specialty Switch & Power Rails**: Station Delay Rails (Timed Station Dwell & Automatic Consist Launch), Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), Speed Control Rails, 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
 * 📡 **Smart Track Automation & Fueling**: Automated Item Loaders/Unloaders, Fluid Loaders/Unloaders, dedicated Locomotive Fuelers (Diesel & Coal), Entity Loaders/Unloaders, and Train-Name Signal Switches.
 * 🏷️ **In-GUI Custom Cart Naming**: Name every locomotive and custom railcar directly in its GUI to automate routing, filtering, and depot switching.
@@ -168,7 +168,7 @@ A handheld wireless detonator keyed to trigger Surveyor's Charges:
 
 ---
 
-## 🚜 Heavy Machinery: The Tunnel Bore & Track Paver
+## 🚜 Heavy Machinery: The Tunnel Bore & Under Track Paver
 
 ### 1. Automated Tunnel Bore
 An automated subterranean excavator for carving out subway lines and railway corridors.
@@ -179,21 +179,20 @@ An automated subterranean excavator for carving out subway lines and railway cor
 * **Safety Sensors**: Automatically halts if it encounters bedrock, chasms exceeding ballast reserves, or runs out of track or fuel.
 * **Bi-Directional Operation**: Forward drilling mode and slow, safe reversing mode that reverses trailing cars seamlessly.
 
-### 2. Heavy Track & Road Paver (AP1055F)
+### 2. Under Track Paver (AP1055F)
 A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F track paver (~2.75 blocks wide, 2.0 blocks high, 3.0 blocks long):
+* **Dedicated Rail Cart Operation**: Functions strictly as a rail cart, placing exclusively on railway tracks and snapping precisely to the rail centerline and track orientation.
 * **Work Mode & Dual-Speed Transits**: Toggle between **Work Mode** (constructs a 3-wide road strip at a regulated 1.0 m/s) and **Transport Mode** (suspends block replacement and adjusts travel speed to **2.0 m/s** for rapid transit and repositioning).
-* **Physical Collision & Terrain Step Safety**: Solid physical collision box prevents clipping; smoothly climbs and descends 1-block terrain steps while safely halting before 2+ block vertical obstacles, cliffs, and low ceilings.
+* **Automatic Rail Following**: Effortlessly tracks straight rails, ascending and descending slopes, and curved track lines in both forward and reverse, halting safely if an obstacle obstructs the track or upon reaching the end of the line.
+* **Track Preservation Under Rails**: When paving under existing rail lines, it safely replaces foundation blocks beneath the track **without breaking, disturbing, or popping the rails off**!
 * **Toggleable Work Light**: High-intensity floodlight illuminating the surrounding workspace (Level 15 light) via GUI button or `L` key.
-* **3x3 Ghost Hologram Alignment Grid**: In-world holographic wireframe grid projected over the 3x3 footprint in front of the machine, showing the exact blocks that will be replaced along its trajectory to effortlessly line up target work areas (toggleable via GUI or `Shift + H`).
+* **3x3 Ghost Hologram Alignment Grid**: In-world holographic wireframe grid projected over the 3x3 footprint in front of the machine along the track, showing the exact blocks that will be replaced along the rail route (toggleable via GUI or `Shift + H`).
 * **Universal Fuel Compatibility**: Accepts all burnable furnace fuels (coal, charcoal, wood, blaze rods, lava buckets, etc.) in its fuel hopper.
 * **Calibrated 1.0 m/s Paving Speed**: Crawls forward at an exact 1.0 m/s (20 ticks per block step), replacing blocks in a 1-block deep by 3-block wide strip across its rear screed.
-* **Flush Ground Alignment**: Sits firmly flush against terrain and rail ties without visual hovering off the ground whether operating on-rail or traversing cross-country.
 * **Accurate Idle HUD & Audio**: Speedometer accurately displays 0.0 m/s when out of fuel or stopped, and engine sound smoothly mutes when idle or powered off.
-* **Track Preservation Under Rails**: When paving under existing rail lines, it safely replaces foundation blocks beneath the track **without breaking, disturbing, or popping the rails off**!
-* **On-Rails & Off-Rails Traversal**: Does not require tracks to run! Drives smoothly over solid terrain with 1.0-block climbing step-up, but automatically snaps to rail center and orientation when placed on or driven over tracks.
-* **Cardinal Direction Lock**: GUI toggle allows locking travel strictly to **North, South, East, or West** to lay dead-straight road and railbed corridors without angular drift, or unlocking for manual steering.
-* **Manual & Automated Operations**: Mount the elevated right-side operator station to drive manually (WASD steering, R for reverse, Space to toggle auto-cruise, C for cockpit GUI), or engage automated forward paving mode.
+* **Manual & Automated Operations**: Mount the elevated right-side operator station to drive manually (W for forward, S for reverse, R to toggle reverse, Space to halt, C for cockpit GUI), or engage automated forward paving mode.
 * **3-Tile Pattern Programming & Material Hopper**: 3 dedicated roadbed pattern filter slots (Left, Center beneath track, Right) to program custom multi-material roadbeds (e.g. curb-ballast-curb or hazard stripes) + dedicated Fuel slot + 27 bulk material storage slots holding up to 1,728 paving blocks.
+* **Consist Coupling & Reverse Pushing**: Registered rear bumper anchor (1.45m) and reverse consist pushing (`pushTrailingCartsOnReverse`) ensure attached supply cars (such as Aggregate Hoppers) follow and reverse smoothly without colliding.
 
 ### 3. Track Layer Cart (`track_layer_cart`)
 A compact, rugged, industrial 1-block machine built with a custom monolithic 3D model (armored unibody chassis, protective overhead roll-cage canopy, recessed operator cockpit, front track guide chute, rear articulated retrieval claw, and flanged wheels):
@@ -311,7 +310,7 @@ When seated inside a locomotive or coupled cart:
 | **CN Diesel Locomotive** | Iron Blocks + Glass + Redstone Block + Bucket + Minecart |
 | **Electric Bullet Train** | Iron Block + Copper Block + Redstone Block + Tinted Glass + Minecart |
 | **Tunnel Bore** | Iron Pickaxes + Iron Block + Furnace Minecart + Chest Minecart + Iron Ingots |
-| **Heavy Track & Road Paver** | Iron Shovels + Iron Block + Blast Furnace + Chest Minecart + Iron Ingots |
+| **Under Track Paver** | Iron Shovels + Iron Block + Blast Furnace + Chest Minecart + Iron Ingots |
 | **Track Layer Cart** | Iron Ingots + Iron Blocks + Piston + Rail + Chest Minecart |
 | **Cargo Minecart** | Chest + Minecart + Iron Ingot |
 | **Loose Aggregate Hopper Car** | Iron Ingots + Hopper + Chest Minecart |
@@ -323,7 +322,7 @@ When seated inside a locomotive or coupled cart:
 | **Anchor Caboose** | Ender Pearl + Lantern + Iron Ingots + Minecart |
 | **Braking / Holding Rail (Yields 6)** | Iron Ingots + Cobblestone + Stick + Redstone |
 | **Junction Rail (Yields 4)** | Standard Rails + Iron Ingot |
-| **Turnout Rail - Right (Yields 4)** | Standard Rails + Lever (Center) |
+| **Turnout Rail - Right (Yields 4)** | Standard Rails + Lever (Right) |
 | **Turnout Rail - Left (Yields 4)** | Standard Rails + Lever (Left) or 1:1 from Right Turnout |
 | **Wye Rail (Yields 4)** | Standard Rails + Redstone Torch |
 | **Electric Third Rail (Yields 6)** | Copper Ingots + Redstone Dust + Sticks |
@@ -353,6 +352,20 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.35**:
+  - **Renamed to Under Track Paver**:
+    - Renamed the machine to **Under Track Paver** in all display names, entity registrations, containers, screens, and in-game notifications.
+    - Updated the Railroader's Field Manual entries and recipes.
+  - **Turnout Rail (Right) Crafting Recipe Update**:
+    - Repositioned the lever to the middle-right cell (`["R R", "  L", "R R"]`), creating a clean symmetrical recipe counterpart to Turnout Rail (Left).
+* **v1.1.34**:
+  - **Road Paver Rail-Only Conversion & Automatic Rail Navigation**:
+    - Converted the Heavy Track & Road Paver to operate exclusively as a rail cart, matching the behavior of the Tunnel Bore while focusing purely on roadbed and ballast paving without breaking terrain blocks or laying rails.
+    - Restricted placement to railway tracks (`TrackPaverItem` only places on valid rails, snapping directly onto the rail centerline and matching track orientation).
+    - Added continuous rail following: smoothly tracks straight rails, ascending/descending slopes, and curved track lines in both Forward and Reverse modes, halting safely before obstacles or upon reaching the end of the line.
+    - Paves the 1x3 foundation strip (center block beneath rails, plus left and right shoulder blocks) while keeping all railway tracks intact and undisturbed.
+    - Added reverse consist cart pushing (`pushTrailingCartsOnReverse`) and registered the paver's rear screed bumper anchor (1.45m) in `TrainChainingUtil`.
+    - Streamlined paver GUI: replaced the off-rail Cardinal Lock button with a full-width **Hologram Guide** toggle that projects alignment along the actual rail route.
 * **v1.1.32**:
   - **Reference-Based 3D Pixel-Art Item Icon Overhaul for All Rails**:
     - Overhauled all 11 rail item icons across the mod based on the user-provided 2:1 isometric pixel-art baseline, featuring rich wooden sleeper ties with end-grain depth, dark tie spikes, and raised steel rails with glint highlights.
@@ -517,5 +530,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.32.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.35.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

@@ -1,29 +1,25 @@
 package com.example.miningtools.item;
 
-import org.jspecify.annotations.Nullable;
-
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.TrackPaverEntity;
+import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.stats.Stats;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 
 public class TrackPaverItem extends Item {
     public TrackPaverItem(Item.Properties properties) {
@@ -32,101 +28,71 @@ public class TrackPaverItem extends Item {
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
-        if (context.getPlayer() != null) {
-            return InteractionResult.PASS;
-        }
-        return this.placeTrackPaver(
-                context.getLevel(),
-                context.getClickedPos(),
-                context.getClickedFace(),
-                context.getHorizontalDirection(),
-                null,
-                context.getItemInHand()
-        );
-    }
-
-    @Override
-    public InteractionResult use(Level level, Player player, InteractionHand hand) {
-        ItemStack itemStack = player.getItemInHand(hand);
-        BlockHitResult hitResult = getPlayerPOVHitResult(level, player, ClipContext.Fluid.NONE);
-        if (hitResult.getType() != HitResult.Type.BLOCK) {
-            return InteractionResult.PASS;
-        }
-
-        InteractionResult result = this.placeTrackPaver(
-                level,
-                hitResult.getBlockPos(),
-                hitResult.getDirection(),
-                player.getDirection(),
-                player,
-                itemStack
-        );
-        if (result.consumesAction()) {
-            player.awardStat(Stats.ITEM_USED.get(this));
-        }
-        return result;
-    }
-
-    private InteractionResult placeTrackPaver(
-            Level level,
-            BlockPos clickedPos,
-            Direction clickedFace,
-            Direction facing,
-            @Nullable Player player,
-            ItemStack itemStack
-    ) {
-        BlockPos targetPos = null;
+        Level level = context.getLevel();
+        BlockPos clickedPos = context.getClickedPos();
         BlockState clickedState = level.getBlockState(clickedPos);
-        boolean isRail = false;
+
+        BlockPos targetPos = null;
+        BlockState railState = null;
 
         if (clickedState.is(BlockTags.RAILS)) {
             targetPos = clickedPos;
-            isRail = true;
-        } else {
-            BlockPos adjacentPos = clickedPos.relative(clickedFace);
-            BlockState adjacentState = level.getBlockState(adjacentPos);
-            if (adjacentState.is(BlockTags.RAILS)) {
-                targetPos = adjacentPos;
-                isRail = true;
-            } else if (clickedFace == Direction.UP
-                    && clickedState.isFaceSturdy(level, clickedPos, Direction.UP)
-                    && (adjacentState.isAir() || adjacentState.canBeReplaced())) {
-                targetPos = adjacentPos;
-                isRail = false;
+            railState = clickedState;
+        } else if (context.getClickedFace() == Direction.UP) {
+            BlockPos abovePos = clickedPos.above();
+            BlockState aboveState = level.getBlockState(abovePos);
+            if (aboveState.is(BlockTags.RAILS)) {
+                targetPos = abovePos;
+                railState = aboveState;
             }
         }
 
-        if (targetPos == null) {
+        if (targetPos == null || railState == null) {
             return InteractionResult.FAIL;
         }
 
-        if (level instanceof ServerLevel serverLevel) {
-            double spawnX = targetPos.getX() + 0.5D;
-            double spawnY = isRail ? (targetPos.getY() + 0.0625D) : (targetPos.getY());
-            double spawnZ = targetPos.getZ() + 0.5D;
+        RailShape shape = railState.getBlock() instanceof BaseRailBlock baseRail
+                ? baseRail.getRailDirection(railState, level, targetPos, null)
+                : RailShape.NORTH_SOUTH;
 
-            Direction initialFacing = facing;
-            if (isRail) {
-                BlockState railState = level.getBlockState(targetPos);
-                if (railState.getBlock() instanceof BaseRailBlock railBlock) {
-                    RailShape shape = railState.getValue(railBlock.getShapeProperty());
-                    if (shape == RailShape.EAST_WEST || shape == RailShape.ASCENDING_EAST || shape == RailShape.ASCENDING_WEST) {
-                        initialFacing = (facing.getAxis() == Direction.Axis.X) ? facing : Direction.EAST;
-                    } else if (shape == RailShape.NORTH_SOUTH || shape == RailShape.ASCENDING_NORTH || shape == RailShape.ASCENDING_SOUTH) {
-                        initialFacing = (facing.getAxis() == Direction.Axis.Z) ? facing : Direction.NORTH;
-                    }
-                }
-            }
+        Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+        Vec3i exit0 = exits.getFirst();
+        Vec3i exit1 = exits.getSecond();
 
-            TrackPaverEntity paver = new TrackPaverEntity(MiningTools.TRACK_PAVER_ENTITY.get(), level, spawnX, spawnY, spawnZ);
-            paver.setFacing(initialFacing);
-            paver.setOnRails(isRail);
+        Direction d0 = Direction.getNearest(exit0.getX(), 0, exit0.getZ(), Direction.NORTH);
+        Direction d1 = Direction.getNearest(exit1.getX(), 0, exit1.getZ(), Direction.SOUTH);
 
-            serverLevel.addFreshEntity(paver);
-            level.gameEvent(player, GameEvent.ENTITY_PLACE, targetPos);
+        Player player = context.getPlayer();
+        Direction chosenFacing;
+        if (player != null) {
+            Vec3 look = player.getLookAngle();
+            double dot0 = (d0 != null) ? (look.x * d0.getStepX() + look.z * d0.getStepZ()) : -1.0;
+            double dot1 = (d1 != null) ? (look.x * d1.getStepX() + look.z * d1.getStepZ()) : -1.0;
+            chosenFacing = (dot0 >= dot1) ? (d0 != null ? d0 : Direction.NORTH) : (d1 != null ? d1 : Direction.SOUTH);
+        } else {
+            Direction hDir = context.getHorizontalDirection();
+            double dot0 = (d0 != null) ? (hDir.getStepX() * d0.getStepX() + hDir.getStepZ() * d0.getStepZ()) : -1.0;
+            double dot1 = (d1 != null) ? (hDir.getStepX() * d1.getStepX() + hDir.getStepZ() * d1.getStepZ()) : -1.0;
+            chosenFacing = (dot0 >= dot1) ? (d0 != null ? d0 : Direction.NORTH) : (d1 != null ? d1 : Direction.SOUTH);
         }
 
-        itemStack.shrink(1);
+        if (level instanceof ServerLevel serverLevel) {
+            double offset = shape.isSlope() ? 0.5D : 0.0D;
+            Vec3 spawnPos = new Vec3(targetPos.getX() + 0.5D, targetPos.getY() + 0.0625D + offset, targetPos.getZ() + 0.5D);
+
+            TrackPaverEntity paver = new TrackPaverEntity(MiningTools.TRACK_PAVER_ENTITY.get(), level, spawnPos.x, spawnPos.y, spawnPos.z);
+            paver.setFacing(chosenFacing);
+            paver.setOnRails(true);
+
+            if (context.getItemInHand().has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)) {
+                paver.setCustomName(context.getItemInHand().get(net.minecraft.core.component.DataComponents.CUSTOM_NAME));
+            }
+
+            serverLevel.addFreshEntity(paver);
+            level.gameEvent(GameEvent.ENTITY_PLACE, targetPos, GameEvent.Context.of(player, railState));
+        }
+
+        context.getItemInHand().shrink(1);
         return InteractionResult.SUCCESS;
     }
 }

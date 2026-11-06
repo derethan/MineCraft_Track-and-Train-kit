@@ -13,11 +13,13 @@ import com.example.miningtools.MiningTools;
 import com.example.miningtools.menu.TrackPaverMenu;
 import com.example.miningtools.network.LocomotiveControlPayload;
 import com.example.miningtools.util.TrainChainingUtil;
+import com.mojang.datafixers.util.Pair;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.Vec3i;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -52,6 +54,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LightBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
@@ -192,17 +195,17 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
     @Override
     public boolean canBeCollidedWith(@Nullable Entity entity) {
-        return true;
+        return TrainChainingUtil.canBeCollidedWith(this, entity);
     }
 
     @Override
     public boolean canCollideWith(Entity entity) {
-        return !this.isPassengerOfSameVehicle(entity);
+        return TrainChainingUtil.canCollideWith(this, entity);
     }
 
     @Override
     public boolean isPushable() {
-        return true;
+        return false;
     }
 
     public boolean isWorkMode() {
@@ -484,16 +487,20 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             this.outOfMaterialNotifyCooldown--;
         }
 
-        if (this.currentStepPos == null) {
-            this.currentStepPos = BlockPos.containing(this.position());
+        // Verify rail beneath paver
+        BlockPos actualRail = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+        boolean hasRail = isRailAt(actualRail);
+        this.setOnRails(hasRail);
+
+        if (!hasRail) {
+            this.setRunMode(MODE_STOPPED);
+            this.setActive(false);
+            return;
         }
 
-        // Detect if rail is directly beneath tracks
-        BlockPos belowPos = this.blockPosition();
-        BlockState belowState = this.level().getBlockState(belowPos);
-        BlockState underState = this.level().getBlockState(belowPos.below());
-        boolean hasRail = BaseRailBlock.isRail(belowState) || BaseRailBlock.isRail(underState);
-        this.setOnRails(hasRail);
+        if (this.currentStepPos == null || !isRailAt(this.currentStepPos)) {
+            this.currentStepPos = actualRail;
+        }
 
         // Check if controlled by a mounted player
         Entity controllingPassenger = this.getFirstPassenger();
@@ -509,6 +516,11 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             this.tickMoveStep(this.getFacing().getOpposite(), true);
         } else {
             this.setActive(false);
+            this.isMoving = false;
+            this.moveTicks = 0;
+            this.targetStepPos = null;
+            Vec3 restPos = getRailCenter(this.currentStepPos);
+            this.setPos(restPos.x, restPos.y, restPos.z);
         }
     }
 
@@ -562,13 +574,6 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
     private void handleRiderControls(LivingEntity rider) {
         float forwardInput = rider.zza;
-        float strafeInput = rider.xxa;
-
-        if (this.getCardinalLock() == LOCK_OFF && Math.abs(strafeInput) > 0.05F) {
-            float newYaw = this.getYRot() + strafeInput * 2.0F;
-            this.setYRot(newYaw);
-            this.setFacing(Direction.fromYRot(newYaw));
-        }
 
         if (forwardInput > 0.1F) {
             if (this.getRunMode() == MODE_STOPPED) {
@@ -581,19 +586,103 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         }
     }
 
-    private boolean isBlockPassable(BlockPos pos) {
-        BlockState state = this.level().getBlockState(pos);
-        return state.isAir() || state.getCollisionShape(this.level(), pos).isEmpty() || state.canBeReplaced() || BaseRailBlock.isRail(state) || state.is(BlockTags.RAILS);
+    public boolean isRailAt(BlockPos pos) {
+        return BaseRailBlock.isRail(this.level(), pos) || this.level().getBlockState(pos).is(BlockTags.RAILS);
     }
 
-    private boolean isBlockSolidGround(BlockPos pos) {
-        BlockState state = this.level().getBlockState(pos);
-        return !state.isAir() && (state.isSolid() || !state.getCollisionShape(this.level(), pos).isEmpty() || BaseRailBlock.isRail(state) || state.is(BlockTags.RAILS));
+    public Vec3 getRailCenter(BlockPos pos) {
+        double x = pos.getX() + 0.5D;
+        double y = pos.getY() + 0.0625D;
+        double z = pos.getZ() + 0.5D;
+        Vec3 railSnap = TrainChainingUtil.getRailPosForEntity(this, x, y, z);
+        if (railSnap != null) {
+            return railSnap;
+        }
+        return new Vec3(x, y, z);
     }
 
-    private boolean isWallObstacle(BlockPos pos) {
-        // A wall obstacle exists if both feet and head level have solid collision (2+ blocks high obstruction)
-        return isBlockSolidGround(pos) && isBlockSolidGround(pos.above());
+    public boolean isPassable(BlockPos pos) {
+        BlockState state = this.level().getBlockState(pos);
+        return state.isAir() || state.canBeReplaced() || state.getCollisionShape(this.level(), pos).isEmpty() || BaseRailBlock.isRail(state) || state.is(BlockTags.RAILS);
+    }
+
+    public @Nullable BlockPos findNextRailAlongTrack(BlockPos curPos, Direction travelDir) {
+        BlockPos checkPos = curPos;
+        BlockState curState = this.level().getBlockState(checkPos);
+        if (!isRailAt(checkPos)) {
+            if (isRailAt(checkPos.below())) {
+                checkPos = checkPos.below();
+                curState = this.level().getBlockState(checkPos);
+            } else if (isRailAt(checkPos.above())) {
+                checkPos = checkPos.above();
+                curState = this.level().getBlockState(checkPos);
+            } else {
+                return null;
+            }
+        }
+
+        if (curState.getBlock() instanceof BaseRailBlock railBlock) {
+            RailShape shape = railBlock.getRailDirection(curState, this.level(), checkPos, this);
+            Pair<Vec3i, Vec3i> exits = AbstractMinecart.exits(shape);
+            Vec3i exit0 = exits.getFirst();
+            Vec3i exit1 = exits.getSecond();
+
+            int entryX = -travelDir.getStepX();
+            int entryZ = -travelDir.getStepZ();
+
+            Vec3i chosenExit;
+            if (exit0.getX() == entryX && exit0.getZ() == entryZ) {
+                chosenExit = exit1;
+            } else if (exit1.getX() == entryX && exit1.getZ() == entryZ) {
+                chosenExit = exit0;
+            } else {
+                int dot0 = exit0.getX() * travelDir.getStepX() + exit0.getZ() * travelDir.getStepZ();
+                int dot1 = exit1.getX() * travelDir.getStepX() + exit1.getZ() * travelDir.getStepZ();
+                chosenExit = (dot0 >= dot1) ? exit0 : exit1;
+            }
+
+            Direction moveDir = Direction.getNearest(chosenExit.getX(), 0, chosenExit.getZ(), travelDir);
+            if (moveDir == null) {
+                moveDir = travelDir;
+            }
+
+            if (chosenExit.getY() > 0) {
+                BlockPos candUp = checkPos.relative(moveDir).above();
+                if (isRailAt(candUp)) {
+                    return candUp;
+                }
+            } else if (chosenExit.getY() < 0) {
+                BlockPos candDown = checkPos.relative(moveDir).below();
+                if (isRailAt(candDown)) {
+                    return candDown;
+                }
+            }
+
+            BlockPos candFlat = checkPos.relative(moveDir);
+            BlockPos candUp = candFlat.above();
+            BlockPos candDown = candFlat.below();
+
+            if (isRailAt(candFlat)) {
+                return candFlat;
+            } else if (isRailAt(candUp)) {
+                return candUp;
+            } else if (isRailAt(candDown)) {
+                return candDown;
+            }
+        }
+
+        return null;
+    }
+
+    private void notifyDriver(Component message) {
+        Entity passenger = this.getFirstPassenger();
+        if (passenger instanceof Player player) {
+            player.sendOverlayMessage(message);
+        } else {
+            for (Player player : this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(8.0D))) {
+                player.sendOverlayMessage(message);
+            }
+        }
     }
 
     private void tickMoveStep(Direction travelDir, boolean isReversing) {
@@ -606,79 +695,33 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         int ticksPerBlock = this.getTicksPerBlock(isReversing);
 
         if (!this.isMoving) {
-            if (this.currentStepPos == null) {
-                this.currentStepPos = this.blockPosition();
+            BlockPos actualRail = TrainChainingUtil.getCurrentBlockPosOrRailBelow(this);
+            if (this.currentStepPos == null || !isRailAt(this.currentStepPos)) {
+                this.currentStepPos = actualRail;
             }
 
-            BlockPos forwardPos = this.currentStepPos.relative(travelDir);
-            Direction leftDir = travelDir.getCounterClockWise();
-            Direction rightDir = travelDir.getClockWise();
-
-            BlockPos chosenTarget = null;
-
-            // Check if terrain steps UP 1 block
-            if (isBlockSolidGround(forwardPos)) {
-                BlockPos upPos = forwardPos.above();
-                // 1-block climb is valid ONLY IF:
-                // 1. upPos (feet at Y+1) is passable
-                // 2. upPos.above() (head at Y+2) is passable
-                // 3. Current vehicle position has headroom to step up (above(2) is passable)
-                // If forwardPos.above() is solid, that is a 2+ block obstacle - stops!
-                if (isBlockPassable(upPos) && isBlockPassable(upPos.above()) && isBlockPassable(this.currentStepPos.above(2))) {
-                    BlockPos upLeft = upPos.relative(leftDir);
-                    BlockPos upRight = upPos.relative(rightDir);
-                    if (isBlockPassable(upLeft.above()) && isBlockPassable(upRight.above())
-                            && !isWallObstacle(upLeft) && !isWallObstacle(upRight)) {
-                        chosenTarget = upPos;
-                    }
-                }
-            } else if (isBlockPassable(forwardPos)) {
-                // Forward feet is passable.
-                // Head level (forwardPos.above()) must also be passable (no low ceiling/overhang)
-                if (isBlockPassable(forwardPos.above())) {
-                    BlockPos groundPos = forwardPos.below();
-                    if (isBlockSolidGround(groundPos)) {
-                        // Flat terrain: ground exists at standard level
-                        BlockPos leftFeet = forwardPos.relative(leftDir);
-                        BlockPos rightFeet = forwardPos.relative(rightDir);
-                        if (isBlockPassable(leftFeet.above()) && isBlockPassable(rightFeet.above())
-                                && !isWallObstacle(leftFeet) && !isWallObstacle(rightFeet)) {
-                            chosenTarget = forwardPos;
-                        }
-                    } else {
-                        // Ground missing at standard level -> check 1-block descent
-                        BlockPos downPos = forwardPos.below();
-                        BlockPos downGround = downPos.below();
-                        // 1-block descent is valid ONLY IF downPos is passable and downGround is solid
-                        // (if downGround is air, drop is 2+ blocks - cliff/drop!)
-                        if (isBlockPassable(downPos) && isBlockSolidGround(downGround)) {
-                            BlockPos downLeft = downPos.relative(leftDir);
-                            BlockPos downRight = downPos.relative(rightDir);
-                            if (isBlockPassable(downLeft.above()) && isBlockPassable(downRight.above())
-                                    && !isWallObstacle(downLeft) && !isWallObstacle(downRight)) {
-                                chosenTarget = downPos;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (chosenTarget == null) {
-                // Terrain obstruction or 2+ block height wall / drop! Stop the paver!
+            if (!isRailAt(this.currentStepPos)) {
                 this.setRunMode(MODE_STOPPED);
                 return;
             }
 
-            // Impassable wall check (bedrock or unbreakable)
-            if (this.level().getBlockState(chosenTarget).getDestroySpeed(this.level(), chosenTarget) < 0.0F
-                    || this.level().getBlockState(chosenTarget.above()).getDestroySpeed(this.level(), chosenTarget.above()) < 0.0F) {
+            BlockPos nextRail = this.findNextRailAlongTrack(this.currentStepPos, travelDir);
+            if (nextRail == null) {
                 this.setRunMode(MODE_STOPPED);
+                this.notifyDriver(Component.literal("Under Track Paver: End of track!").withStyle(ChatFormatting.YELLOW));
+                return;
+            }
+
+            // Impassable obstruction check
+            if (!isPassable(nextRail.above()) || !isPassable(nextRail.above(2))) {
+                this.setRunMode(MODE_STOPPED);
+                this.notifyDriver(Component.literal("Under Track Paver: Track path obstructed!").withStyle(ChatFormatting.RED));
                 return;
             }
 
             this.isMoving = true;
             this.moveTicks = 0;
-            this.targetStepPos = chosenTarget;
+            this.targetStepPos = nextRail;
         }
 
         // Consume fuel tick
@@ -691,16 +734,38 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
         this.moveTicks++;
 
         double frac = (double) this.moveTicks / (double) ticksPerBlock;
-        Vec3 start = Vec3.atBottomCenterOf(this.currentStepPos);
-        Vec3 end = Vec3.atBottomCenterOf(this.targetStepPos);
+        Vec3 start = getRailCenter(this.currentStepPos);
+        Vec3 end = getRailCenter(this.targetStepPos);
         Vec3 target = start.lerp(end, frac);
 
+        Vec3 snap = TrainChainingUtil.getRailPosForEntity(this, target.x, target.y, target.z);
+        if (snap != null) {
+            target = snap;
+        }
+
         this.setPos(target.x, target.y, target.z);
-        this.pullTrailingCartsOnMove();
+
+        double dx = end.x - start.x;
+        double dz = end.z - start.z;
+        if (Math.abs(dx) > 1.0E-4 || Math.abs(dz) > 1.0E-4) {
+            float targetYaw = (float) (Mth.atan2(dz, dx) * 180.0 / Math.PI) - 90.0F;
+            if (isReversing) {
+                targetYaw += 180.0F;
+            }
+            this.setYRot(targetYaw);
+            this.yRotO = targetYaw;
+        }
+
+        if (isReversing) {
+            this.pushTrailingCartsOnReverse(travelDir);
+        } else {
+            this.pullTrailingCartsOnMove();
+        }
 
         // When halfway through the step or completed, execute paving under the screed ONLY IF in work mode!
         if (this.moveTicks == ticksPerBlock / 2 && this.isWorkMode()) {
-            this.executePavingStrip(this.targetStepPos, travelDir);
+            Direction paveDir = isReversing ? this.getFacing() : travelDir;
+            this.executePavingStrip(this.targetStepPos, paveDir);
             if (this.getRunMode() == MODE_STOPPED) {
                 return;
             }
@@ -712,10 +777,21 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             this.isMoving = false;
             this.moveTicks = 0;
             this.setPos(end.x, end.y, end.z);
-            this.pullTrailingCartsOnMove();
+
+            if (isReversing) {
+                this.pushTrailingCartsOnReverse(travelDir);
+            } else {
+                this.pullTrailingCartsOnMove();
+            }
+
+            Direction stepDir = Direction.getApproximateNearest(dx, 0.0, dz);
+            if (stepDir != null) {
+                Direction newFacing = isReversing ? stepDir.getOpposite() : stepDir;
+                this.setFacing(newFacing);
+            }
 
             if (this.isWorkMode()) {
-                this.executePavingStrip(this.currentStepPos, travelDir);
+                this.executePavingStrip(this.currentStepPos, this.getFacing());
                 if (this.getRunMode() == MODE_STOPPED) {
                     return;
                 }
@@ -978,7 +1054,7 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
     public void notifyOutOfMaterial(@Nullable Player targetPlayer) {
         if (targetPlayer != null) {
-            targetPlayer.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+            targetPlayer.sendOverlayMessage(Component.literal("Under Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
             return;
         }
         if (this.outOfMaterialNotifyCooldown > 0) {
@@ -988,10 +1064,10 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
 
         Entity passenger = this.getFirstPassenger();
         if (passenger instanceof Player rider) {
-            rider.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+            rider.sendOverlayMessage(Component.literal("Under Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
         } else {
             for (Player player : this.level().getEntitiesOfClass(Player.class, this.getBoundingBox().inflate(8.0D))) {
-                player.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+                player.sendOverlayMessage(Component.literal("Under Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
             }
         }
     }
@@ -1054,65 +1130,54 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             case LocomotiveControlPayload.ACTION_START -> {
                 if (this.isPaving() && !this.hasPaverMaterial()) {
                     this.setRunMode(MODE_STOPPED);
-                    player.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
                     return;
                 }
                 this.setRunMode(MODE_FORWARD);
                 String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (2.0 m/s)";
-                player.sendOverlayMessage(Component.literal("Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
+                player.sendOverlayMessage(Component.literal("Under Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
             }
             case LocomotiveControlPayload.ACTION_STOP -> {
                 this.setRunMode(MODE_STOPPED);
-                player.sendOverlayMessage(Component.literal("Track Paver: Stopped").withStyle(ChatFormatting.RED));
+                player.sendOverlayMessage(Component.literal("Under Track Paver: Stopped").withStyle(ChatFormatting.RED));
             }
-            case LocomotiveControlPayload.ACTION_SPEED_DOWN -> {
-                // A key: Turn Left (counter-clockwise)
-                Direction newFacing = this.getFacing().getCounterClockWise();
-                this.setFacing(newFacing);
-                if (this.getCardinalLock() != LOCK_OFF) {
-                    this.setCardinalLock(getLockForDirection(newFacing));
+            case LocomotiveControlPayload.ACTION_SPEED_DOWN, LocomotiveControlPayload.ACTION_SPEED_UP -> {
+                if (this.getRunMode() == MODE_STOPPED) {
+                    Direction newFacing = this.getFacing().getOpposite();
+                    this.setFacing(newFacing);
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: Flipped orientation to " + newFacing.getName().toUpperCase()).withStyle(ChatFormatting.YELLOW));
                 }
-                player.sendOverlayMessage(Component.literal("Track Paver: Turned Left to " + newFacing.getName().toUpperCase()).withStyle(ChatFormatting.YELLOW));
-            }
-            case LocomotiveControlPayload.ACTION_SPEED_UP -> {
-                // D key: Turn Right (clockwise)
-                Direction newFacing = this.getFacing().getClockWise();
-                this.setFacing(newFacing);
-                if (this.getCardinalLock() != LOCK_OFF) {
-                    this.setCardinalLock(getLockForDirection(newFacing));
-                }
-                player.sendOverlayMessage(Component.literal("Track Paver: Turned Right to " + newFacing.getName().toUpperCase()).withStyle(ChatFormatting.YELLOW));
             }
             case LocomotiveControlPayload.ACTION_REVERSE -> {
                 int next = (this.getRunMode() == MODE_REVERSE) ? MODE_FORWARD : MODE_REVERSE;
                 if (next != MODE_STOPPED && this.isPaving() && !this.hasPaverMaterial()) {
                     this.setRunMode(MODE_STOPPED);
-                    player.sendOverlayMessage(Component.literal("Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: Out of paving material!").withStyle(ChatFormatting.RED));
                     return;
                 }
                 this.setRunMode(next);
                 if (next == MODE_REVERSE) {
                     String modeDesc = this.isWorkMode() ? "Work Reverse (0.67 m/s)" : "Transport Reverse (2.0 m/s)";
-                    player.sendOverlayMessage(Component.literal("Track Paver: " + modeDesc).withStyle(ChatFormatting.GOLD));
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: " + modeDesc).withStyle(ChatFormatting.GOLD));
                 } else {
                     String modeDesc = this.isWorkMode() ? "Work Mode (1.0 m/s)" : "Transport Mode (2.0 m/s)";
-                    player.sendOverlayMessage(Component.literal("Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: Forward - " + modeDesc).withStyle(ChatFormatting.GREEN));
                 }
             }
             case LocomotiveControlPayload.ACTION_TOGGLE_LIGHT -> {
                 boolean nextLight = !this.isWorkLightEnabled();
                 this.setWorkLightEnabled(nextLight);
-                player.sendOverlayMessage(Component.literal("Track Paver: Work Light " + (nextLight ? "ON" : "OFF")).withStyle(nextLight ? ChatFormatting.GOLD : ChatFormatting.GRAY));
+                player.sendOverlayMessage(Component.literal("Under Track Paver: Work Light " + (nextLight ? "ON" : "OFF")).withStyle(nextLight ? ChatFormatting.GOLD : ChatFormatting.GRAY));
             }
             case LocomotiveControlPayload.ACTION_HORN -> {
                 if (player.isShiftKeyDown()) {
                     boolean nextHolo = !this.isHologramEnabled();
                     this.setHologramEnabled(nextHolo);
-                    player.sendOverlayMessage(Component.literal("Track Paver: Alignment Hologram " + (nextHolo ? "ON" : "OFF")).withStyle(nextHolo ? ChatFormatting.AQUA : ChatFormatting.GRAY));
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: Alignment Hologram " + (nextHolo ? "ON" : "OFF")).withStyle(nextHolo ? ChatFormatting.AQUA : ChatFormatting.GRAY));
                 } else {
                     boolean nextWork = !this.isWorkMode();
                     this.setWorkMode(nextWork);
-                    player.sendOverlayMessage(Component.literal("Track Paver: " + (nextWork ? "Work Mode (Paving 1.0 m/s)" : "Transport Mode (No Pave 2.0 m/s)")).withStyle(nextWork ? ChatFormatting.GREEN : ChatFormatting.GOLD));
+                    player.sendOverlayMessage(Component.literal("Under Track Paver: " + (nextWork ? "Work Mode (Paving 1.0 m/s)" : "Transport Mode (No Pave 2.0 m/s)")).withStyle(nextWork ? ChatFormatting.GREEN : ChatFormatting.GOLD));
                 }
             }
             case LocomotiveControlPayload.ACTION_OPEN_GUI -> player.openMenu(this);
@@ -1144,6 +1209,38 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
                 double pull = Math.min(dist - targetDist, 0.25D);
                 double nx = cart.getX() + (diff.x / dist) * pull;
                 double nz = cart.getZ() + (diff.z / dist) * pull;
+                cart.setPos(nx, cart.getY(), nz);
+            }
+            prevEnt = cart;
+            prevAnchor = cart.position();
+            nextId = TrainChainingUtil.getCartChildUUID(cart);
+        }
+    }
+
+    private void pushTrailingCartsOnReverse(Direction backwardDir) {
+        UUID nextId = TrainChainingUtil.getCartChildUUID(this);
+        Entity prevEnt = this;
+        Vec3 prevAnchor = this.getRearAnchorPos();
+        Set<UUID> visited = new HashSet<>();
+        visited.add(this.getUUID());
+
+        while (nextId != null && visited.add(nextId)) {
+            Entity ent = this.level().getEntity(nextId);
+            if (!(ent instanceof AbstractMinecart cart) || cart.isRemoved()) {
+                break;
+            }
+            boolean isFirst = (prevEnt == this);
+            double targetDist = isFirst
+                    ? (TrainChainingUtil.getCartCouplerRadius(cart) + TrainChainingUtil.COUPLER_GAP + 0.6D)
+                    : TrainChainingUtil.getTargetCouplingDistance(prevEnt, cart, false);
+
+            Vec3 cartPos = cart.position();
+            Vec3 diff = prevAnchor.subtract(cartPos);
+            double dist = diff.horizontalDistance();
+            if (dist < targetDist - 0.05D && dist > 1.0E-4D) {
+                double push = Math.min(targetDist - dist, 0.25D);
+                double nx = cart.getX() - (diff.x / dist) * push;
+                double nz = cart.getZ() - (diff.z / dist) * push;
                 cart.setPos(nx, cart.getY(), nz);
             }
             prevEnt = cart;

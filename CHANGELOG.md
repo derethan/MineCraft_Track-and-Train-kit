@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.35] - 2026-11-06
+
+### Changed
+- **Renamed to Under Track Paver**:
+  - Renamed the paver machine to **Under Track Paver** across item name, entity name, container title, screen title validation, and in-game action bar messages (`message.miningtools.track_paver.*`).
+  - Updated the Railroader's Field Manual entries and recipes to reflect the new **Under Track Paver** title and description.
+- **Turnout Rail (Right) Crafting Recipe Update**:
+  - Re-aligned the crafting recipe for Turnout Rail (Right) so the redstone lever is placed on the middle-right instead of center:
+    - Top row: Rail, Blank, Rail
+    - Middle row: Blank, Blank, Lever
+    - Bottom row: Rail, Blank, Rail
+  - Symmetrically matches the Turnout Rail (Left) recipe layout (which positions the lever on the left).
+
+---
+
+## [1.1.34] - 2026-11-05
+
+### Changed
+- Mod update
+
+---
+
+## [1.1.34] - 2026-11-05
+
+### Changed
+- **Road Paver Rail-Only Operation & Automatic Track Navigation**:
+  - Converted the Heavy Track & Road Paver to operate exclusively as a rail cart, aligning with the rail-riding mechanics of the Tunnel Bore without mining terrain blocks or laying rails.
+  - Restricted placement to railway tracks (`TrackPaverItem` places exclusively on rails, snapping directly onto the rail centerline with orientation aligned to track layout).
+  - Added continuous rail following: smoothly follows straight rails, ascending/descending slopes, and curved tracks in both Forward and Reverse modes, halting safely if an obstacle blocks the path or upon reaching the end of the line.
+  - Continues paving the 1-deep by 3-wide foundation strip (center block beneath the rail and left/right shoulder blocks) while preserving all tracks and ties intact.
+  - Enhanced train consist reverse handling: added `pushTrailingCartsOnReverse` to prevent trailing railcars from bunching up when the paver reverses, and registered the paver's coupler radius (1.45m) in `TrainChainingUtil`.
+  - Streamlined paver GUI: replaced the obsolete off-rail Cardinal Lock button with a full-width **Hologram Guide** button in `TrackPaverScreen` that projects the 3x3 paving footprint along the actual track route.
+
+---
+
 ## [1.1.32] - 2026-11-04
 
 ### Changed

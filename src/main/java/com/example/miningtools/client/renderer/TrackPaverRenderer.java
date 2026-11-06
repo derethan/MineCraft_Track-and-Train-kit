@@ -18,7 +18,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.util.Mth;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
@@ -66,33 +65,21 @@ public class TrackPaverRenderer extends EntityRenderer<TrackPaverEntity, TrackPa
             BlockPos stepPos = currentPos;
             int idx = 0;
             for (int step = 1; step <= 3; step++) {
-                BlockPos nextPos = stepPos.relative(forward);
-                BlockState nextFeet = entity.level().getBlockState(nextPos);
-                BlockState nextHead = entity.level().getBlockState(nextPos.above());
-                if (nextFeet.isSolid() && !nextHead.isSolid()) {
-                    nextPos = nextPos.above();
-                } else if (!nextFeet.isSolid() && !entity.level().getBlockState(nextPos.below()).isSolid()) {
-                    BlockPos downPos = nextPos.below();
-                    if (entity.level().getBlockState(downPos).isSolid() || entity.level().getBlockState(downPos.below()).isSolid()) {
-                        nextPos = downPos;
-                    }
+                BlockPos nextRail = entity.findNextRailAlongTrack(stepPos, forward);
+                if (nextRail != null) {
+                    stepPos = nextRail;
+                } else {
+                    stepPos = stepPos.relative(forward);
                 }
-                stepPos = nextPos;
-                BlockPos groundCenter = nextPos.below();
+                BlockPos groundCenter = stepPos.below();
                 BlockPos[] row = new BlockPos[] {
                     groundCenter.relative(left),
                     groundCenter,
                     groundCenter.relative(right)
                 };
                 for (BlockPos colPos : row) {
-                    BlockPos finalPos = colPos;
-                    if (entity.level().getBlockState(finalPos.above()).isSolid()) {
-                        finalPos = finalPos.above();
-                    } else if (!entity.level().getBlockState(finalPos).isSolid() && entity.level().getBlockState(finalPos.below()).isSolid()) {
-                        finalPos = finalPos.below();
-                    }
                     if (idx < 9) {
-                        state.hologramPositions[idx++] = finalPos;
+                        state.hologramPositions[idx++] = colPos;
                     }
                 }
             }
@@ -104,8 +91,8 @@ public class TrackPaverRenderer extends EntityRenderer<TrackPaverEntity, TrackPa
         super.submit(state, poseStack, submitNodeCollector, camera);
         poseStack.pushPose();
 
-        poseStack.translate(0.0F, state.onRails ? 0.0625F : 0.0F, 0.0F);
-        poseStack.rotateDegrees(Axis.YP, 180.0F - state.facing.toYRot());
+        poseStack.translate(0.0F, 0.0625F, 0.0F);
+        poseStack.rotateDegrees(Axis.YP, 180.0F - state.yRot);
 
         if (state.hurtTime > 0.0F) {
             poseStack.rotateDegrees(Axis.XP, Mth.sin(state.hurtTime) * state.hurtTime * state.damageTime / 10.0F * state.hurtDir);

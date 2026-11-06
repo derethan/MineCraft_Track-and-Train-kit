@@ -117,8 +117,8 @@ public class GuideBookRegistry {
                 () -> new ItemStack(MiningTools.HOPPER_CART_ITEM.get()),
                 "The Aggregate Hopper Cart is specifically tailored for handling heavy loose bulk materials: Cobblestone, Gravel, Sand, Ballast, and Raw Ores.\n\n" +
                 "• Chute Discharge: Rapidly unloads straight down when parked over hoppers or automated station chutes.\n" +
-                "• Trackbed Construction: Automatically feeds gravel and ballast directly into coupled Track Pavers and Track Layer Carts.",
-                "Couple a Hopper Cart directly behind a Track Paver to build hundreds of blocks of continuous trackbed without manual reloading!",
+                "• Trackbed Construction: Automatically feeds gravel and ballast directly into coupled Under Track Pavers and Track Layer Carts.",
+                "Couple a Hopper Cart directly behind an Under Track Paver to build hundreds of blocks of continuous trackbed without manual reloading!",
                 null,
                 null,
                 List.of(
@@ -756,24 +756,23 @@ public class GuideBookRegistry {
 
         register(new GuideEntry(
                 "track_paver",
-                "Track & Road Paver",
+                "Under Track Paver",
                 "Automated Railway & Roadbed Constructor",
                 GuideCategory.HEAVY_MACHINERY,
                 () -> new ItemStack(MiningTools.TRACK_PAVER_ITEM.get()),
-                "The Track & Road Paver clears wild terrain, grades land, installs uniform ballast roadbeds, and lays finished tracks.\n\n" +
+                "The Under Track Paver grades land, installs uniform ballast roadbeds beneath tracks, and paves structured ground.\n\n" +
                 "• 3-Tile Pattern Programming: Configure Left, Center (under track), and Right filter slots to lay custom roadbed patterns (e.g. curb-ballast-curb or hazard stripes).\n" +
-                "• Wide Roadbeds: Lays wide multi-lane ballast embankments with polished borders.\n" +
-                "• Obstacle Clearing: Automatically cuts through trees, hills, and foliage along the surveyed route.\n" +
-                "• High Productivity: Construct miles of transcontinental railroad in minutes.",
+                "• Rail-Cart Operation: Snaps directly to rails and follows the track while paving underneath.\n" +
+                "• High Productivity: Construct miles of transcontinental ballast roadbed in minutes.",
                 "Tether an Aggregate Hopper Cart behind the paver to keep its ballast hopper filled indefinitely!",
                 null,
                 null,
                 List.of(
-                        new GuideRecipe("Track Paver Crafting",
+                        new GuideRecipe("Under Track Paver Crafting",
                                 List.of(() -> new ItemStack(Items.IRON_SHOVEL, 2), () -> new ItemStack(Items.IRON_BLOCK), () -> new ItemStack(Items.BLAST_FURNACE), () -> new ItemStack(Items.CHEST_MINECART), () -> new ItemStack(Items.IRON_INGOT, 4)),
                                 List.of(() -> new ItemStack(MiningTools.TRACK_PAVER_ITEM.get())),
                                 "Automated roadbed and ballast paving machine.")
-                )
+                        )
         ));
 
         register(new GuideEntry(
