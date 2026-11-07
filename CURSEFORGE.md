@@ -23,7 +23,7 @@ Whether you need to haul massive freight trains across long distances, automate 
 * 🏹 **Tactical Arrow Turret Cart**: Defense cart with 2× engagement range (32 blocks), dual bow mounts, in-GUI Player Whitelist / Blacklist protection, crisp tactical woodland camo livery, and Caboose-matching flanged steel wheels.
 * 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers and features server-synced far-distance persistence so trains never vanish off the map across long distances.
 * 💥 **Geological Prospecting & Boreholes**: Detonate Surveyor's Charges wirelessly via the Remote Detonator to drill a clean 1×1 borehole to bedrock and receive a full-depth cylindrical column survey tallying ores, minerals, and subterranean oil deposits.
-* 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation and the **Under Track Paver** (AP1055F) that operates as a rail cart following tracks at 1 m/s, paving a 1×3 wide roadbed while preserving tracks underneath.
+* 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation, the **Under Track Paver** (AP1055F) that paves a 1×3 wide roadbed beneath tracks at 1 m/s, and the **Tunnel Paver** (`tunnel_paver`) that lines the 9-block tunnel arch (3 left wall blocks, 3 ceiling blocks, and 3 right wall blocks) with custom 9-slot masonry patterns.
 * 🛤️ **Specialty Switch & Power Rails**: Station Delay Rails (Timed Station Dwell & Automatic Consist Launch), Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), Speed Control Rails, 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
 * 📡 **Smart Track Automation & Fueling**: Automated Item Loaders/Unloaders, Fluid Loaders/Unloaders, dedicated Locomotive Fuelers (Diesel & Coal), Entity Loaders/Unloaders, and Train-Name Signal Switches.
 * 🏷️ **In-GUI Custom Cart Naming**: Name every locomotive and custom railcar directly in its GUI to automate routing, filtering, and depot switching.
@@ -168,7 +168,7 @@ A handheld wireless detonator keyed to trigger Surveyor's Charges:
 
 ---
 
-## 🚜 Heavy Machinery: The Tunnel Bore & Under Track Paver
+## 🚜 Heavy Machinery: The Tunnel Bore, Under Track Paver & Tunnel Paver
 
 ### 1. Automated Tunnel Bore
 An automated subterranean excavator for carving out subway lines and railway corridors.
@@ -194,7 +194,18 @@ A heavy industrial caterpillar track paver machine inspired by the CAT AP1055F t
 * **3-Tile Pattern Programming & Material Hopper**: 3 dedicated roadbed pattern filter slots (Left, Center beneath track, Right) to program custom multi-material roadbeds (e.g. curb-ballast-curb or hazard stripes) + dedicated Fuel slot + 27 bulk material storage slots holding up to 1,728 paving blocks.
 * **Consist Coupling & Reverse Pushing**: Registered rear bumper anchor (1.45m) and reverse consist pushing (`pushTrailingCartsOnReverse`) ensure attached supply cars (such as Aggregate Hoppers) follow and reverse smoothly without colliding.
 
-### 3. Track Layer Cart (`track_layer_cart`)
+### 3. Tunnel Paver (`tunnel_paver`)
+A full-scale subterranean tunnel arch lining and masonry machine built on the heavy Tunnel Bore chassis (`2.8 × 2.75`) that operates along railway tracks like the Under Track Paver:
+* **9-Block Tunnel Arch Replacement (Walls & Ceiling Only)**: Does not replace blocks beneath the track (`dy = -1`, which the Under Track Paver handles). Instead, as it moves along the rail line, it replaces and lines the 9 perimeter blocks surrounding the 3×3 tunnel clearance:
+  - **Left Wall (3 blocks)**: `dx = -2`, `dy = 0, 1, 2` (Bottom, Middle, Top).
+  - **Ceiling (3 blocks in a row above)**: `dx = -1, 0, +1`, `dy = 3` (Left, Center, Right).
+  - **Right Wall (3 blocks)**: `dx = +2`, `dy = 2, 1, 0` (Top, Middle, Bottom).
+* **9-Slot U-Arch Pattern Filter Programming**: 9 dedicated pattern filter slots arranged in an intuitive U-shaped tunnel cross-section in the GUI to build custom wall pillars, ceiling lighting strips (e.g. Sea Lanterns / Glowstone), or glass underwater tubes. Leaving individual filter slots empty preserves existing terrain at those positions; leaving all 9 empty falls back to uniform lining using any available solid block in the 27-slot bulk material hopper.
+* **Block Harvesting & Consist Material Sharing**: Harvests replaced wall and ceiling blocks directly into its 27-slot bulk material storage, while automatically pulling lining blocks and furnace fuels from coupled supply carts in the train consist.
+* **Work Mode (1.0 m/s) & Transport Mode (2.0 m/s)**: Crawls at 1.0 m/s while lining the tunnel arch in Work Mode, or travels at 2.0 m/s in Transport Mode with arch replacement suspended.
+* **Toggleable Work Light & 3D Arch Hologram Guide**: Equipped with a Level 15 floodlight (`L` key) and a 9-block U-arch Ghost Hologram projection (`Shift + H`) showing the exact wall and ceiling positions 3 steps ahead.
+
+### 4. Track Layer Cart (`track_layer_cart`)
 A compact, rugged, industrial 1-block machine built with a custom monolithic 3D model (armored unibody chassis, protective overhead roll-cage canopy, recessed operator cockpit, front track guide chute, rear articulated retrieval claw, and flanged wheels):
 * **Dual Work Modes**:
   - **Track Laying Mode**: Snaps to minetrack and places 1 piece of track from its inventory down in front of itself onto sturdy ground as it rolls forward, paving railway lines effortlessly. Automatically climbs and descends 1-block terrain steps, placing linked slope rails up hills and down valleys!
@@ -311,6 +322,7 @@ When seated inside a locomotive or coupled cart:
 | **Electric Bullet Train** | Iron Block + Copper Block + Redstone Block + Tinted Glass + Minecart |
 | **Tunnel Bore** | Iron Pickaxes + Iron Block + Furnace Minecart + Chest Minecart + Iron Ingots |
 | **Under Track Paver** | Iron Shovels + Iron Block + Blast Furnace + Chest Minecart + Iron Ingots |
+| **Tunnel Paver** | Dispensers + Iron Block + Blast Furnace + Chest Minecart + Iron Ingots |
 | **Track Layer Cart** | Iron Ingots + Iron Blocks + Piston + Rail + Chest Minecart |
 | **Cargo Minecart** | Chest + Minecart + Iron Ingot |
 | **Loose Aggregate Hopper Car** | Iron Ingots + Hopper + Chest Minecart |
@@ -352,6 +364,12 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.36**:
+  - **Tunnel Paver (`miningtools:tunnel_paver`)**:
+    - Added a full-scale (`2.8 × 2.75`) subterranean tunnel arch lining and masonry paver machine built on the heavy Tunnel Bore chassis that operates along railway tracks like the Under Track Paver.
+    - **9-Block Tunnel Arch Replacement (Walls & Ceiling Only)**: Does not replace the blocks beneath itself (`dy = -1`, handled by the Under Track Paver). Instead, it replaces the 3 blocks on its left (`dx = -2, dy = 0..2`), the 3 blocks in a row above it (`dx = -1..1, dy = 3`), and the 3 blocks on its right (`dx = +2, dy = 2..0`).
+    - **9-Slot U-Arch Pattern Filter Programming**: Features 9 dedicated pattern filter slots arranged in a U-shaped tunnel arch in `TunnelPaverScreen` + 1 Fuel slot + 27 bulk material slots (`37` slots total) to create custom wall and ceiling patterns (with fallback to uniform bulk material placement when all 9 filter slots are empty).
+    - **Block Harvesting, Consist Sharing & Dual-Speed Modes**: Harvests replaced wall and ceiling blocks into its 27-slot material storage, pulls fuel and lining blocks from coupled consist cars, and supports Work Mode (`1.0 m/s`), Transport Mode (`2.0 m/s`), Level 15 Work Light, and 3D U-Arch Ghost Hologram projection.
 * **v1.1.35**:
   - **Renamed to Under Track Paver**:
     - Renamed the machine to **Under Track Paver** in all display names, entity registrations, containers, screens, and in-game notifications.
@@ -530,5 +548,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.35.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.36.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

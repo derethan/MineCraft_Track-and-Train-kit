@@ -10,7 +10,9 @@ import com.example.miningtools.menu.CargoMinecartMenu;
 import com.example.miningtools.menu.DieselLocomotiveMenu;
 import com.example.miningtools.menu.ElectricLocomotiveMenu;
 import com.example.miningtools.menu.GeneratorMinecartMenu;
+import com.example.miningtools.menu.TrackPaverMenu;
 import com.example.miningtools.menu.TunnelBoreMenu;
+import com.example.miningtools.menu.TunnelPaverMenu;
 import com.example.miningtools.menu.TurretCartMenu;
 
 import io.netty.buffer.ByteBuf;
@@ -95,6 +97,22 @@ public record LocomotiveRenamePayload(String trainName) implements CustomPacketP
                     && !cart.isRemoved()
                     && menu.stillValid(player)) {
                 CartRenamePayload.applyCustomNameToCart(cart, payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof TrackPaverMenu menu
+                    && menu.getContainer() instanceof com.example.miningtools.entity.TrackPaverEntity paver
+                    && !paver.isRemoved()
+                    && menu.stillValid(player)) {
+                paver.setTrainName(payload.trainName());
+                CartRenamePayload.applyCustomNameToCart(paver, payload.trainName());
+                return;
+            }
+            if (player.containerMenu instanceof TunnelPaverMenu menu
+                    && menu.getContainer() instanceof com.example.miningtools.entity.TunnelPaverEntity paver
+                    && !paver.isRemoved()
+                    && menu.stillValid(player)) {
+                paver.setTrainName(payload.trainName());
+                CartRenamePayload.applyCustomNameToCart(paver, payload.trainName());
                 return;
             }
             Entity vehicle = player.getVehicle();

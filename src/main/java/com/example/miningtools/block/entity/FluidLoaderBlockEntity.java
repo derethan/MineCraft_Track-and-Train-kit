@@ -13,6 +13,7 @@ import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TunnelPaverEntity;
 import com.example.miningtools.menu.FluidLoaderMenu;
 import com.example.miningtools.util.TrainChainingUtil;
 
@@ -401,7 +402,8 @@ public class FluidLoaderBlockEntity extends BlockEntity implements MenuProvider,
                 boolean isLoco = closestEnt instanceof DieselLocomotiveEntity
                         || closestEnt instanceof BasicLocomotiveEntity
                         || closestEnt instanceof ElectricLocomotiveEntity
-                        || closestEnt instanceof TunnelBoreEntity;
+                        || closestEnt instanceof TunnelBoreEntity
+                        || closestEnt instanceof TunnelPaverEntity;
                 if (!isLoco) {
                     boolean nameMatches = true;
                     if (closestEnt instanceof AbstractMinecart mc) {

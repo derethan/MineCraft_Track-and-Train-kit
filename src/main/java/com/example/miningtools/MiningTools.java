@@ -80,12 +80,15 @@ import com.example.miningtools.item.LiquidMinecartItem;
 import com.example.miningtools.item.LivestockCartItem;
 import com.example.miningtools.item.SignalTunerItem;
 import com.example.miningtools.item.TunnelBoreItem;
+import com.example.miningtools.item.TunnelPaverItem;
 import com.example.miningtools.item.TrackPaverItem;
 import com.example.miningtools.entity.TrackPaverEntity;
+import com.example.miningtools.entity.TunnelPaverEntity;
 import com.example.miningtools.entity.TrackLayerCartEntity;
 import com.example.miningtools.item.TrackLayerCartItem;
 import com.example.miningtools.menu.TrackLayerCartMenu;
 import com.example.miningtools.menu.TrackPaverMenu;
+import com.example.miningtools.menu.TunnelPaverMenu;
 import com.example.miningtools.menu.BasicLocomotiveMenu;
 import com.example.miningtools.menu.CargoMinecartMenu;
 import com.example.miningtools.menu.DieselLocomotiveMenu;
@@ -515,6 +518,26 @@ public class MiningTools {
             () -> new MenuType<>(TrackPaverMenu::new, FeatureFlags.DEFAULT_FLAGS)
     );
 
+    // Tunnel Paver (Wall & Ceiling Arch Liner) Entity, Item & Menu
+    public static final DeferredHolder<EntityType<?>, EntityType<TunnelPaverEntity>> TUNNEL_PAVER_ENTITY = ENTITY_TYPES.register(
+            "tunnel_paver",
+            key -> EntityType.Builder.<TunnelPaverEntity>of(TunnelPaverEntity::new, MobCategory.MISC)
+                    .sized(2.8F, 2.75F)
+                    .passengerAttachments(2.05F)
+                    .build(ResourceKey.create(Registries.ENTITY_TYPE, key))
+    );
+
+    public static final DeferredItem<TunnelPaverItem> TUNNEL_PAVER_ITEM = ITEMS.registerItem(
+            "tunnel_paver",
+            TunnelPaverItem::new,
+            p -> p.stacksTo(1)
+    );
+
+    public static final DeferredHolder<MenuType<?>, MenuType<TunnelPaverMenu>> TUNNEL_PAVER_MENU = MENUS.register(
+            "tunnel_paver",
+            () -> new MenuType<>(TunnelPaverMenu::new, FeatureFlags.DEFAULT_FLAGS)
+    );
+
     // Track Layer Cart Entity, Item & Menu
     public static final DeferredHolder<EntityType<?>, EntityType<TrackLayerCartEntity>> TRACK_LAYER_CART_ENTITY = ENTITY_TYPES.register(
             "track_layer_cart",
@@ -811,6 +834,7 @@ public class MiningTools {
                         output.accept(CHUNK_LOADER_ITEM.get());
                         output.accept(BUFFER_STOP_ITEM.get());
                         output.accept(TUNNEL_BORE_ITEM.get());
+                        output.accept(TUNNEL_PAVER_ITEM.get());
                         output.accept(TRACK_PAVER_ITEM.get());
                         output.accept(TRACK_LAYER_CART_ITEM.get());
                         output.accept(BASIC_LOCOMOTIVE_ITEM.get());
@@ -920,6 +944,16 @@ public class MiningTools {
         event.registerEntity(
                 Capabilities.Item.ENTITY_AUTOMATION,
                 TRACK_PAVER_ENTITY.get(),
+                (entity, side) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY,
+                TUNNEL_PAVER_ENTITY.get(),
+                (entity, context) -> VanillaContainerWrapper.of(entity)
+        );
+        event.registerEntity(
+                Capabilities.Item.ENTITY_AUTOMATION,
+                TUNNEL_PAVER_ENTITY.get(),
                 (entity, side) -> VanillaContainerWrapper.of(entity)
         );
         event.registerEntity(
@@ -1107,6 +1141,7 @@ public class MiningTools {
             event.accept(CHUNK_LOADER_ITEM);
             event.accept(BUFFER_STOP_ITEM);
             event.accept(TUNNEL_BORE_ITEM);
+            event.accept(TUNNEL_PAVER_ITEM);
             event.accept(TRACK_PAVER_ITEM);
             event.accept(TRACK_LAYER_CART_ITEM);
             event.accept(BASIC_LOCOMOTIVE_ITEM);
@@ -1209,6 +1244,7 @@ public class MiningTools {
         if (cart instanceof ElectricLocomotiveEntity) return "electric";
         if (cart instanceof CabooseMinecartEntity) return "caboose";
         if (cart instanceof TunnelBoreEntity) return "bore";
+        if (cart instanceof TunnelPaverEntity) return "tunnel_paver";
         if (cart instanceof TrackPaverEntity) return "paver";
         if (cart instanceof TurretCartEntity) return "turret";
         if (cart instanceof AggregateHopperCartEntity) return "hopper";

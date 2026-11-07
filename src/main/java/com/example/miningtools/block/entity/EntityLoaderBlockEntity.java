@@ -10,6 +10,7 @@ import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TunnelPaverEntity;
 import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
@@ -70,6 +71,7 @@ public class EntityLoaderBlockEntity extends AbstractEntityTransferBlockEntity {
                 && !(closestCart instanceof DieselLocomotiveEntity)
                 && !(closestCart instanceof ElectricLocomotiveEntity)
                 && !(closestCart instanceof TunnelBoreEntity)
+                && !(closestCart instanceof TunnelPaverEntity)
                 && (closestCart instanceof LivestockCartEntity lc ? lc.canFitMorePassengers() : closestCart.getPassengers().isEmpty());
 
         if (!isValidTarget) {

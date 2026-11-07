@@ -17,6 +17,7 @@ import com.example.miningtools.entity.CargoMinecartEntity;
 import com.example.miningtools.entity.DieselLocomotiveEntity;
 import com.example.miningtools.entity.ElectricLocomotiveEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TunnelPaverEntity;
 import com.example.miningtools.menu.CargoTransferMenu;
 import com.example.miningtools.util.TrainChainingUtil;
 
@@ -343,6 +344,9 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
             if (cartContainer instanceof TunnelBoreEntity) {
                 return slot == TunnelBoreEntity.FUEL_SLOT && (stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK));
             }
+            if (cartContainer instanceof TunnelPaverEntity) {
+                return slot == TunnelPaverEntity.SLOT_FUEL && (stack.is(ItemTags.COALS) || stack.is(Items.COAL_BLOCK));
+            }
             return false;
         }
         return cartContainer.canPlaceItem(slot, stack);
@@ -428,7 +432,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         // Validate that the cart directly on the loader is an eligible target
         boolean isValidTarget;
         if (coalFueler) {
-            isValidTarget = (closestCart instanceof BasicLocomotiveEntity) || (closestCart instanceof TunnelBoreEntity);
+            isValidTarget = (closestCart instanceof BasicLocomotiveEntity) || (closestCart instanceof TunnelBoreEntity) || (closestCart instanceof TunnelPaverEntity);
         } else {
             isValidTarget = (closestCart instanceof Container)
                     && !(closestCart instanceof BasicLocomotiveEntity)

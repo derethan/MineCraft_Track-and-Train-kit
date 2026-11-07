@@ -35,6 +35,7 @@ import com.example.miningtools.entity.TurretCartEntity;
 import com.example.miningtools.entity.GeneratorMinecartEntity;
 import com.example.miningtools.entity.TrackLayerCartEntity;
 import com.example.miningtools.entity.TrackPaverEntity;
+import com.example.miningtools.entity.TunnelPaverEntity;
 import com.example.miningtools.network.TrainLinkSyncPayload;
 import com.mojang.datafixers.util.Pair;
 
@@ -209,8 +210,8 @@ public final class TrainChainingUtil {
             // Track Paver frame (rear screed bumper anchor at 1.45m)
             return 1.45D;
         }
-        if (entity instanceof TunnelBoreEntity) {
-            // Tunnel bore rear bumper anchor
+        if (entity instanceof TunnelBoreEntity || entity instanceof TunnelPaverEntity) {
+            // Tunnel bore / tunnel paver rear bumper anchor
             return 4.16D;
         }
         // Vanilla minecarts are 0.98m long -> 0.49m (~0.50m) radius
@@ -657,7 +658,9 @@ public final class TrainChainingUtil {
         return cart instanceof BasicLocomotiveEntity
                 || cart instanceof DieselLocomotiveEntity
                 || cart instanceof ElectricLocomotiveEntity
-                || cart instanceof TunnelBoreEntity;
+                || cart instanceof TunnelBoreEntity
+                || cart instanceof TunnelPaverEntity
+                || cart instanceof TrackPaverEntity;
     }
 
     public static boolean isLocomotive(Entity entity) {
@@ -904,7 +907,8 @@ public final class TrainChainingUtil {
     public static boolean isConsistWithLocomotive(AbstractMinecart cart) {
         if (cart == null || cart.level() == null) return false;
         if (cart instanceof BasicLocomotiveEntity || cart instanceof DieselLocomotiveEntity
-                || cart instanceof ElectricLocomotiveEntity || cart instanceof TunnelBoreEntity) {
+                || cart instanceof ElectricLocomotiveEntity || cart instanceof TunnelBoreEntity
+                || cart instanceof TunnelPaverEntity || cart instanceof TrackPaverEntity) {
             return true;
         }
         return BasicLocomotiveEntity.getConnectedLocomotive(cart) != null
@@ -915,7 +919,8 @@ public final class TrainChainingUtil {
     public static boolean isConnectedToAnyTrain(AbstractMinecart cart) {
         if (cart == null || cart.level() == null) return false;
         if (cart instanceof BasicLocomotiveEntity || cart instanceof DieselLocomotiveEntity
-                || cart instanceof ElectricLocomotiveEntity || cart instanceof TunnelBoreEntity) {
+                || cart instanceof ElectricLocomotiveEntity || cart instanceof TunnelBoreEntity
+                || cart instanceof TunnelPaverEntity || cart instanceof TrackPaverEntity) {
             return true;
         }
         return getCartParentUUID(cart) != null || getCartChildUUID(cart) != null;
@@ -927,6 +932,7 @@ public final class TrainChainingUtil {
         if (cart instanceof DieselLocomotiveEntity loco && loco.isRunning()) return true;
         if (cart instanceof ElectricLocomotiveEntity loco && loco.isRunning()) return true;
         if (cart instanceof TunnelBoreEntity bore && bore.isRunning()) return true;
+        if (cart instanceof TunnelPaverEntity tp && tp.isRunning()) return true;
 
         BasicLocomotiveEntity steam = BasicLocomotiveEntity.getConnectedLocomotive(cart);
         if (steam != null && steam.isRunning()) return true;
@@ -956,6 +962,7 @@ public final class TrainChainingUtil {
         if (cart instanceof DieselLocomotiveEntity loco) return !loco.isRunning();
         if (cart instanceof ElectricLocomotiveEntity loco) return !loco.isRunning();
         if (cart instanceof TunnelBoreEntity bore) return !bore.isRunning();
+        if (cart instanceof TunnelPaverEntity tp) return !tp.isRunning();
         return !isPartOfRunningTrain(cart);
     }
 
@@ -1180,6 +1187,13 @@ public final class TrainChainingUtil {
                 bore.setRunMode(TunnelBoreEntity.MODE_STOPPED);
                 bore.setActive(false);
                 bore.setRunning(false);
+            } else if (cart instanceof TunnelPaverEntity tp) {
+                tp.setRunMode(TunnelPaverEntity.MODE_STOPPED);
+                tp.setActive(false);
+                tp.setRunning(false);
+            } else if (cart instanceof TrackPaverEntity paver) {
+                paver.setRunMode(TrackPaverEntity.MODE_STOPPED);
+                paver.setActive(false);
             }
         }
     }
@@ -1291,6 +1305,8 @@ public final class TrainChainingUtil {
                         el.stopLocomotiveFromRail();
                     } else if (cart instanceof TunnelBoreEntity bore && bore.isRunning()) {
                         bore.setRunning(false);
+                    } else if (cart instanceof TunnelPaverEntity tp && tp.isRunning()) {
+                        tp.setRunning(false);
                     }
                     UUID cp = getCartParentUUID(cart);
                     if (cp != null && !visited.contains(cp)) queue.add(cp);

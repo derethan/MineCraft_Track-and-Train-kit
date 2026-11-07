@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.36] - 2026-11-07
+
+### Added
+- **Tunnel Paver (`miningtools:tunnel_paver`)**:
+  - Added a full-scale (`2.8 × 2.75`) subterranean tunnel arch lining and masonry paver machine built on the heavy Tunnel Bore chassis that operates along railway tracks like the Under Track Paver.
+  - **9-Block Tunnel Arch Replacement (Walls & Ceiling Only)**: Does not replace blocks beneath the tracks (`dy = -1`, handled by the Under Track Paver). Instead, as it moves along the rail line, it replaces and lines the 9 perimeter blocks surrounding the 3×3 tunnel clearance:
+    - **Left Wall (3 blocks)**: `dx = -2`, `dy = 0, 1, 2` (bottom, middle, top).
+    - **Ceiling (3 blocks in a row above)**: `dx = -1, 0, +1`, `dy = 3` (left, center, right).
+    - **Right Wall (3 blocks)**: `dx = +2`, `dy = 2, 1, 0` (top, middle, bottom).
+  - **9-Slot U-Arch Pattern Filter Programming**:
+    - Features 9 dedicated pattern filter slots arranged in an intuitive U-shaped tunnel cross-section in the GUI (`TunnelPaverScreen`), allowing players to design custom wall and ceiling masonry patterns (e.g., stone brick pillars, polished andesite walls, sea lantern or glowstone ceiling lighting strips, or glass observation tubes).
+    - Leaving individual filter slots empty preserves existing terrain at those arch positions; leaving all 9 filter slots empty falls back to uniform lining using any available solid block in the 27-slot bulk material hopper.
+  - **Block Harvesting & Consist Material Sharing**:
+    - Harvests replaced wall and ceiling blocks directly into its 27-slot bulk material storage (or drops them cleanly if full), while automatically pulling lining materials and furnace fuels from coupled supply carts in the train consist (`TrainChainingUtil.pullItemsFromConsist`).
+  - **Dual-Speed Work & Transport Modes**:
+    - Operates at a calibrated **1.0 m/s** (`20` ticks/step) in **Work Mode** while lining the tunnel arch, or **2.0 m/s** (`10` ticks/step) in **Transport Mode** with arch replacement suspended.
+  - **Work Floodlight & 3D Arch Alignment Hologram**:
+    - Includes a toggleable Level 15 Work Light (`L` key or GUI button) and a 9-block U-arch Ghost Hologram projection (`Shift + H` or GUI button) showing the exact wall and ceiling blocks to be replaced 3 steps ahead along the track.
+  - **Custom 3D Model, Textures & Field Manual Integration**:
+    - Engineered `TunnelPaverModel` with a rotating masonry distributor drum and erector arms, full-arch hydraulic left/ceiling/right screed plates, cylindrical shield body, rear operator gantry, dual exhaust stacks, active/idle firebox viewports, and rail bogies.
+    - Added 32×32 isometric item icon (`tunnel_paver.png`), GUI texture (`textures/gui/tunnel_paver.png`), entity texture (`textures/entity/tunnel_paver.png`), crafting recipe (`data/miningtools/recipe/tunnel_paver.json`), JourneyMap train marker integration, HUD speedometer integration, trackside loader/unloader support, and **Railroader's Field Manual** documentation under `Heavy Machinery`.
+
+---
+
 ## [1.1.35] - 2026-11-06
 
 ### Changed

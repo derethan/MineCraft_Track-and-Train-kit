@@ -106,6 +106,10 @@ public class TrackPaverMenu extends AbstractContainerMenu {
         this.addDataSlots(data);
     }
 
+    public Container getContainer() {
+        return this.container;
+    }
+
     public int getFuel() {
         return this.data.get(0);
     }

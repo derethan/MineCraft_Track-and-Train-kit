@@ -16,6 +16,7 @@ import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
 import com.example.miningtools.entity.TrackPaverEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
+import com.example.miningtools.entity.TunnelPaverEntity;
 import com.example.miningtools.entity.TurretCartEntity;
 import com.example.miningtools.network.TrainMapSyncPayload;
 
@@ -53,6 +54,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
     private static final Identifier ICON_ELECTRIC = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/electric_locomotive.png");
     private static final Identifier ICON_CABOOSE = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/caboose.png");
     private static final Identifier ICON_BORE = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/tunnel_bore.png");
+    private static final Identifier ICON_TUNNEL_PAVER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/tunnel_paver.png");
     private static final Identifier ICON_PAVER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/track_paver.png");
     private static final Identifier ICON_TURRET = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/turret_cart.png");
     private static final Identifier ICON_TANKER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/large_liquid_minecart.png");
@@ -256,6 +258,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
         if (cart instanceof DieselLocomotiveEntity diesel && !diesel.getTrainName().isBlank()) return diesel.getTrainName();
         if (cart instanceof ElectricLocomotiveEntity elec && !elec.getTrainName().isBlank()) return elec.getTrainName();
         if (cart instanceof TrackPaverEntity paver && !paver.getTrainName().isBlank()) return paver.getTrainName();
+        if (cart instanceof TunnelPaverEntity tp && !tp.getTrainName().isBlank()) return tp.getTrainName();
         if (cart.getCustomName() != null) return cart.getCustomName().getString();
         return cart.getDisplayName().getString();
     }
@@ -271,6 +274,8 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
             return ICON_CABOOSE;
         } else if (cart instanceof TunnelBoreEntity) {
             return ICON_BORE;
+        } else if (cart instanceof TunnelPaverEntity) {
+            return ICON_TUNNEL_PAVER;
         } else if (cart instanceof TrackPaverEntity) {
             return ICON_PAVER;
         } else if (cart instanceof TurretCartEntity) {
@@ -297,6 +302,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
             case "electric" -> ICON_ELECTRIC;
             case "caboose" -> ICON_CABOOSE;
             case "bore" -> ICON_BORE;
+            case "tunnel_paver" -> ICON_TUNNEL_PAVER;
             case "paver" -> ICON_PAVER;
             case "turret" -> ICON_TURRET;
             case "hopper" -> ICON_HOPPER;

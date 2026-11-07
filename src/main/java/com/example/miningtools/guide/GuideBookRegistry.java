@@ -755,6 +755,27 @@ public class GuideBookRegistry {
         ));
 
         register(new GuideEntry(
+                "tunnel_paver",
+                "Tunnel Paver",
+                "3x3 Tunnel Wall & Ceiling Arch Liner",
+                GuideCategory.HEAVY_MACHINERY,
+                () -> new ItemStack(MiningTools.TUNNEL_PAVER_ITEM.get()),
+                "The Tunnel Paver is a full-bore construction machine engineered to travel behind a Tunnel Bore and line the surrounding walls and ceiling without disturbing the floor or track beneath itself.\n\n" +
+                "• 9-Block Arch Lining: Replaces the 3 blocks on its left wall, the 3 blocks in a row above its roof, and the 3 blocks on its right wall in each step.\n" +
+                "• 9-Slot Arch Pattern Programming: Configure individual filter slots arranged in a U-arch (Left Wall Bottom/Mid/Top, Ceiling Left/Center/Right, Right Wall Top/Mid/Bottom) to build custom architectural tunnel linings and lighting strips.\n" +
+                "• Preserves Roadbed: Leaves the 3 blocks beneath itself untouched so it pairs seamlessly with the Under Track Paver.",
+                "Leave all 9 pattern slots empty to automatically line all walls and the ceiling with any solid block in its 27-slot bulk material bay!",
+                null,
+                null,
+                List.of(
+                        new GuideRecipe("Tunnel Paver Crafting",
+                                List.of(() -> new ItemStack(Items.STONE_BRICKS, 2), () -> new ItemStack(Items.IRON_BLOCK), () -> new ItemStack(Items.BLAST_FURNACE), () -> new ItemStack(Items.CHEST_MINECART), () -> new ItemStack(Items.IRON_INGOT, 4)),
+                                List.of(() -> new ItemStack(MiningTools.TUNNEL_PAVER_ITEM.get())),
+                                "Heavy-duty 3x3 tunnel wall and ceiling arch paving machine.")
+                )
+        ));
+
+        register(new GuideEntry(
                 "track_paver",
                 "Under Track Paver",
                 "Automated Railway & Roadbed Constructor",
