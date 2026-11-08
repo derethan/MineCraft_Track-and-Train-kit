@@ -820,9 +820,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
                 }
             }
 
-            // On slopes, set Y to base rail elevation + 1.0 (matching vanilla OldMinecartBehavior) before horizontal move()
+            // On slopes or when approaching an ascending slope ahead, pre-lift Y to clear upper step blocks during high-speed travel
+            boolean uphillAhead = TrainChainingUtil.isUphillSlopeAhead(this.level(), railPos, travelDir);
             double moveY = (double) railPos.getY();
-            if (shape.isSlope()) {
+            if (shape.isSlope() || uphillAhead) {
                 moveY += 1.0D;
             }
             this.setPos(x, moveY, z);
@@ -862,7 +863,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             this.setDeltaMovement(actualMovement);
 
             // Check if locomotive collided with a solid block/obstacle in its path
-            boolean hitObstacle = pathBlocked || (this.horizontalCollision && actualHoriz < maxSpeed * 0.5D);
+            boolean onSlopeTransition = shape.isSlope() || uphillAhead || Math.abs(actualDy) > 0.05D;
+            double collisionThreshold = onSlopeTransition ? (maxSpeed * 0.15D) : (maxSpeed * 0.45D);
+            boolean hitObstacle = pathBlocked || (this.horizontalCollision && actualHoriz < collisionThreshold && actualHoriz < 0.03D);
             if (hitObstacle) {
                 // Stopped by hitting an obstacle (block/buffer) - stop engine and halt without reversing
                 this.setPos(initialX, initialY, initialZ);
@@ -979,7 +982,7 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
             return true;
         }
 
-        // Check if an obstruction block was placed in the clearance path
+        // Check if an obstruction block was placed in the clearance path directly above the next rail
         BlockPos clearancePos = nextRailPos.above();
         BlockState clearanceState = level.getBlockState(clearancePos);
         if (!clearanceState.isAir() && !TrainChainingUtil.isRail(clearanceState)) {

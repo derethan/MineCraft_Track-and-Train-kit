@@ -364,6 +364,11 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.37**:
+  - **High-Speed Locomotive & Consist Slope Collision Fix**:
+    - Pre-lifted locomotive vertical elevation (`moveY += 1.0D`) when approaching an ascending slope within 1–2 blocks ahead (`TrainChainingUtil.isUphillSlopeAhead`), preventing high-speed locomotives from clipping the upper step block before entering the slope.
+    - Expanded `TrainChainingUtil.getCurrentBlockPosOrRailBelow` vertical search range (`±2` blocks) so locomotives and trailing carts descending grades at high speeds maintain continuous rail detection.
+    - Refined horizontal collision and slope transition thresholds across all locomotives and coupled consist carts so natural slope transitions are not misidentified as obstacle collisions.
 * **v1.1.36**:
   - **Tunnel Paver (`miningtools:tunnel_paver`)**:
     - Added a full-scale (`2.8 × 2.75`) subterranean tunnel arch lining and masonry paver machine built on the heavy Tunnel Bore chassis that operates along railway tracks like the Under Track Paver.
@@ -548,5 +553,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.36.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.37.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

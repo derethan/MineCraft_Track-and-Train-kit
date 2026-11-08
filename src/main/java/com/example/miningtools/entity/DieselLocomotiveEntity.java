@@ -734,9 +734,10 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
                 }
             }
 
-            // On slopes, set Y to base rail elevation + 1.0 (matching vanilla OldMinecartBehavior) before horizontal move()
+            // On slopes or when approaching an ascending slope ahead, pre-lift Y to clear upper step blocks during high-speed travel
+            boolean uphillAhead = TrainChainingUtil.isUphillSlopeAhead(this.level(), railPos, travelDir);
             double moveY = (double) railPos.getY();
-            if (shape.isSlope()) {
+            if (shape.isSlope() || uphillAhead) {
                 moveY += 1.0D;
             }
             this.setPos(x, moveY, z);
@@ -774,7 +775,9 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
             Vec3 actualMovement = new Vec3(actualDx, actualDy, actualDz);
             this.setDeltaMovement(actualMovement);
 
-            boolean hitObstacle = pathBlocked || (this.horizontalCollision && actualHoriz < maxSpeed * 0.5D);
+            boolean onSlopeTransition = shape.isSlope() || uphillAhead || Math.abs(actualDy) > 0.05D;
+            double collisionThreshold = onSlopeTransition ? (maxSpeed * 0.15D) : (maxSpeed * 0.45D);
+            boolean hitObstacle = pathBlocked || (this.horizontalCollision && actualHoriz < collisionThreshold && actualHoriz < 0.03D);
             if (hitObstacle) {
                 this.setPos(initialX, initialY, initialZ);
                 Vec3 rPos = this.getRailPos(initialX, initialY, initialZ);

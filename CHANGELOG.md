@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.37] - 2026-11-08
+
+### Fixed
+- **High-Speed Locomotive & Consist Slope Collision Fix**:
+  - Pre-lifted locomotive vertical elevation (`moveY += 1.0D`) when approaching an ascending slope or step-up rail within 1–2 blocks ahead (`TrainChainingUtil.isUphillSlopeAhead`), preventing high-speed locomotives (Diesel, Electric Bullet Train, and Steam) from clipping the vertical face of the upper step block before transitioning onto the slope rail.
+  - Expanded `TrainChainingUtil.getCurrentBlockPosOrRailBelow` vertical search tolerance (`±2` blocks) so locomotives and coupled carts descending steep grades at high speeds never temporarily lose rail detection.
+  - Refined horizontal collision and slope transition thresholds across `BasicLocomotiveEntity`, `DieselLocomotiveEntity`, `ElectricLocomotiveEntity`, and `TrainChainingUtil.moveConsistCartAlongRails` so natural slope step-up/step-down geometry reductions are not misidentified as solid wall collisions.
+
+---
+
 ## [1.1.36] - 2026-11-07
 
 ### Added

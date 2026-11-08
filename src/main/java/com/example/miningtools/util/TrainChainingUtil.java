@@ -96,7 +96,46 @@ public final class TrainChainingUtil {
         if (isRail(entity.level(), abovePos)) {
             return abovePos;
         }
+        BlockPos below2Pos = new BlockPos(i, j - 2, k);
+        if (isRail(entity.level(), below2Pos)) {
+            return below2Pos;
+        }
+        BlockPos above2Pos = new BlockPos(i, j + 2, k);
+        if (isRail(entity.level(), above2Pos)) {
+            return above2Pos;
+        }
         return atPos;
+    }
+
+    /**
+     * Checks whether the track in `travelDir` from `railPos` ascends or steps upward within the next 1-2 blocks
+     * (so high-speed locomotives and coupled carts pre-lift their Y coordinate before calling `move()`).
+     */
+    public static boolean isUphillSlopeAhead(Level level, BlockPos railPos, Direction travelDir) {
+        if (level == null || railPos == null || travelDir == null) return false;
+        BlockPos next1 = railPos.relative(travelDir);
+        if (isRail(level, next1.above())) {
+            return true;
+        }
+        BlockState next1State = level.getBlockState(next1);
+        if (isRail(next1State) && next1State.getBlock() instanceof BaseRailBlock baseRail1) {
+            RailShape shape1 = baseRail1.getRailDirection(next1State, level, next1, null);
+            if (shape1.isSlope()) {
+                return true;
+            }
+        }
+        BlockPos next2 = railPos.relative(travelDir, 2);
+        if (isRail(level, next2.above()) || isRail(level, next2.above(2))) {
+            return true;
+        }
+        BlockState next2State = level.getBlockState(next2);
+        if (isRail(next2State) && next2State.getBlock() instanceof BaseRailBlock baseRail2) {
+            RailShape shape2 = baseRail2.getRailDirection(next2State, level, next2, null);
+            if (shape2.isSlope()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private TrainChainingUtil() {}
@@ -2193,9 +2232,13 @@ public final class TrainChainingUtil {
             }
         }
 
-        // On slopes, set Y to base rail elevation + 1.0 (matching vanilla OldMinecartBehavior) before horizontal move()
+        // On slopes or when approaching an ascending slope ahead, pre-lift Y to clear upper step blocks during high-speed travel
+        Direction cartMoveDir = (Math.abs(dirX) > 1.0E-4D || Math.abs(dirZ) > 1.0E-4D)
+                ? Direction.getApproximateNearest(dirX, 0.0, dirZ)
+                : cart.getMotionDirection();
+        boolean uphillAhead = isUphillSlopeAhead(cart.level(), railPos, cartMoveDir);
         double moveY = (double) railPos.getY();
-        if (shape.isSlope()) {
+        if (shape.isSlope() || uphillAhead) {
             moveY += 1.0D;
         }
         cart.setPos(x, moveY, z);
@@ -2297,8 +2340,11 @@ public final class TrainChainingUtil {
         boolean offRails = (newRailPos == null && findRailBlock(cart.level(), cart.getX(), cart.getY(), cart.getZ()) == null);
 
         // Detect if cart movement was blocked by an obstacle, buffer stop, or collision
+        boolean onSlopeTransition = shape.isSlope() || uphillAhead || Math.abs(actualDy) > 0.05D;
+        double collisionRatio = onSlopeTransition ? 0.15D : 0.45D;
         boolean collisionBlocked = offRails
-                || (cart.horizontalCollision && actualHoriz < horizStep * 0.7D);
+                || (cart.horizontalCollision && actualHoriz < horizStep * collisionRatio && actualHoriz < 0.03D
+                    && BasicLocomotiveEntity.isPathBlockedByObstacle(cart.level(), railPos, cartMoveDir, cart));
 
         boolean hitBuffer = checkAndTriggerBufferStop(cart, railPos, dirX, dirZ);
 
