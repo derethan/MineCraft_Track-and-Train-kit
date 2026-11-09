@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.38] - 2026-11-08
+
+### Added
+- **Configurable Auto-Push on Trackside Cargo Unloaders (`cargo_unloader`)**:
+  - Added an in-GUI **Auto-Push Toggle button (`Push: ON` / `Push: OFF`)** to `CargoTransferScreen` and synchronized state via `CargoTransferBlockEntity` / `CargoTransferMenu`.
+  - When enabled (`Push: ON`, default for backwards compatibility), the unloader actively ejects buffer items into the container or pipe directly below every 4 ticks.
+  - When disabled (`Push: OFF`), active downward ejection is halted, allowing passive extraction pipes (such as BuildCraft / Refinery wooden transport pipes, which require an engine or gate pulse to extract items) to control item flow without being flooded by forced unloader ejection.
+  - Saved and persisted the `AutoPush` state to NBT across world saves and block reloads.
+
+---
+
 ## [1.1.37] - 2026-11-08
 
 ### Fixed

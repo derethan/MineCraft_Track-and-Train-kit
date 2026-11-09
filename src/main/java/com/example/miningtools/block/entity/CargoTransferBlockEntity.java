@@ -83,6 +83,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
     private int releaseGraceTicks = 0;
     private int releaseDelaySeconds = 3; // Delay in seconds after transfer before releasing train
     private int remainingDelayTicks = 0;
+    private boolean autoPush = true; // Auto push/eject to container or pipe directly below
 
     // Synced status for GUI gauges & labels
     private int stationItemCount = 0;
@@ -105,6 +106,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
                 case 7 -> CargoTransferBlockEntity.this.holdingCart ? 1 : 0;
                 case 8 -> CargoTransferBlockEntity.this.getStationRole();
                 case 9 -> CargoTransferBlockEntity.this.getReleaseDelaySeconds();
+                case 10 -> CargoTransferBlockEntity.this.isAutoPush() ? 1 : 0;
                 default -> 0;
             };
         }
@@ -115,12 +117,13 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
                 case 2 -> CargoTransferBlockEntity.this.setTransferMode(value);
                 case 3 -> CargoTransferBlockEntity.this.setRedstoneMode(value);
                 case 9 -> CargoTransferBlockEntity.this.setReleaseDelaySeconds(value);
+                case 10 -> CargoTransferBlockEntity.this.setAutoPush(value != 0);
             }
         }
 
         @Override
         public int getCount() {
-            return 10;
+            return 11;
         }
     };
 
@@ -201,6 +204,15 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
 
     public void setReleaseDelaySeconds(int seconds) {
         this.releaseDelaySeconds = Mth.clamp(seconds, 0, 30);
+        this.setChanged();
+    }
+
+    public boolean isAutoPush() {
+        return this.autoPush;
+    }
+
+    public void setAutoPush(boolean autoPush) {
+        this.autoPush = autoPush;
         this.setChanged();
     }
 
@@ -379,7 +391,9 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         // Auto push/pull with container directly below (e.g., chest or hopper below station)
         if (level.getGameTime() % 4 == 0) {
             if (!coalFueler && mode == MODE_UNLOAD) {
-                be.tryPushBufferToNeighbor(level, pos.below());
+                if (be.autoPush) {
+                    be.tryPushBufferToNeighbor(level, pos.below());
+                }
             } else {
                 be.tryPullNeighborToBuffer(level, pos.below());
             }
@@ -890,6 +904,7 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         output.putString("ItemBlacklist", this.itemBlacklist);
         output.putString("CartWhitelist", this.cartWhitelist);
         output.putString("CartBlacklist", this.cartBlacklist);
+        output.putBoolean("AutoPush", this.autoPush);
     }
 
     @Override
@@ -905,5 +920,6 @@ public class CargoTransferBlockEntity extends BlockEntity implements MenuProvide
         this.itemBlacklist = input.getStringOr("ItemBlacklist", "");
         this.cartWhitelist = input.getStringOr("CartWhitelist", "");
         this.cartBlacklist = input.getStringOr("CartBlacklist", "");
+        this.autoPush = input.getBooleanOr("AutoPush", true);
     }
 }

@@ -228,7 +228,7 @@ A compact, rugged, industrial 1-block machine built with a custom monolithic 3D 
 ### Trackside Cargo Loader & Unloader
 Placed directly underneath tracks to automate solid freight transfer:
 * **Cargo Loader (`cargo_loader`)**: Automatically loads items from its 9-slot internal buffer into passing Cargo Minecarts and Hopper Cars. Fully connects with modded item pipes, hoppers, and automated logistics.
-* **Cargo Unloader (`cargo_unloader`)**: Empties items from passing freight carts into its internal buffer for item pipe, conduit, or hopper extraction.
+* **Cargo Unloader (`cargo_unloader`)**: Empties items from passing freight carts into its internal buffer for item pipe, conduit, or hopper extraction. Includes an in-GUI **Auto-Push Toggle (`Push: ON` / `Push: OFF`)** to choose between actively pushing items downward into containers/pipes or leaving items in the buffer for passive pipe extraction (essential for extraction pipes like BuildCraft/Refinery wooden pipes that require gate or engine pulses).
 * **Advanced Filtering**: Features an Item Filter slot with **Whitelist / Blacklist** toggles and a custom Train/Cart Name filter.
 * **Threshold & Delay Control**: Configurable to hold carts until **100% Full / Empty**, allow partial transfers, and configure a post-transfer release delay (0s, 1s, 2s, 3s, 4s, 5s, 10s) to keep trains held while items trickle in from pipes before departing.
 * **Braking Rail Synergy & Single-Car Isolation**: Automatically depowers overhead Braking Rails to hold the cart stationary until transfer is complete! Precisely targets only the cart directly occupying the station rail, never accidentally loading or unloading adjacent coupled cars.
@@ -364,6 +364,11 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.38**:
+  - **Configurable Auto-Push on Trackside Cargo Unloaders (`cargo_unloader`)**:
+    - Added an in-GUI **Auto-Push Toggle button (`Push: ON` / `Push: OFF`)** to `CargoTransferScreen` and synchronized state via `CargoTransferBlockEntity` / `CargoTransferMenu`.
+    - When enabled (`Push: ON`, default for backwards compatibility), the unloader actively ejects buffer items into the container or pipe directly below every 4 ticks.
+    - When disabled (`Push: OFF`), active downward ejection is halted, allowing passive extraction pipes (such as BuildCraft / Refinery wooden transport pipes, which require an engine or gate pulse to extract items) to control item flow without being flooded by forced unloader ejection.
 * **v1.1.37**:
   - **High-Speed Locomotive & Consist Slope Collision Fix**:
     - Pre-lifted locomotive vertical elevation (`moveY += 1.0D`) when approaching an ascending slope within 1–2 blocks ahead (`TrainChainingUtil.isUphillSlopeAhead`), preventing high-speed locomotives from clipping the upper step block before entering the slope.
@@ -552,5 +557,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.37.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.38.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

@@ -34,6 +34,7 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
     private @Nullable Button modeButton;
     private @Nullable Button redstoneButton;
     private @Nullable Button delayButton;
+    private @Nullable Button autoPushButton;
     private @Nullable EditBox itemWhiteBox;
     private @Nullable EditBox itemBlackBox;
     private @Nullable EditBox cartWhiteBox;
@@ -96,7 +97,16 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
                     if (this.minecraft != null && this.minecraft.gameMode != null) {
                         this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 2);
                     }
-                }).bounds(xo + 66, yo + 41, 102, 12).build()
+                }).bounds(xo + 66, yo + 41, 50, 12).build()
+        );
+
+        // Auto-Push Toggle Button
+        this.autoPushButton = this.addRenderableWidget(
+                Button.builder(this.getAutoPushButtonLabel(), btn -> {
+                    if (this.minecraft != null && this.minecraft.gameMode != null) {
+                        this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, 3);
+                    }
+                }).bounds(xo + 118, yo + 41, 50, 12).build()
         );
 
         this.suppressResponder = true;
@@ -157,12 +167,25 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
         if (this.delayButton != null) {
             this.delayButton.setMessage(this.getDelayButtonLabel());
         }
+        if (this.autoPushButton != null) {
+            this.autoPushButton.setMessage(this.getAutoPushButtonLabel());
+            this.autoPushButton.active = !this.menu.isCoalFueler();
+        }
     }
 
     private Component getDelayButtonLabel() {
         int delay = this.menu.getReleaseDelaySeconds();
-        return Component.literal(delay == 0 ? "Delay: None (0s)" : "Delay: " + delay + "s")
+        return Component.literal(delay == 0 ? "Delay: 0s" : "Delay: " + delay + "s")
                 .withStyle(delay > 0 ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.GRAY);
+    }
+
+    private Component getAutoPushButtonLabel() {
+        if (this.menu.isCoalFueler()) {
+            return Component.literal("Push: N/A").withStyle(ChatFormatting.DARK_GRAY);
+        }
+        boolean enabled = this.menu.isAutoPush();
+        return Component.literal(enabled ? "Push: ON" : "Push: OFF")
+                .withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED);
     }
 
     private Component getModeButtonLabel() {
@@ -370,6 +393,26 @@ public class CargoTransferScreen extends AbstractContainerScreen<CargoTransferMe
                         ? "No coal locomotive/bore detected on track above (ignores freight carts)"
                         : "No cargo freight cart detected on track above (ignores locomotives)";
                 text = Component.literal(noneMsg).withStyle(ChatFormatting.GRAY);
+            }
+            graphics.setTooltipForNextFrame(text, mouseX, mouseY);
+        }
+
+        // Hover over Release Delay Button
+        if (mouseX >= xo + 66 && mouseX <= xo + 116 && mouseY >= yo + 41 && mouseY <= yo + 53) {
+            int delay = this.menu.getReleaseDelaySeconds();
+            Component text = Component.literal("Post-Transfer Delay: " + (delay == 0 ? "None (0s)" : delay + "s") + " wait before releasing rail/train.").withStyle(ChatFormatting.LIGHT_PURPLE);
+            graphics.setTooltipForNextFrame(text, mouseX, mouseY);
+        }
+
+        // Hover over Auto-Push Button
+        if (mouseX >= xo + 118 && mouseX <= xo + 168 && mouseY >= yo + 41 && mouseY <= yo + 53) {
+            Component text;
+            if (this.menu.isCoalFueler()) {
+                text = Component.literal("Auto-Push: Not applicable for coal fuelers.").withStyle(ChatFormatting.DARK_GRAY);
+            } else if (this.menu.isAutoPush()) {
+                text = Component.literal("Auto-Push: ON (Automatically pushes buffer items into container or pipe below. Turn OFF if using extraction pipes like BuildCraft/Refinery).").withStyle(ChatFormatting.GREEN);
+            } else {
+                text = Component.literal("Auto-Push: OFF (Buffer items stay in station until pulled out by external pipes or hoppers).").withStyle(ChatFormatting.RED);
             }
             graphics.setTooltipForNextFrame(text, mouseX, mouseY);
         }
