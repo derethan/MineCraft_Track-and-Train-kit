@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.44] - 2026-11-11
+
+### Added
+- **Track Signal Switch Route Lock Delay (`TrackSwitchBlockEntity` & `TrackSwitchScreen`)**:
+  - Added a configurable **Route Lock Delay (seconds)** option when adding or updating automated routing rules in the Track Signal Switch GUI (`TrackSwitchScreen`).
+  - **Switch Point Locking**: When a train activates a route, the track switch now locks in that active position (`OPEN` or `CLOSED`) for the specified duration (0 to 300 seconds), preventing trailing consist cars, opposing trains, or conflicting routing rules from throwing switch points while the train transits the junction.
+  - **Live Lock Status & Countdown**:
+    - The in-GUI manual switch button dynamically displays the active lock countdown (e.g. `Track: OPEN (5s)` in amber yellow) and provides a tooltip with remaining seconds.
+    - Manual operator toggles via right-click in world or the GUI button immediately clear any active automated route lock.
+  - **Enhanced Routing Dashboard & Editor**:
+    - Added a dedicated numeric **Lock (s)** input box beside the Train Name field with mouse wheel scrolling and keyboard arrow controls (up/down by 1s, or 5s with Shift).
+    - Added distinct cyan route lock duration badges (`[5s]`, `[10s]`) on routing list rows.
+    - Added single-click rule editing: clicking any existing route in the list instantly populates its name, lock delay, travel heading, cargo filter, and fuel criteria into the top editor controls.
+    - Rule row hover tooltips detail complete routing specifications and lock duration.
+  - **NBT Persistence & Network Synchronization**:
+    - Persisted `RuleDelay_i` per route and active countdown `LockTicks` to tile entity NBT, maintaining route locks across world reloads, server restarts, and chunk unloading.
+    - Synchronized active lock countdowns to clients via `TrackSwitchSyncPayload`.
+
+---
+
 ## [1.1.42] - 2026-11-11
 
 ### Fixed

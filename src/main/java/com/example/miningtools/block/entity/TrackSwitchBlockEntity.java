@@ -33,6 +33,9 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     public static final int MAX_DETECT_RANGE = 16;
     public static final int DEFAULT_DETECT_RANGE = 8;
     public static final int MAX_RULES = 32;
+    public static final int MIN_DELAY_SECONDS = 0;
+    public static final int MAX_DELAY_SECONDS = 300;
+    public static final int DEFAULT_DELAY_SECONDS = 0;
 
     public enum DirectionFilter {
         ANY(0, "ANY", "gui.miningtools.track_switch.dir.any", "All"),
@@ -236,10 +239,15 @@ public class TrackSwitchBlockEntity extends BlockEntity {
             DirectionFilter direction,
             CargoCondition cargo,
             FuelCondition fuel,
-            boolean openState
+            boolean openState,
+            int delaySeconds
     ) {
         public SwitchRule(String trainName, boolean openState) {
-            this(trainName, DirectionFilter.ANY, CargoCondition.ANY, FuelCondition.ANY, openState);
+            this(trainName, DirectionFilter.ANY, CargoCondition.ANY, FuelCondition.ANY, openState, 0);
+        }
+
+        public SwitchRule(String trainName, DirectionFilter direction, CargoCondition cargo, FuelCondition fuel, boolean openState) {
+            this(trainName, direction, cargo, fuel, openState, 0);
         }
 
         public static final StreamCodec<ByteBuf, SwitchRule> STREAM_CODEC = StreamCodec.composite(
@@ -253,12 +261,15 @@ public class TrackSwitchBlockEntity extends BlockEntity {
                 SwitchRule::fuel,
                 ByteBufCodecs.BOOL,
                 SwitchRule::openState,
+                ByteBufCodecs.VAR_INT,
+                SwitchRule::delaySeconds,
                 SwitchRule::new
         );
     }
 
     private final List<SwitchRule> rules = new ArrayList<>();
     private int detectRange = DEFAULT_DETECT_RANGE;
+    private int lockTicks = 0;
     private boolean forceCheckStationary = false;
 
     public TrackSwitchBlockEntity(BlockPos pos, BlockState blockState) {
@@ -267,6 +278,26 @@ public class TrackSwitchBlockEntity extends BlockEntity {
 
     public List<SwitchRule> getRules() {
         return this.rules;
+    }
+
+    public int getLockTicks() {
+        return this.lockTicks;
+    }
+
+    public boolean isLocked() {
+        return this.lockTicks > 0;
+    }
+
+    public void clearLock() {
+        if (this.lockTicks > 0) {
+            this.lockTicks = 0;
+            this.setChanged();
+        }
+    }
+
+    public void setLockTicks(int ticks) {
+        this.lockTicks = Math.max(0, ticks);
+        this.setChanged();
     }
 
     public void setRules(List<SwitchRule> newRules) {
@@ -283,7 +314,8 @@ public class TrackSwitchBlockEntity extends BlockEntity {
                 DirectionFilter dir = r.direction() == null ? DirectionFilter.ANY : r.direction();
                 CargoCondition cargo = r.cargo() == null ? CargoCondition.ANY : r.cargo();
                 FuelCondition fuel = r.fuel() == null ? FuelCondition.ANY : r.fuel();
-                this.rules.add(new SwitchRule(cleaned, dir, cargo, fuel, r.openState()));
+                int delay = Mth.clamp(r.delaySeconds(), MIN_DELAY_SECONDS, MAX_DELAY_SECONDS);
+                this.rules.add(new SwitchRule(cleaned, dir, cargo, fuel, r.openState(), delay));
             }
         }
         this.forceCheckStationary = true;
@@ -301,7 +333,17 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, TrackSwitchBlockEntity blockEntity) {
-        if (level.isClientSide() || blockEntity.rules.isEmpty()) {
+        if (level.isClientSide()) {
+            return;
+        }
+        if (blockEntity.lockTicks > 0) {
+            blockEntity.lockTicks--;
+            if (blockEntity.lockTicks == 0 || blockEntity.lockTicks % 20 == 0) {
+                blockEntity.setChanged();
+            }
+            return;
+        }
+        if (blockEntity.rules.isEmpty()) {
             return;
         }
         boolean checkStationaryNow = blockEntity.forceCheckStationary;
@@ -350,6 +392,10 @@ public class TrackSwitchBlockEntity extends BlockEntity {
                 boolean currentOpen = state.getValue(TrackSwitchBlock.OPEN);
                 if (currentOpen != matched.openState()) {
                     TrackSwitchBlock.setSwitchState(level, pos, state, matched.openState(), true);
+                }
+                if (matched.delaySeconds() > 0) {
+                    blockEntity.lockTicks = matched.delaySeconds() * 20;
+                    blockEntity.setChanged();
                 }
                 return;
             }
@@ -472,6 +518,7 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     protected void saveAdditional(ValueOutput output) {
         super.saveAdditional(output);
         output.putInt("DetectRange", this.detectRange);
+        output.putInt("LockTicks", this.lockTicks);
         output.putInt("RuleCount", this.rules.size());
         for (int i = 0; i < this.rules.size(); i++) {
             SwitchRule rule = this.rules.get(i);
@@ -480,6 +527,7 @@ public class TrackSwitchBlockEntity extends BlockEntity {
             output.putInt("RuleCargo_" + i, rule.cargo().getIndex());
             output.putInt("RuleFuel_" + i, rule.fuel().getIndex());
             output.putBoolean("RuleOpen_" + i, rule.openState());
+            output.putInt("RuleDelay_" + i, rule.delaySeconds());
         }
     }
 
@@ -487,6 +535,7 @@ public class TrackSwitchBlockEntity extends BlockEntity {
     protected void loadAdditional(ValueInput input) {
         super.loadAdditional(input);
         this.detectRange = Mth.clamp(input.getIntOr("DetectRange", DEFAULT_DETECT_RANGE), MIN_DETECT_RANGE, MAX_DETECT_RANGE);
+        this.lockTicks = Math.max(0, input.getIntOr("LockTicks", 0));
         int count = Mth.clamp(input.getIntOr("RuleCount", 0), 0, MAX_RULES);
         this.rules.clear();
         for (int i = 0; i < count; i++) {
@@ -495,8 +544,9 @@ public class TrackSwitchBlockEntity extends BlockEntity {
             CargoCondition cargo = CargoCondition.fromIndex(input.getIntOr("RuleCargo_" + i, CargoCondition.ANY.getIndex()));
             FuelCondition fuel = FuelCondition.fromIndex(input.getIntOr("RuleFuel_" + i, FuelCondition.ANY.getIndex()));
             boolean open = input.getBooleanOr("RuleOpen_" + i, true);
+            int delay = Mth.clamp(input.getIntOr("RuleDelay_" + i, 0), MIN_DELAY_SECONDS, MAX_DELAY_SECONDS);
             if (!name.isEmpty()) {
-                this.rules.add(new SwitchRule(name, dir, cargo, fuel, open));
+                this.rules.add(new SwitchRule(name, dir, cargo, fuel, open, delay));
             }
         }
     }
