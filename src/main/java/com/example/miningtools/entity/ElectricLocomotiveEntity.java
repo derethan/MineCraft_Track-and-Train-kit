@@ -466,6 +466,7 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
         this.tickBatteryChargingItem();
         this.tickMovementAndPower();
         this.updateDynamicLight();
+        TrainChainingUtil.tickActiveTrainChunkLoading(this);
 
         double preTickX = this.getX();
         double preTickY = this.getY();
@@ -912,6 +913,9 @@ public class ElectricLocomotiveEntity extends AbstractMinecartContainer {
     public void remove(Entity.RemovalReason reason) {
         if (reason.shouldDestroy() && !this.level().isClientSide()) {
             this.removeDynamicLight();
+            if (this.level() instanceof ServerLevel serverLevel) {
+                TrainChainingUtil.releaseEntityForcedChunks(serverLevel, this);
+            }
         }
         super.remove(reason);
     }

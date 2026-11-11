@@ -42,6 +42,7 @@ import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -54,6 +55,7 @@ import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.PoweredRailBlock;
@@ -1284,6 +1286,9 @@ public final class TrainChainingUtil {
         BlockState state = entity.level().getBlockState(railPos);
         if (state.is(MiningTools.BRAKING_RAIL.get())) {
             return !state.getValue(PoweredRailBlock.POWERED);
+        }
+        if (state.is(MiningTools.DELAY_RAIL.get())) {
+            return state.getValue(com.example.miningtools.block.DelayRailBlock.HOLDING);
         }
         if (state.is(MiningTools.CONTROL_RAIL.get())
                 && (entity instanceof BasicLocomotiveEntity || entity instanceof DieselLocomotiveEntity || entity instanceof ElectricLocomotiveEntity)) {
@@ -2944,5 +2949,241 @@ public final class TrainChainingUtil {
             }
         }
         return maxAmount - remaining;
+    }
+
+    // -------------------------------------------------------------------------
+    // Dynamic Consist & Block Chunk Forcing (Reference-Counted per Dimension)
+    // -------------------------------------------------------------------------
+
+    private static final String FORCED_CHUNKS_TAG = "miningtools:forced_chunks";
+    private static final Map<ResourceKey<Level>, Map<String, Set<ChunkPos>>> DIMENSION_CHUNK_OWNERS = new ConcurrentHashMap<>();
+    private static final Map<UUID, ChunkPos> ACTIVE_VEHICLE_LAST_CHUNK = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> ACTIVE_VEHICLE_GRACE_TICKS = new ConcurrentHashMap<>();
+
+    public static void clearAllForcedChunkTracking() {
+        DIMENSION_CHUNK_OWNERS.clear();
+        ACTIVE_VEHICLE_LAST_CHUNK.clear();
+        ACTIVE_VEHICLE_GRACE_TICKS.clear();
+    }
+
+    private static void addChunkRadius(Set<ChunkPos> out, int centerChunkX, int centerChunkZ, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                out.add(new ChunkPos(centerChunkX + dx, centerChunkZ + dz));
+            }
+        }
+    }
+
+    /**
+     * Computes all chunks that should be kept entity-ticking for a train consist:
+     * a 3x3 chunk grid around every cart in the consist, plus a 3x3 chunk grid
+     * 1 chunk ahead in the travel direction of any locomotive or self-propelled machine.
+     */
+    public static Set<ChunkPos> computeConsistForcedChunks(AbstractMinecart anchorCart) {
+        Set<ChunkPos> desired = new HashSet<>();
+        if (anchorCart == null || anchorCart.level() == null || anchorCart.isRemoved()) {
+            return desired;
+        }
+
+        List<AbstractMinecart> consist = getConnectedConsist(anchorCart);
+        if (consist.isEmpty()) {
+            consist = List.of(anchorCart);
+        }
+
+        for (AbstractMinecart cart : consist) {
+            if (cart == null || cart.isRemoved()) continue;
+            ChunkPos cPos = cart.chunkPosition();
+            // 3x3 chunk grid guarantees FullChunkStatus.ENTITY_TICKING (ticket level 31) at cPos
+            addChunkRadius(desired, cPos.x(), cPos.z(), 1);
+
+            Direction travelDir = null;
+            if (cart instanceof BasicLocomotiveEntity bl) {
+                travelDir = bl.getTravelDirection();
+            } else if (cart instanceof DieselLocomotiveEntity dl) {
+                travelDir = dl.getTravelDirection();
+            } else if (cart instanceof ElectricLocomotiveEntity el) {
+                travelDir = el.getTravelDirection();
+            } else if (cart instanceof TunnelBoreEntity bore) {
+                travelDir = bore.isReversing() ? bore.getFacing().getOpposite() : bore.getFacing();
+            } else if (cart instanceof TrackPaverEntity paver) {
+                travelDir = paver.getRunMode() == TrackPaverEntity.MODE_REVERSE ? paver.getFacing().getOpposite() : paver.getFacing();
+            } else if (cart instanceof TunnelPaverEntity tpaver) {
+                travelDir = tpaver.getRunMode() == TunnelPaverEntity.MODE_REVERSE ? tpaver.getFacing().getOpposite() : tpaver.getFacing();
+            } else if (cart instanceof TrackLayerCartEntity layer) {
+                travelDir = layer.getRunMode() == TrackLayerCartEntity.RUN_MODE_REVERSE ? layer.getFacing().getOpposite() : layer.getFacing();
+            }
+
+            if (travelDir != null) {
+                int aheadX = cPos.x() + travelDir.getStepX();
+                int aheadZ = cPos.z() + travelDir.getStepZ();
+                addChunkRadius(desired, aheadX, aheadZ, 1);
+            }
+        }
+
+        return desired;
+    }
+
+    private static long packChunkPos(ChunkPos pos) {
+        return ((long) pos.x() & 0xFFFFFFFFL) | (((long) pos.z() & 0xFFFFFFFFL) << 32);
+    }
+
+    private static ChunkPos unpackChunkPos(long packed) {
+        return new ChunkPos((int) packed, (int) (packed >>> 32));
+    }
+
+    private static Set<ChunkPos> loadPersistedEntityChunks(Entity entity) {
+        Set<ChunkPos> persisted = new HashSet<>();
+        long[] packed = entity.getPersistentData().getLongArray(FORCED_CHUNKS_TAG).orElse(new long[0]);
+        for (long val : packed) {
+            persisted.add(unpackChunkPos(val));
+        }
+        return persisted;
+    }
+
+    private static void savePersistedEntityChunks(Entity entity, Set<ChunkPos> chunks) {
+        if (chunks == null || chunks.isEmpty()) {
+            entity.getPersistentData().remove(FORCED_CHUNKS_TAG);
+            return;
+        }
+        long[] packed = new long[chunks.size()];
+        int i = 0;
+        for (ChunkPos pos : chunks) {
+            packed[i++] = packChunkPos(pos);
+        }
+        entity.getPersistentData().putLongArray(FORCED_CHUNKS_TAG, packed);
+    }
+
+    private static boolean isChunkOwnedByAny(Map<String, Set<ChunkPos>> dimOwners, ChunkPos target) {
+        for (Set<ChunkPos> chunks : dimOwners.values()) {
+            if (chunks != null && chunks.contains(target)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void applyOwnerChunks(ServerLevel level, String ownerKey, Set<ChunkPos> desiredChunks, @Nullable Set<ChunkPos> fallbackPrevious) {
+        Map<String, Set<ChunkPos>> dimOwners = DIMENSION_CHUNK_OWNERS.computeIfAbsent(level.dimension(), k -> new ConcurrentHashMap<>());
+        Set<ChunkPos> previous = dimOwners.get(ownerKey);
+        if (previous == null) {
+            previous = fallbackPrevious != null ? new HashSet<>(fallbackPrevious) : Set.of();
+        } else {
+            previous = new HashSet<>(previous);
+        }
+
+        if (desiredChunks == null || desiredChunks.isEmpty()) {
+            dimOwners.remove(ownerKey);
+            for (ChunkPos oldPos : previous) {
+                if (!isChunkOwnedByAny(dimOwners, oldPos)) {
+                    level.setChunkForced(oldPos.x(), oldPos.z(), false);
+                }
+            }
+            return;
+        }
+
+        Set<ChunkPos> nextSet = ConcurrentHashMap.newKeySet();
+        nextSet.addAll(desiredChunks);
+        dimOwners.put(ownerKey, nextSet);
+
+        // Force newly added chunks (or ensure all desired chunks are forced on first registration)
+        for (ChunkPos pos : desiredChunks) {
+            if (!previous.contains(pos) || !level.getChunkSource().getForceLoadedChunks().contains(packChunkPos(pos))) {
+                level.setChunkForced(pos.x(), pos.z(), true);
+            }
+        }
+
+        // Unforce chunks no longer needed by this owner or any other active owner in this dimension
+        for (ChunkPos oldPos : previous) {
+            if (!desiredChunks.contains(oldPos) && !isChunkOwnedByAny(dimOwners, oldPos)) {
+                level.setChunkForced(oldPos.x(), oldPos.z(), false);
+            }
+        }
+    }
+
+    public static void updateEntityForcedChunks(ServerLevel level, Entity entity, Set<ChunkPos> desiredChunks) {
+        if (level == null || entity == null) return;
+        String ownerKey = "entity:" + entity.getUUID();
+        Set<ChunkPos> persistedPrev = loadPersistedEntityChunks(entity);
+        applyOwnerChunks(level, ownerKey, desiredChunks, persistedPrev);
+        savePersistedEntityChunks(entity, desiredChunks);
+    }
+
+    public static void releaseEntityForcedChunks(ServerLevel level, Entity entity) {
+        if (level == null || entity == null) return;
+        String ownerKey = "entity:" + entity.getUUID();
+        Set<ChunkPos> persistedPrev = loadPersistedEntityChunks(entity);
+        applyOwnerChunks(level, ownerKey, Set.of(), persistedPrev);
+        savePersistedEntityChunks(entity, Set.of());
+        ACTIVE_VEHICLE_LAST_CHUNK.remove(entity.getUUID());
+        ACTIVE_VEHICLE_GRACE_TICKS.remove(entity.getUUID());
+    }
+
+    public static void updateBlockForcedChunks(ServerLevel level, BlockPos blockPos, Set<ChunkPos> desiredChunks) {
+        if (level == null || blockPos == null) return;
+        String ownerKey = "block:" + blockPos.asLong();
+        applyOwnerChunks(level, ownerKey, desiredChunks, null);
+    }
+
+    public static void releaseBlockForcedChunks(ServerLevel level, BlockPos blockPos) {
+        if (level == null || blockPos == null) return;
+        String ownerKey = "block:" + blockPos.asLong();
+        applyOwnerChunks(level, ownerKey, Set.of(), null);
+    }
+
+    private static boolean isVehicleSelfPropelledActive(AbstractMinecart vehicle) {
+        if (vehicle instanceof BasicLocomotiveEntity bl) return bl.isRunning();
+        if (vehicle instanceof DieselLocomotiveEntity dl) return dl.isRunning();
+        if (vehicle instanceof ElectricLocomotiveEntity el) return el.isRunning();
+        if (vehicle instanceof TunnelBoreEntity bore) return bore.isRunning();
+        if (vehicle instanceof TrackPaverEntity paver) return paver.getRunMode() != TrackPaverEntity.MODE_STOPPED;
+        if (vehicle instanceof TunnelPaverEntity tpaver) return tpaver.isRunning();
+        if (vehicle instanceof TrackLayerCartEntity layer) return layer.getRunMode() != TrackLayerCartEntity.RUN_MODE_STOPPED;
+        return false;
+    }
+
+    /**
+     * Dynamically keeps chunks entity-ticking around actively running locomotives,
+     * self-propelled rail machines, and trains temporarily held at braking/delay/control rails,
+     * even if no Caboose is attached.
+     */
+    public static void tickActiveTrainChunkLoading(AbstractMinecart vehicle) {
+        if (vehicle == null || !(vehicle.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        if (vehicle.isRemoved()) {
+            releaseEntityForcedChunks(serverLevel, vehicle);
+            return;
+        }
+
+        UUID uuid = vehicle.getUUID();
+        boolean activeOrHeld = isVehicleSelfPropelledActive(vehicle) || isConsistHeldByBrakingRail(vehicle);
+
+        if (activeOrHeld) {
+            ACTIVE_VEHICLE_GRACE_TICKS.put(uuid, 100);
+            ChunkPos currentChunk = vehicle.chunkPosition();
+            ChunkPos lastChunk = ACTIVE_VEHICLE_LAST_CHUNK.get(uuid);
+            boolean chunkChanged = !currentChunk.equals(lastChunk);
+            if (chunkChanged || (vehicle.tickCount % 10 == 0)) {
+                ACTIVE_VEHICLE_LAST_CHUNK.put(uuid, currentChunk);
+                Set<ChunkPos> desired = computeConsistForcedChunks(vehicle);
+                updateEntityForcedChunks(serverLevel, vehicle, desired);
+            }
+        } else {
+            Integer grace = ACTIVE_VEHICLE_GRACE_TICKS.get(uuid);
+            if (grace != null) {
+                if (grace > 1) {
+                    ACTIVE_VEHICLE_GRACE_TICKS.put(uuid, grace - 1);
+                    if (vehicle.tickCount % 20 == 0) {
+                        Set<ChunkPos> desired = computeConsistForcedChunks(vehicle);
+                        updateEntityForcedChunks(serverLevel, vehicle, desired);
+                    }
+                } else {
+                    releaseEntityForcedChunks(serverLevel, vehicle);
+                }
+            } else if (vehicle.tickCount == 5 && !loadPersistedEntityChunks(vehicle).isEmpty()) {
+                // Clean up any leftover persisted chunks from a previous server session if the train is now stopped
+                releaseEntityForcedChunks(serverLevel, vehicle);
+            }
+        }
     }
 }

@@ -475,7 +475,8 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
             return;
         }
 
-        // Server-side work light
+        // Server-side work light and active chunk loading
+        TrainChainingUtil.tickActiveTrainChunkLoading(this);
         if (this.isWorkLightEnabled() && !this.isRemoved()) {
             this.updateWorkLight();
         } else {
@@ -568,6 +569,9 @@ public class TrackPaverEntity extends AbstractMinecartContainer {
     public void remove(Entity.RemovalReason reason) {
         if (reason.shouldDestroy() && !this.level().isClientSide()) {
             this.clearWorkLight();
+            if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                TrainChainingUtil.releaseEntityForcedChunks(serverLevel, this);
+            }
         }
         super.remove(reason);
     }

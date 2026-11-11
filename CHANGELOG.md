@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.40] - 2026-11-09
+
+### Changed
+- **CN Diesel Locomotive Fuel Consumption Calibration (3× Travel Distance)**:
+  - Tripled the fuel efficiency of the CN Diesel Locomotive (`DieselLocomotiveEntity`), extending its travel distance to 3× further per 1,000 mB of diesel fuel.
+  - Replaced the fixed 1 mB/tick consumption logic with configurable `ticksPerMb` (`Config.DIESEL_LOCOMOTIVE_TICKS_PER_MB`, defaulting to `3` ticks per mB).
+  - With the new 3-tick interval per mB, 1,000 mB (1 bucket) powers the locomotive for 3,000 ticks (150 seconds, up from 50 seconds), covering ~2,100 blocks at top speed (~33,600 blocks on a full 16,000 mB tank).
+  - Added internal `fuelTickCounter` tracking with NBT persistence (`FuelTickCounter`) to guarantee consistent consumption rates across game pauses, world saves, and chunk unloads.
+
+---
+
+## [1.1.39] - 2026-11-09
+
+### Fixed
+- **JourneyMap Duplicate Stopped Trains & Ghost Marker Fix**:
+  - Switched JourneyMap marker tracking and `TrainMapSyncPayload` keys from transient runtime `int entityId` (`cart.getId()`) to persistent entity `UUID` (`cart.getUUID()`). Previously, whenever a chunk unloaded and later reloaded, Minecraft assigned a new runtime `entityId` to the reloaded train while leaving the old `entityId` marker frozen at its prior location on JourneyMap.
+  - Added authoritative server snapshot reconciliation (`fullSnapshot = true` every 10 ticks) and immediate entity removal packets (`EntityLeaveLevelEvent` when `RemovalReason.shouldDestroy()`) so picked-up, broken, or despawned carts are immediately removed from JourneyMap without leaving ghost markers behind.
+  - Updated `JourneyMapTrainPlugin` to invoke `jmAPI.show(marker)` alongside `marker.flagForRerender()` when position, heading, dimension, or label state changes, and subscribed to `MappingEvent` (`MAPPING_STARTED` / `MAPPING_STOPPED`) to cleanly reset and re-register markers across world switches.
+  - Added server-side unloaded-chunk caching (`parkedUnloadedTrains`) so stationary parked trains in unloaded chunks remain visible at a single unified `UUID` marker and automatically transition to live tracking when loaded.
+  - Added missing JourneyMap icon and consist resolution support for `TrackLayerCartEntity` (`track_layer`) and `DieselLocomotiveEntity` consists.
+- **Unattended Far-Distance Train Movement & Reference-Counted Chunk Loading**:
+  - Overhauled `CabooseMinecartEntity` chunk forcing to support `DieselLocomotiveEntity` (previously omitted), traverse the entire coupled consist bidirectionally (`TrainChainingUtil.computeConsistForcedChunks`), pre-force a 3×3 chunk grid 1 chunk ahead in the travel direction, and update immediately upon crossing chunk boundaries instead of waiting for a 20-tick timer.
+  - Added automatic dynamic chunk forcing (`TrainChainingUtil.tickActiveTrainChunkLoading`) for actively running locomotives (`BasicLocomotiveEntity`, `DieselLocomotiveEntity`, `ElectricLocomotiveEntity`), self-propelled rail machines (`TunnelBoreEntity`, `TrackPaverEntity`, `TunnelPaverEntity`, `TrackLayerCartEntity`), and trains held at braking/control/station delay rails so active trains continue moving and updating on JourneyMap even when no player is in range.
+  - Implemented per-dimension reference-counted chunk ownership (`TrainChainingUtil`) shared across Cabooses, active locomotives, and `ChunkLoaderBlockEntity` blocks so overlapping trains or trackside chunk loaders never prematurely unforce each other's chunks.
+
+---
+
 ## [1.1.38] - 2026-11-08
 
 ### Added

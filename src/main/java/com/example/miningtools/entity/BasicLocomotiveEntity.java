@@ -536,9 +536,10 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
         double preTickY = this.getY();
         double preTickZ = this.getZ();
 
-        // Server side fuel, rail kinematics, and dynamic light
+        // Server side fuel, rail kinematics, dynamic light, and active chunk loading
         this.tickFuelAndMovement();
         this.updateDynamicLight();
+        TrainChainingUtil.tickActiveTrainChunkLoading(this);
 
         // Push entities in path from connection points (bumpers)
         Direction travelDir = this.getTravelDirection();
@@ -1346,6 +1347,9 @@ public class BasicLocomotiveEntity extends AbstractMinecartContainer {
     public void remove(Entity.RemovalReason reason) {
         if (reason.shouldDestroy() && !this.level().isClientSide()) {
             this.clearDynamicLight();
+            if (this.level() instanceof ServerLevel serverLevel) {
+                TrainChainingUtil.releaseEntityForcedChunks(serverLevel, this);
+            }
         }
         super.remove(reason);
     }

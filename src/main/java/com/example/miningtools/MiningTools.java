@@ -1195,36 +1195,80 @@ public class MiningTools {
         }
     }
 
+    private final java.util.Map<UUID, com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry> parkedUnloadedTrains =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private boolean hadTrainMapEntriesLastSync = false;
+
     @SubscribeEvent
     public void onEntityLeave(net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent event) {
         if (event.getEntity() instanceof AbstractMinecart cart && event.getLevel() instanceof ServerLevel sl) {
-            if (cart.getRemovalReason() != null && cart.getRemovalReason().shouldDestroy()) {
+            Entity.RemovalReason reason = cart.getRemovalReason();
+            if (reason != null && reason.shouldDestroy()) {
                 TrainChainingUtil.unlinkCart(cart, sl);
+                TrainChainingUtil.releaseEntityForcedChunks(sl, cart);
+                this.parkedUnloadedTrains.remove(cart.getUUID());
+                com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry removalEntry =
+                        new com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry(
+                                cart.getUUID(),
+                                cart.blockPosition(),
+                                (int) cart.getYRot(),
+                                sl.dimension().identifier().toString(),
+                                "",
+                                "cart",
+                                true
+                        );
+                PacketDistributor.sendToAllPlayers(
+                        new com.example.miningtools.network.TrainMapSyncPayload(List.of(removalEntry), false)
+                );
+            } else if (reason == Entity.RemovalReason.UNLOADED_TO_CHUNK) {
+                String iconType = getTrainMapIconType(cart);
+                if (iconType != null) {
+                    String name = com.example.miningtools.compat.journeymap.JourneyMapTrainPlugin.getBestTrainName(cart);
+                    this.parkedUnloadedTrains.put(
+                            cart.getUUID(),
+                            new com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry(
+                                    cart.getUUID(),
+                                    cart.blockPosition(),
+                                    (int) cart.getYRot(),
+                                    sl.dimension().identifier().toString(),
+                                    name,
+                                    iconType,
+                                    false
+                            )
+                    );
+                }
             }
         }
     }
-
 
     private int trainMapTick = 0;
 
     @SubscribeEvent
     public void onServerTick(net.neoforged.neoforge.event.tick.ServerTickEvent.Post event) {
-        if (++this.trainMapTick % 20 != 0) return;
+        if (++this.trainMapTick % 10 != 0) return;
         net.minecraft.server.MinecraftServer server = event.getServer();
         if (server == null) return;
 
         List<com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry> entries = new ArrayList<>();
+        java.util.Set<UUID> liveUUIDs = new java.util.HashSet<>();
+        java.util.Map<String, ServerLevel> levelsByDim = new java.util.HashMap<>();
+
         for (ServerLevel level : server.getAllLevels()) {
+            String dimId = level.dimension().identifier().toString();
+            levelsByDim.put(dimId, level);
             for (Entity entity : level.getAllEntities()) {
-                if (entity instanceof AbstractMinecart cart && cart.isAlive()) {
+                if (entity instanceof AbstractMinecart cart && cart.isAlive() && !cart.isRemoved()) {
                     String iconType = getTrainMapIconType(cart);
                     if (iconType != null) {
+                        UUID uuid = cart.getUUID();
+                        liveUUIDs.add(uuid);
+                        this.parkedUnloadedTrains.remove(uuid);
                         String name = com.example.miningtools.compat.journeymap.JourneyMapTrainPlugin.getBestTrainName(cart);
                         entries.add(new com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry(
-                                cart.getId(),
+                                uuid,
                                 cart.blockPosition(),
                                 (int) cart.getYRot(),
-                                level.dimension().identifier().toString(),
+                                dimId,
                                 name,
                                 iconType,
                                 false
@@ -1233,8 +1277,35 @@ public class MiningTools {
                 }
             }
         }
-        if (!entries.isEmpty()) {
-            PacketDistributor.sendToAllPlayers(new com.example.miningtools.network.TrainMapSyncPayload(entries));
+
+        for (var it = this.parkedUnloadedTrains.entrySet().iterator(); it.hasNext(); ) {
+            var mapEntry = it.next();
+            UUID uuid = mapEntry.getKey();
+            var cached = mapEntry.getValue();
+            if (liveUUIDs.contains(uuid)) {
+                it.remove();
+                continue;
+            }
+            ServerLevel dimLevel = levelsByDim.get(cached.dimension());
+            if (dimLevel == null) {
+                it.remove();
+                continue;
+            }
+            net.minecraft.world.level.ChunkPos cPos = new net.minecraft.world.level.ChunkPos(
+                    cached.pos().getX() >> 4,
+                    cached.pos().getZ() >> 4
+            );
+            if (dimLevel.areEntitiesActuallyLoadedAndTicking(cPos)) {
+                // Chunk is loaded and ticking Entities, yet this entity is no longer present -> stale ghost entry
+                it.remove();
+            } else {
+                entries.add(cached);
+            }
+        }
+
+        if (!entries.isEmpty() || this.hadTrainMapEntriesLastSync) {
+            this.hadTrainMapEntriesLastSync = !entries.isEmpty();
+            PacketDistributor.sendToAllPlayers(new com.example.miningtools.network.TrainMapSyncPayload(entries, true));
         }
     }
 
@@ -1246,20 +1317,26 @@ public class MiningTools {
         if (cart instanceof TunnelBoreEntity) return "bore";
         if (cart instanceof TunnelPaverEntity) return "tunnel_paver";
         if (cart instanceof TrackPaverEntity) return "paver";
+        if (cart instanceof TrackLayerCartEntity) return "track_layer";
         if (cart instanceof TurretCartEntity) return "turret";
         if (cart instanceof AggregateHopperCartEntity) return "hopper";
         if (cart instanceof LivestockCartEntity) return "livestock";
         if (cart instanceof GeneratorMinecartEntity) return "generator";
         if (cart instanceof LargeLiquidMinecartEntity || cart instanceof LiquidMinecartEntity) return "tanker";
         if (cart instanceof CargoMinecartEntity) return "cargo";
-        if (BasicLocomotiveEntity.getConnectedLocomotive(cart) != null || ElectricLocomotiveEntity.getConnectedLocomotive(cart) != null) return "cart";
+        if (BasicLocomotiveEntity.getConnectedLocomotive(cart) != null
+                || DieselLocomotiveEntity.getConnectedLocomotive(cart) != null
+                || ElectricLocomotiveEntity.getConnectedLocomotive(cart) != null) {
+            return "cart";
+        }
         return null;
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-
-
+        this.parkedUnloadedTrains.clear();
+        this.hadTrainMapEntriesLastSync = false;
+        TrainChainingUtil.clearAllForcedChunkTracking();
         LOGGER.info("Mining Tools server starting");
     }
 }

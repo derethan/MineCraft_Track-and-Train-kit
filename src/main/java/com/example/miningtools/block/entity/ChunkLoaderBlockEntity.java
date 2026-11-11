@@ -5,6 +5,7 @@ import java.util.Set;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.block.ChunkLoaderBlock;
+import com.example.miningtools.util.TrainChainingUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -98,36 +99,13 @@ public class ChunkLoaderBlockEntity extends BlockEntity {
             }
         }
 
-        // Unforce chunks no longer desired
-        for (ChunkPos held : new HashSet<>(this.currentlyForced)) {
-            if (!desiredChunks.contains(held)) {
-                try {
-                    serverLevel.setChunkForced(held.x(), held.z(), false);
-                } catch (Throwable ignored) {
-                }
-                this.currentlyForced.remove(held);
-            }
-        }
-
-        // Force desired chunks
-        for (ChunkPos desired : desiredChunks) {
-            if (!this.currentlyForced.contains(desired)) {
-                try {
-                    serverLevel.setChunkForced(desired.x(), desired.z(), true);
-                } catch (Throwable ignored) {
-                }
-                this.currentlyForced.add(desired);
-            }
-        }
+        TrainChainingUtil.updateBlockForcedChunks(serverLevel, this.worldPosition, desiredChunks);
+        this.currentlyForced.clear();
+        this.currentlyForced.addAll(desiredChunks);
     }
 
     public void releaseAllForcedChunks(ServerLevel serverLevel) {
-        for (ChunkPos held : this.currentlyForced) {
-            try {
-                serverLevel.setChunkForced(held.x(), held.z(), false);
-            } catch (Throwable ignored) {
-            }
-        }
+        TrainChainingUtil.releaseBlockForcedChunks(serverLevel, this.worldPosition);
         this.currentlyForced.clear();
         this.active = false;
     }

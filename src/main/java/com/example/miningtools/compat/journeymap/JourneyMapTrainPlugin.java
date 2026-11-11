@@ -1,7 +1,11 @@
 package com.example.miningtools.compat.journeymap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.entity.AggregateHopperCartEntity;
@@ -14,6 +18,7 @@ import com.example.miningtools.entity.GeneratorMinecartEntity;
 import com.example.miningtools.entity.LargeLiquidMinecartEntity;
 import com.example.miningtools.entity.LiquidMinecartEntity;
 import com.example.miningtools.entity.LivestockCartEntity;
+import com.example.miningtools.entity.TrackLayerCartEntity;
 import com.example.miningtools.entity.TrackPaverEntity;
 import com.example.miningtools.entity.TunnelBoreEntity;
 import com.example.miningtools.entity.TunnelPaverEntity;
@@ -23,9 +28,11 @@ import com.example.miningtools.network.TrainMapSyncPayload;
 import journeymap.api.v2.client.IClientAPI;
 import journeymap.api.v2.client.IClientPlugin;
 import journeymap.api.v2.client.display.MarkerOverlay;
+import journeymap.api.v2.client.event.MappingEvent;
 import journeymap.api.v2.client.model.MapImage;
 import journeymap.api.v2.client.model.TextProperties;
 import journeymap.api.v2.common.JourneyMapPlugin;
+import journeymap.api.v2.common.event.ClientEventRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
@@ -40,13 +47,25 @@ import net.neoforged.neoforge.common.NeoForge;
 
 /**
  * JourneyMap client plugin that displays live moving train markers and train names on the
- * JourneyMap minimap, fullscreen map, and webmap, persisting markers without disappearing at distance.
+ * JourneyMap minimap, fullscreen map, and webmap, persisting markers by persistent UUID
+ * without duplicating or leaving ghost trains across chunk reloads.
  */
 @JourneyMapPlugin(apiVersion = "2.0.0")
 public class JourneyMapTrainPlugin implements IClientPlugin {
 
+    private record MarkerState(
+            BlockPos pos,
+            int yRot,
+            ResourceKey<Level> dimension,
+            String name,
+            Identifier iconId,
+            boolean isLoco
+    ) {}
+
     private static IClientAPI jmAPI;
-    private static final Map<Integer, MarkerOverlay> activeMarkers = new HashMap<>();
+    private static final Map<UUID, MarkerOverlay> activeMarkers = new HashMap<>();
+    private static final Map<UUID, MarkerState> activeStates = new HashMap<>();
+    private static final Map<UUID, Long> recentlyRemovedUUIDs = new HashMap<>();
     private static int tickCounter = 0;
 
     private static final Identifier ICON_LOCOMOTIVE = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/basic_locomotive.png");
@@ -56,6 +75,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
     private static final Identifier ICON_BORE = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/tunnel_bore.png");
     private static final Identifier ICON_TUNNEL_PAVER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/tunnel_paver.png");
     private static final Identifier ICON_PAVER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/track_paver.png");
+    private static final Identifier ICON_TRACK_LAYER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/track_layer_cart.png");
     private static final Identifier ICON_TURRET = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/turret_cart.png");
     private static final Identifier ICON_TANKER = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/large_liquid_minecart.png");
     private static final Identifier ICON_CARGO = Identifier.fromNamespaceAndPath(MiningTools.MODID, "textures/item/cargo_minecart.png");
@@ -74,6 +94,134 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
         jmAPI = api;
         MiningTools.LOGGER.info("JourneyMap Train Plugin initialized successfully!");
         NeoForge.EVENT_BUS.register(this);
+        try {
+            ClientEventRegistry.MAPPING_EVENT.subscribe(MiningTools.MODID, event -> {
+                if (event.getStage() == MappingEvent.Stage.MAPPING_STOPPED) {
+                    clearAllMarkers();
+                } else if (event.getStage() == MappingEvent.Stage.MAPPING_STARTED && jmAPI != null) {
+                    for (MarkerOverlay marker : activeMarkers.values()) {
+                        try {
+                            marker.flagForRerender();
+                            jmAPI.show(marker);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            });
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void clearAllMarkers() {
+        activeMarkers.clear();
+        activeStates.clear();
+        recentlyRemovedUUIDs.clear();
+        if (jmAPI != null) {
+            try {
+                jmAPI.removeAll(MiningTools.MODID);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static void removeMarker(UUID uuid) {
+        activeStates.remove(uuid);
+        MarkerOverlay removed = activeMarkers.remove(uuid);
+        if (removed != null && jmAPI != null) {
+            try {
+                jmAPI.remove(removed);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private static void upsertMarker(
+            UUID uuid,
+            BlockPos pos,
+            int yRot,
+            ResourceKey<Level> dimKey,
+            String name,
+            Identifier iconId,
+            boolean isLoco
+    ) {
+        if (jmAPI == null) return;
+
+        MarkerOverlay marker = activeMarkers.get(uuid);
+        MarkerState prevState = activeStates.get(uuid);
+        MarkerState newState = new MarkerState(pos.immutable(), yRot, dimKey, name, iconId, isLoco);
+
+        if (marker == null || prevState == null || !prevState.iconId().equals(iconId)) {
+            if (marker != null) {
+                try {
+                    jmAPI.remove(marker);
+                } catch (Exception ignored) {
+                }
+            }
+
+            MapImage mapImage = new MapImage(iconId, 16, 16);
+            mapImage.setDisplayWidth(20);
+            mapImage.setDisplayHeight(20);
+            mapImage.centerAnchors();
+            mapImage.setRotation(yRot);
+
+            marker = new MarkerOverlay(MiningTools.MODID, pos.immutable(), mapImage);
+            marker.setDimension(dimKey);
+            marker.setTitle(name);
+            marker.setOverlayGroupName("Trains");
+            applyLabelProperties(marker, name, isLoco);
+
+            try {
+                jmAPI.show(marker);
+                activeMarkers.put(uuid, marker);
+                activeStates.put(uuid, newState);
+            } catch (Exception e) {
+                MiningTools.LOGGER.warn("Failed to show train marker in JourneyMap: {}", e.getMessage());
+            }
+        } else {
+            boolean existsInJm = false;
+            try {
+                existsInJm = jmAPI.exists(marker);
+            } catch (Exception ignored) {
+            }
+
+            if (!existsInJm || !prevState.equals(newState)) {
+                marker.setPoint(pos.immutable());
+                marker.setDimension(dimKey);
+                marker.setTitle(name);
+                applyLabelProperties(marker, name, isLoco);
+                marker.getIcon().setRotation(yRot);
+                marker.flagForRerender();
+                try {
+                    jmAPI.show(marker);
+                } catch (Exception ignored) {
+                }
+                activeStates.put(uuid, newState);
+            }
+        }
+    }
+
+    private static void applyLabelProperties(MarkerOverlay marker, String name, boolean isLoco) {
+        if (isLoco) {
+            if (marker.getTextProperties() == null) {
+                TextProperties textProps = new TextProperties();
+                textProps.setColor(0xFFFFFF);
+                textProps.setBackgroundColor(0x000000);
+                textProps.setBackgroundOpacity(0.65F);
+                textProps.setFontShadow(true);
+                textProps.setOffsetY(-20);
+                marker.setTextProperties(textProps);
+            } else {
+                TextProperties textProps = marker.getTextProperties();
+                textProps.setColor(0xFFFFFF);
+                textProps.setBackgroundColor(0x000000);
+                textProps.setBackgroundOpacity(0.65F);
+                textProps.setFontShadow(true);
+                textProps.setOffsetY(-20);
+            }
+            marker.setLabel(name);
+        } else {
+            marker.setLabel(null);
+        }
     }
 
     public static void handleServerMapSync(TrainMapSyncPayload payload) {
@@ -81,72 +229,37 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
+        long gameTime = mc.level.getGameTime();
+        recentlyRemovedUUIDs.entrySet().removeIf(e -> e.getValue() < gameTime);
+
+        Set<UUID> snapshotUUIDs = payload.fullSnapshot() ? new HashSet<>() : null;
+
         for (TrainMapSyncPayload.TrainMapEntry entry : payload.entries()) {
-            int id = entry.entityId();
+            UUID uuid = entry.uuid();
             if (entry.isRemoved()) {
-                MarkerOverlay removed = activeMarkers.remove(id);
-                if (removed != null) {
-                    jmAPI.remove(removed);
-                }
+                removeMarker(uuid);
+                recentlyRemovedUUIDs.put(uuid, gameTime + 100L);
                 continue;
             }
 
+            recentlyRemovedUUIDs.remove(uuid);
+            if (snapshotUUIDs != null) {
+                snapshotUUIDs.add(uuid);
+            }
+
             ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, Identifier.parse(entry.dimension()));
-            MarkerOverlay marker = activeMarkers.get(id);
+            Identifier iconId = getIconForType(entry.iconType());
             boolean isLoco = isLocomotiveType(entry.iconType());
 
-            if (marker == null) {
-                Identifier iconId = getIconForType(entry.iconType());
-                MapImage mapImage = new MapImage(iconId, 16, 16);
-                mapImage.setDisplayWidth(20);
-                mapImage.setDisplayHeight(20);
-                mapImage.centerAnchors();
-                mapImage.setRotation(entry.yRot());
+            upsertMarker(uuid, entry.pos(), entry.yRot(), dimKey, entry.name(), iconId, isLoco);
+        }
 
-                marker = new MarkerOverlay(MiningTools.MODID, entry.pos(), mapImage);
-                marker.setDimension(dimKey);
-                marker.setTitle(entry.name());
-                marker.setOverlayGroupName("Trains");
-
-                if (isLoco) {
-                    TextProperties textProps = new TextProperties();
-                    textProps.setColor(0xFFFFFF);
-                    textProps.setBackgroundColor(0x000000);
-                    textProps.setBackgroundOpacity(0.65F);
-                    textProps.setFontShadow(true);
-                    textProps.setOffsetY(-20);
-                    marker.setTextProperties(textProps);
-                    marker.setLabel(entry.name());
-                } else {
-                    marker.setLabel(null);
+        // Authoritative reconciliation: remove any ghost markers no longer present on the server
+        if (snapshotUUIDs != null) {
+            for (UUID existingUuid : new ArrayList<>(activeMarkers.keySet())) {
+                if (!snapshotUUIDs.contains(existingUuid)) {
+                    removeMarker(existingUuid);
                 }
-
-                try {
-                    jmAPI.show(marker);
-                    activeMarkers.put(id, marker);
-                } catch (Exception e) {
-                    MiningTools.LOGGER.warn("Failed to show train marker in JourneyMap: {}", e.getMessage());
-                }
-            } else {
-                marker.setPoint(entry.pos());
-                marker.setDimension(dimKey);
-                marker.setTitle(entry.name());
-                if (isLoco) {
-                    if (marker.getTextProperties() == null) {
-                        TextProperties textProps = new TextProperties();
-                        textProps.setColor(0xFFFFFF);
-                        textProps.setBackgroundColor(0x000000);
-                        textProps.setBackgroundOpacity(0.65F);
-                        textProps.setFontShadow(true);
-                        textProps.setOffsetY(-20);
-                        marker.setTextProperties(textProps);
-                    }
-                    marker.setLabel(entry.name());
-                } else {
-                    marker.setLabel(null);
-                }
-                marker.getIcon().setRotation(entry.yRot());
-                marker.flagForRerender();
             }
         }
     }
@@ -157,23 +270,25 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
             if (!activeMarkers.isEmpty()) {
-                activeMarkers.clear();
-                jmAPI.removeAll(MiningTools.MODID);
+                clearAllMarkers();
             }
             return;
         }
 
-        // Update every 4 ticks (~5 times per second) for smooth tracking
+        // Update every 4 ticks (~5 times per second) for smooth local interpolation
         if (++tickCounter % 4 != 0) return;
+
+        long gameTime = mc.level.getGameTime();
+        recentlyRemovedUUIDs.entrySet().removeIf(e -> e.getValue() < gameTime);
 
         for (Entity entity : mc.level.entitiesForRendering()) {
             if (entity instanceof AbstractMinecart cart) {
-                int id = cart.getId();
+                UUID uuid = cart.getUUID();
                 if (cart.isRemoved() || !cart.isAlive()) {
-                    MarkerOverlay removed = activeMarkers.remove(id);
-                    if (removed != null) {
-                        jmAPI.remove(removed);
-                    }
+                    removeMarker(uuid);
+                    continue;
+                }
+                if (recentlyRemovedUUIDs.containsKey(uuid)) {
                     continue;
                 }
 
@@ -183,60 +298,8 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
                 BlockPos pos = cart.blockPosition();
                 String trainName = getBestTrainName(cart);
                 boolean isLoco = isLocomotive(cart);
-                MarkerOverlay marker = activeMarkers.get(id);
 
-                if (marker == null) {
-                    MapImage mapImage = new MapImage(iconId, 16, 16);
-                    mapImage.setDisplayWidth(20);
-                    mapImage.setDisplayHeight(20);
-                    mapImage.centerAnchors();
-                    mapImage.setRotation((int) cart.getYRot());
-
-                    marker = new MarkerOverlay(MiningTools.MODID, pos, mapImage);
-                    marker.setDimension(cart.level().dimension());
-                    marker.setTitle(trainName);
-                    marker.setOverlayGroupName("Trains");
-
-                    if (isLoco) {
-                        TextProperties textProps = new TextProperties();
-                        textProps.setColor(0xFFFFFF);
-                        textProps.setBackgroundColor(0x000000);
-                        textProps.setBackgroundOpacity(0.65F);
-                        textProps.setFontShadow(true);
-                        textProps.setOffsetY(-20);
-                        marker.setTextProperties(textProps);
-                        marker.setLabel(trainName);
-                    } else {
-                        marker.setLabel(null);
-                    }
-
-                    try {
-                        jmAPI.show(marker);
-                        activeMarkers.put(id, marker);
-                    } catch (Exception e) {
-                        MiningTools.LOGGER.warn("Failed to show train marker in JourneyMap: {}", e.getMessage());
-                    }
-                } else {
-                    marker.setPoint(pos);
-                    marker.setDimension(cart.level().dimension());
-                    marker.setTitle(trainName);
-                    if (isLoco) {
-                        if (marker.getTextProperties() == null) {
-                            TextProperties textProps = new TextProperties();
-                            textProps.setColor(0xFFFFFF);
-                            textProps.setBackgroundColor(0x000000);
-                            textProps.setBackgroundOpacity(0.65F);
-                            textProps.setFontShadow(true);
-                            textProps.setOffsetY(-20);
-                            marker.setTextProperties(textProps);
-                        }
-                        marker.setLabel(trainName);
-                    } else {
-                        marker.setLabel(null);
-                    }
-                    marker.getIcon().setRotation((int) cart.getYRot());
-                    marker.flagForRerender();
-                }
+                upsertMarker(uuid, pos, (int) cart.getYRot(), cart.level().dimension(), trainName, iconId, isLoco);
             }
         }
     }
@@ -259,6 +322,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
         if (cart instanceof ElectricLocomotiveEntity elec && !elec.getTrainName().isBlank()) return elec.getTrainName();
         if (cart instanceof TrackPaverEntity paver && !paver.getTrainName().isBlank()) return paver.getTrainName();
         if (cart instanceof TunnelPaverEntity tp && !tp.getTrainName().isBlank()) return tp.getTrainName();
+        if (cart instanceof TrackLayerCartEntity tl && !tl.getTrainName().isBlank()) return tl.getTrainName();
         if (cart.getCustomName() != null) return cart.getCustomName().getString();
         return cart.getDisplayName().getString();
     }
@@ -278,6 +342,8 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
             return ICON_TUNNEL_PAVER;
         } else if (cart instanceof TrackPaverEntity) {
             return ICON_PAVER;
+        } else if (cart instanceof TrackLayerCartEntity) {
+            return ICON_TRACK_LAYER;
         } else if (cart instanceof TurretCartEntity) {
             return ICON_TURRET;
         } else if (cart instanceof AggregateHopperCartEntity) {
@@ -290,7 +356,9 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
             return ICON_TANKER;
         } else if (cart instanceof CargoMinecartEntity) {
             return ICON_CARGO;
-        } else if (BasicLocomotiveEntity.getConnectedLocomotive(cart) != null || ElectricLocomotiveEntity.getConnectedLocomotive(cart) != null) {
+        } else if (BasicLocomotiveEntity.getConnectedLocomotive(cart) != null
+                || DieselLocomotiveEntity.getConnectedLocomotive(cart) != null
+                || ElectricLocomotiveEntity.getConnectedLocomotive(cart) != null) {
             return ICON_MINECART;
         }
         return null;
@@ -304,6 +372,7 @@ public class JourneyMapTrainPlugin implements IClientPlugin {
             case "bore" -> ICON_BORE;
             case "tunnel_paver" -> ICON_TUNNEL_PAVER;
             case "paver" -> ICON_PAVER;
+            case "track_layer" -> ICON_TRACK_LAYER;
             case "turret" -> ICON_TURRET;
             case "hopper" -> ICON_HOPPER;
             case "livestock" -> ICON_LIVESTOCK;

@@ -302,6 +302,7 @@ public class TrackLayerCartEntity extends AbstractMinecartContainer {
         }
 
         updateStoredRailCount();
+        TrainChainingUtil.tickActiveTrainChunkLoading(this);
 
         // When Work Mode is OFF: act as normal minecart, but respect driver propulsion
         if (!this.isWorkMode()) {

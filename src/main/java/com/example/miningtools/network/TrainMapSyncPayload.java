@@ -1,7 +1,7 @@
 package com.example.miningtools.network;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.example.miningtools.MiningTools;
 import com.example.miningtools.compat.journeymap.JourneyMapTrainPlugin;
@@ -14,14 +14,14 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record TrainMapSyncPayload(List<TrainMapEntry> entries) implements CustomPacketPayload {
+public record TrainMapSyncPayload(List<TrainMapEntry> entries, boolean fullSnapshot) implements CustomPacketPayload {
 
     public static final Type<TrainMapSyncPayload> TYPE =
             new Type<>(Identifier.fromNamespaceAndPath(MiningTools.MODID, "train_map_sync"));
 
     public static final StreamCodec<ByteBuf, TrainMapEntry> ENTRY_STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.VAR_INT,
-            TrainMapEntry::entityId,
+            TrainLinkSyncPayload.UUID_STREAM_CODEC,
+            TrainMapEntry::uuid,
             BlockPos.STREAM_CODEC,
             TrainMapEntry::pos,
             ByteBufCodecs.VAR_INT,
@@ -37,8 +37,13 @@ public record TrainMapSyncPayload(List<TrainMapEntry> entries) implements Custom
             TrainMapEntry::new
     );
 
-    public static final StreamCodec<ByteBuf, TrainMapSyncPayload> STREAM_CODEC =
-            ENTRY_STREAM_CODEC.apply(ByteBufCodecs.list()).map(TrainMapSyncPayload::new, TrainMapSyncPayload::entries);
+    public static final StreamCodec<ByteBuf, TrainMapSyncPayload> STREAM_CODEC = StreamCodec.composite(
+            ENTRY_STREAM_CODEC.apply(ByteBufCodecs.list()),
+            TrainMapSyncPayload::entries,
+            ByteBufCodecs.BOOL,
+            TrainMapSyncPayload::fullSnapshot,
+            TrainMapSyncPayload::new
+    );
 
     @Override
     public Type<TrainMapSyncPayload> type() {
@@ -55,7 +60,7 @@ public record TrainMapSyncPayload(List<TrainMapEntry> entries) implements Custom
     }
 
     public record TrainMapEntry(
-            int entityId,
+            UUID uuid,
             BlockPos pos,
             int yRot,
             String dimension,

@@ -102,6 +102,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
     private boolean running = false;
     private int speedLevel = DEFAULT_SPEED_LEVEL;
+    private int fuelTickCounter = 0;
     private @Nullable BlockPos currentLightPos = null;
     private int hornRailCooldown = 0;
     private @Nullable BlockPos lastHornRailPos = null;
@@ -391,24 +392,33 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     }
 
     public static @Nullable DieselLocomotiveEntity getConnectedLocomotive(Entity entity) {
-        if (entity instanceof DieselLocomotiveEntity loco) {
+        if (entity instanceof DieselLocomotiveEntity loco && !loco.isRemoved()) {
             return loco;
         }
-        if (!(entity instanceof AbstractMinecart cart)) {
+        if (!(entity instanceof AbstractMinecart cart) || cart.isRemoved()) {
             return null;
         }
-        UUID parentUUID = TrainChainingUtil.getCartParentUUID(cart);
         Set<UUID> visited = new HashSet<>();
         visited.add(cart.getUUID());
-        while (parentUUID != null && visited.add(parentUUID)) {
-            Entity p = entity.level().getEntity(parentUUID);
-            if (p instanceof DieselLocomotiveEntity loco) {
-                return loco;
-            }
-            if (p instanceof AbstractMinecart pc) {
-                parentUUID = TrainChainingUtil.getCartParentUUID(pc);
-            } else {
-                break;
+        Deque<UUID> toCheck = new ArrayDeque<>();
+        UUID p = TrainChainingUtil.getCartParentUUID(cart);
+        if (p != null) toCheck.add(p);
+        UUID c = TrainChainingUtil.getCartChildUUID(cart);
+        if (c != null) toCheck.add(c);
+
+        while (!toCheck.isEmpty()) {
+            UUID nextId = toCheck.poll();
+            if (nextId != null && visited.add(nextId)) {
+                Entity ent = cart.level().getEntity(nextId);
+                if (ent instanceof DieselLocomotiveEntity loco && !loco.isRemoved()) {
+                    return loco;
+                }
+                if (ent instanceof AbstractMinecart otherCart && !otherCart.isRemoved()) {
+                    UUID cp = TrainChainingUtil.getCartParentUUID(otherCart);
+                    if (cp != null && !visited.contains(cp)) toCheck.add(cp);
+                    UUID cc = TrainChainingUtil.getCartChildUUID(otherCart);
+                    if (cc != null && !visited.contains(cc)) toCheck.add(cc);
+                }
             }
         }
         return null;
@@ -513,6 +523,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
         this.tickFuelAndMovement();
         this.updateDynamicLight();
+        TrainChainingUtil.tickActiveTrainChunkLoading(this);
 
         // Push entities in path from connection points (bumpers)
         Direction travelDir = this.getTravelDirection();
@@ -600,25 +611,32 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
 
         if (this.running) {
             if (this.hasFuel()) {
-                // Consume diesel fuel per tick
-                int cost = Math.max(1, Config.DIESEL_LOCOMOTIVE_FUEL_PER_TICK.get());
-                try (net.neoforged.neoforge.transfer.transaction.Transaction tx = net.neoforged.neoforge.transfer.transaction.Transaction.open(null)) {
-                    var extracted = net.neoforged.neoforge.transfer.ResourceHandlerUtil.extractFirst(this.tank, r -> true, cost, tx);
-                    if (extracted != null && !extracted.isEmpty()) {
-                        tx.commit();
-                    }
-                } catch (Throwable ignored) {}
-                this.syncFluidData();
+                this.fuelTickCounter++;
+                int ticksPerMb = Math.max(1, Config.DIESEL_LOCOMOTIVE_TICKS_PER_MB.get());
+                if (this.fuelTickCounter >= ticksPerMb) {
+                    this.fuelTickCounter = 0;
+                    try (net.neoforged.neoforge.transfer.transaction.Transaction tx = net.neoforged.neoforge.transfer.transaction.Transaction.open(null)) {
+                        var extracted = net.neoforged.neoforge.transfer.ResourceHandlerUtil.extractFirst(this.tank, r -> true, 1, tx);
+                        if (extracted != null && !extracted.isEmpty()) {
+                            tx.commit();
+                        }
+                    } catch (Throwable ignored) {}
+                    this.syncFluidData();
+                }
 
                 if (!this.hasFuel()) {
                     this.setRunning(false);
                     this.setActive(false);
+                    this.fuelTickCounter = 0;
                     this.level().playSound(null, this.blockPosition(), SoundEvents.FIRE_EXTINGUISH, SoundSource.BLOCKS, 0.6F, 1.2F);
                 }
             } else {
                 this.setRunning(false);
                 this.setActive(false);
+                this.fuelTickCounter = 0;
             }
+        } else {
+            this.fuelTickCounter = 0;
         }
 
         boolean activeFuel = this.hasFuel();
@@ -964,6 +982,9 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
     public void remove(Entity.RemovalReason reason) {
         if (reason.shouldDestroy() && !this.level().isClientSide()) {
             this.clearDynamicLight();
+            if (this.level() instanceof ServerLevel serverLevel) {
+                TrainChainingUtil.releaseEntityForcedChunks(serverLevel, this);
+            }
         }
         super.remove(reason);
     }
@@ -1188,6 +1209,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         output.putBoolean("Headlight", this.isHeadlightEnabled());
         output.putString("TrainName", this.getTrainName());
         output.putBoolean("Reversed", this.isReversed());
+        output.putInt("FuelTickCounter", this.fuelTickCounter);
         this.tank.serialize(output);
     }
 
@@ -1201,6 +1223,7 @@ public class DieselLocomotiveEntity extends AbstractMinecartContainer {
         this.setHeadlightEnabled(input.getBooleanOr("Headlight", true));
         this.setTrainName(input.getStringOr("TrainName", ""));
         this.setReversed(input.getBooleanOr("Reversed", false));
+        this.fuelTickCounter = input.getIntOr("FuelTickCounter", 0);
         this.tank.deserialize(input);
         this.syncFluidData();
     }

@@ -49,9 +49,8 @@ public class CabooseMinecartEntity extends AbstractMinecart {
     private static final EntityDataAccessor<Integer> DATA_FORCED_CHUNKS =
             SynchedEntityData.defineId(CabooseMinecartEntity.class, EntityDataSerializers.INT);
 
-    // Track which chunks this specific caboose has forced
-    private final Set<ChunkPos> currentlyForced = new HashSet<>();
     private int tickCounter = 0;
+    private @Nullable ChunkPos lastChunkPos = null;
 
     public CabooseMinecartEntity(EntityType<? extends CabooseMinecartEntity> type, Level level) {
         super(type, level);
@@ -116,10 +115,14 @@ public class CabooseMinecartEntity extends AbstractMinecart {
             return;
         }
 
-        // Server-side Chunk Anchor Maintenance (once per second)
+        // Server-side Chunk Anchor Maintenance (immediately on chunk boundary crossing or every 10 ticks)
         this.tickCounter++;
-        if (this.tickCounter % 20 == 0 && this.isAnchorActive() && !this.isRemoved()) {
-            this.updateForcedChunks();
+        if (this.isAnchorActive() && !this.isRemoved()) {
+            ChunkPos currentChunk = this.chunkPosition();
+            if (this.tickCounter == 1 || !currentChunk.equals(this.lastChunkPos) || this.tickCounter % 10 == 0) {
+                this.lastChunkPos = currentChunk;
+                this.updateForcedChunks();
+            }
         }
     }
 
@@ -128,82 +131,14 @@ public class CabooseMinecartEntity extends AbstractMinecart {
             return;
         }
 
-        Set<ChunkPos> desiredChunks = new HashSet<>();
-        BlockPos currentPos = this.blockPosition();
-        ChunkPos cabooseChunk = new ChunkPos(currentPos.getX() >> 4, currentPos.getZ() >> 4);
-
-        // 1. Force a 3x3 chunk grid surrounding the Caboose
-        this.addChunkGrid(desiredChunks, cabooseChunk.x(), cabooseChunk.z(), 1);
-
-        // 2. Locate any connected locomotive pulling or towing this train and cover all chained carts
-        BasicLocomotiveEntity steamLoco = BasicLocomotiveEntity.getConnectedLocomotive(this);
-        if (steamLoco != null && !steamLoco.isRemoved()) {
-            BlockPos lp = steamLoco.blockPosition();
-            ChunkPos locoChunk = new ChunkPos(lp.getX() >> 4, lp.getZ() >> 4);
-            this.addChunkGrid(desiredChunks, locoChunk.x(), locoChunk.z(), 1);
-            for (Pair<Entity, AbstractMinecart> link : steamLoco.getOrderedTrainLinks()) {
-                AbstractMinecart cart = link.getSecond();
-                if (cart != null && !cart.isRemoved()) {
-                    BlockPos cpPos = cart.blockPosition();
-                    desiredChunks.add(new ChunkPos(cpPos.getX() >> 4, cpPos.getZ() >> 4));
-                }
-            }
-        }
-
-        ElectricLocomotiveEntity elecLoco = ElectricLocomotiveEntity.getConnectedLocomotive(this);
-        if (elecLoco != null && !elecLoco.isRemoved()) {
-            BlockPos ep = elecLoco.blockPosition();
-            ChunkPos elecChunk = new ChunkPos(ep.getX() >> 4, ep.getZ() >> 4);
-            this.addChunkGrid(desiredChunks, elecChunk.x(), elecChunk.z(), 1);
-            for (Pair<Entity, AbstractMinecart> link : elecLoco.getOrderedTrainLinks()) {
-                AbstractMinecart cart = link.getSecond();
-                if (cart != null && !cart.isRemoved()) {
-                    BlockPos cpPos = cart.blockPosition();
-                    desiredChunks.add(new ChunkPos(cpPos.getX() >> 4, cpPos.getZ() >> 4));
-                }
-            }
-        }
-
-        // 3. Reconcile chunks: unforce obsolete chunks, force newly entered chunks
-        for (ChunkPos held : new HashSet<>(this.currentlyForced)) {
-            if (!desiredChunks.contains(held)) {
-                try {
-                    serverLevel.setChunkForced(held.x(), held.z(), false);
-                } catch (Throwable ignored) {
-                }
-                this.currentlyForced.remove(held);
-            }
-        }
-
-        for (ChunkPos desired : desiredChunks) {
-            if (!this.currentlyForced.contains(desired)) {
-                try {
-                    serverLevel.setChunkForced(desired.x(), desired.z(), true);
-                } catch (Throwable ignored) {
-                }
-                this.currentlyForced.add(desired);
-            }
-        }
-
-        this.entityData.set(DATA_FORCED_CHUNKS, this.currentlyForced.size());
-    }
-
-    private void addChunkGrid(Set<ChunkPos> set, int cx, int cz, int radius) {
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
-                set.add(new ChunkPos(cx + dx, cz + dz));
-            }
-        }
+        Set<ChunkPos> desiredChunks = TrainChainingUtil.computeConsistForcedChunks(this);
+        TrainChainingUtil.updateEntityForcedChunks(serverLevel, this, desiredChunks);
+        this.entityData.set(DATA_FORCED_CHUNKS, desiredChunks.size());
     }
 
     private void releaseAllForcedChunks(ServerLevel serverLevel) {
-        for (ChunkPos pos : this.currentlyForced) {
-            try {
-                serverLevel.setChunkForced(pos.x(), pos.z(), false);
-            } catch (Throwable ignored) {
-            }
-        }
-        this.currentlyForced.clear();
+        TrainChainingUtil.releaseEntityForcedChunks(serverLevel, this);
+        this.lastChunkPos = null;
         this.entityData.set(DATA_FORCED_CHUNKS, 0);
     }
 

@@ -21,13 +21,13 @@ Whether you need to haul massive freight trains across long distances, automate 
 * 🔗 **Universal Consist Coupling & MU Consists**: Link dozens of carts together using the Railroad Crowbar—even without a locomotive! Distribute lead, mid-train, and pusher locomotives to multiply pulling capacity, or shunt strings of cars by hand.
 * 📦 **Dynamic Freight & Tankers**: Adaptive Cargo Carts that visually transform (Logs, Shipping Containers in random Red/Green/Blue colorways, Ores, Ingots), 16-bucket Large Liquid Tankers with automatic diesel fuel tender siphoning, and Loose Aggregate Hopper Cars with dynamic 3D bulk material mounds and smooth metallic finishes.
 * 🏹 **Tactical Arrow Turret Cart**: Defense cart with 2× engagement range (32 blocks), dual bow mounts, in-GUI Player Whitelist / Blacklist protection, crisp tactical woodland camo livery, and Caboose-matching flanged steel wheels.
-* 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers and features server-synced far-distance persistence so trains never vanish off the map across long distances.
+* 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers, keys markers by persistent entity `UUID` with authoritative server snapshot pruning to prevent ghost or duplicate markers, and features continuous far-distance synchronization even when no player is in range.
 * 💥 **Geological Prospecting & Boreholes**: Detonate Surveyor's Charges wirelessly via the Remote Detonator to drill a clean 1×1 borehole to bedrock and receive a full-depth cylindrical column survey tallying ores, minerals, and subterranean oil deposits.
 * 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation, the **Under Track Paver** (AP1055F) that paves a 1×3 wide roadbed beneath tracks at 1 m/s, and the **Tunnel Paver** (`tunnel_paver`) that lines the 9-block tunnel arch (3 left wall blocks, 3 ceiling blocks, and 3 right wall blocks) with custom 9-slot masonry patterns.
 * 🛤️ **Specialty Switch & Power Rails**: Station Delay Rails (Timed Station Dwell & Automatic Consist Launch), Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), Speed Control Rails, 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
 * 📡 **Smart Track Automation & Fueling**: Automated Item Loaders/Unloaders, Fluid Loaders/Unloaders, dedicated Locomotive Fuelers (Diesel & Coal), Entity Loaders/Unloaders, and Train-Name Signal Switches.
 * 🏷️ **In-GUI Custom Cart Naming**: Name every locomotive and custom railcar directly in its GUI to automate routing, filtering, and depot switching.
-* ⚓ **Zero-Decoupling Chunk Anchors**: Both mobile (Anchor Caboose, placeable anywhere in the train) and stationary (Industrial Chunk Anchor) chunk loaders that keep automation and trains ticking across chunk borders.
+* ⚓ **Zero-Decoupling & Active Consist Chunk Anchors**: Reference-counted mobile chunk loading across Anchor Cabooses, actively running locomotives/rail machines, and stationary Industrial Chunk Anchors keeps trains moving and automation ticking seamlessly across chunk borders outside player simulation range.
 * 📖 **Railroader's Field Manual**: Interactive in-game engineering handbook styled after our industrial heavy binder theme, detailing every locomotive, cart, track, switch, station, machine, and tool with complete mechanics, operations, pro tips, and interactive crafting recipes.
 * 🧭 **Live HUD Dashboard**: On-screen speedometer showing blocks/sec, km/h, heading, throttle gear, and fuel reserves.
 
@@ -54,7 +54,7 @@ A heavy-duty mainline diesel road-switcher modeled after Canadian National (CN) 
   - **Gear 3 (Cruise)**: **50% of top speed (0.35 b/t)** for fuel-efficient long-distance cruising.
   - **Gear 4 (Express)**: 80% of top speed (0.56 b/t).
   - **Gear 5 (High-Ball)**: 100% full throttle (0.70 b/t).
-* **Fuel**: Liquid diesel fuel. Equipped with an internal **16,000 mB (16-bucket)** fuel tank with a golden-yellow fuel gauge and bucket draining slot.
+* **Fuel**: Liquid diesel fuel. Equipped with an internal **16,000 mB (16-bucket)** fuel tank with a golden-yellow fuel gauge and bucket draining slot. Consumes 1 mB every 3 ticks (3,000 ticks or 150 seconds per 1,000 mB bucket), allowing runs of up to 33,600 blocks on a full tank.
 * **Fuel Compatibility**: Native support for **Industrial Refinery Diesel**, **Ultimate Car Mod Bio-Diesel**, **Logistics Bio-Fuel**, and all fluids tagged `#c:diesel`, `#c:biofuel`, or `#c:biodiesel`.
 * **Automated Fuel Tender Siphoning**: Coupling a Liquid Minecart or Large Liquid Minecart behind or ahead of the locomotive turns the tanker into an automated fuel tender wagon, siphoning up to 100 mB/tick to keep the engine running across continental distances.
 * **Pulling Capacity**: Pulls up to **10 carts** with zero drag penalty.
@@ -247,7 +247,7 @@ Placed underneath tracks to pump fluids into or drain fluids from Liquid Minecar
 ### In-GUI Custom Cart & Train Naming & JourneyMap Integration
 All locomotives and rolling stock carts feature editable name fields inside their cockpits and GUIs:
 * **Live JourneyMap Integration**: Locomotive and railcar names appear rendered cleanly above their train map markers on JourneyMap!
-* **Far-Distance Server Synchronization**: Train coordinates and heading are broadcast by the server, ensuring trains remain permanently visible and tracked across great distances without vanishing outside client render radius.
+* **Far-Distance Server Synchronization & Zero-Ghost Tracking**: Train coordinates and heading are broadcast by the server every 10 ticks using persistent entity `UUID` keys, immediate removal packets when carts are picked up or broken, and unloaded-chunk caching for parked consists—ensuring active trains update smoothly across the map even when no player is nearby and never leave duplicate or ghost markers behind.
 * **Depot Automation**: Name trains (e.g. `"Ore Express"`, `"Coal Tender #1"`, `"Shuttle-South"`) to integrate directly with the **Track Signal Switch** for automatic turnout switching and route dispatching.
 * **Station Filtering**: Filters cargo and fluid loaders to only service designated train names.
 
@@ -364,6 +364,19 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.40**:
+  - **CN Diesel Locomotive Fuel Consumption Calibration (3× Travel Distance)**:
+    - Tripled the fuel efficiency of the CN Diesel Locomotive (`DieselLocomotiveEntity`), extending its travel distance to 3× further per 1,000 mB of diesel fuel.
+    - Replaced the fixed 1 mB/tick consumption logic with configurable `ticksPerMb` (`Config.DIESEL_LOCOMOTIVE_TICKS_PER_MB`, defaulting to `3` ticks per mB).
+    - 1,000 mB (1 bucket) of diesel now powers the locomotive for 3,000 ticks (150 seconds, up from 50 seconds), covering ~2,100 blocks at top speed (~33,600 blocks on a full 16,000 mB tank).
+    - Added internal `fuelTickCounter` tracking with NBT persistence (`FuelTickCounter`) to guarantee consistent consumption rates across saves and chunk unloads.
+* **v1.1.39**:
+  - **JourneyMap Duplicate Stopped Trains & Ghost Marker Fix**:
+    - Keyed all JourneyMap markers and `TrainMapSyncPayload` entries by persistent entity `UUID` instead of transient runtime `entityId`, eliminating duplicate stopped train icons left behind at old coordinates when chunks unload and reload.
+    - Added authoritative server snapshot pruning (`fullSnapshot` every 10 ticks), immediate entity removal broadcasts on cart pickup/destruction, `jmAPI.show(marker)` refreshes on coordinate updates, and unloaded-chunk caching for parked trains.
+  - **Unattended Far-Distance Train Movement & Reference-Counted Chunk Loading**:
+    - Updated `CabooseMinecartEntity` to support `DieselLocomotiveEntity` consists, full bidirectional consist traversal, 3×3 forward-path chunk pre-loading, and immediate updates on chunk boundary crossings.
+    - Added dynamic reference-counted chunk forcing for actively running locomotives, self-propelled rail machines (Tunnel Bore, Under Track Paver, Tunnel Paver, Track Layer Cart), and station-held consists so trains continue moving and updating on JourneyMap outside player range without unforcing shared chunks.
 * **v1.1.38**:
   - **Configurable Auto-Push on Trackside Cargo Unloaders (`cargo_unloader`)**:
     - Added an in-GUI **Auto-Push Toggle button (`Push: ON` / `Push: OFF`)** to `CargoTransferScreen` and synchronized state via `CargoTransferBlockEntity` / `CargoTransferMenu`.
@@ -558,5 +571,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.38.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.40.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

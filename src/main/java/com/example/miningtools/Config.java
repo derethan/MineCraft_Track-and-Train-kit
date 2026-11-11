@@ -15,7 +15,7 @@ public class Config {
     public static final ModConfigSpec.DoubleValue DIESEL_LOCOMOTIVE_MAX_SPEED;
     public static final ModConfigSpec.DoubleValue DIESEL_LOCOMOTIVE_ACCELERATION;
     public static final ModConfigSpec.IntValue DIESEL_LOCOMOTIVE_TANK_CAPACITY;
-    public static final ModConfigSpec.IntValue DIESEL_LOCOMOTIVE_FUEL_PER_TICK;
+    public static final ModConfigSpec.IntValue DIESEL_LOCOMOTIVE_TICKS_PER_MB;
     public static final ModConfigSpec.IntValue DIESEL_LOCOMOTIVE_PULL_CAPACITY;
 
     public static final ModConfigSpec.DoubleValue ELECTRIC_LOCOMOTIVE_MAX_SPEED;
@@ -79,9 +79,9 @@ public class Config {
                 .comment("Internal fuel tank capacity in mB (millibuckets) of the Diesel Locomotive. 16000 mB = 16 Buckets.")
                 .defineInRange("tankCapacity", 16000, 1000, 128000);
 
-        DIESEL_LOCOMOTIVE_FUEL_PER_TICK = BUILDER
-                .comment("Fuel consumption in mB per tick at maximum speed (Speed Level 5).")
-                .defineInRange("fuelPerTick", 1, 1, 100);
+        DIESEL_LOCOMOTIVE_TICKS_PER_MB = BUILDER
+                .comment("Number of operating ticks per 1 mB of diesel fuel consumed. Default 3 allows 1000 mB to run for 3000 ticks (150 seconds), tripling travel distance per bucket.")
+                .defineInRange("ticksPerMb", 3, 1, 1200);
 
         DIESEL_LOCOMOTIVE_PULL_CAPACITY = BUILDER
                 .comment("Number of unpowered train carts a Diesel Locomotive can pull without drag speed penalty.")

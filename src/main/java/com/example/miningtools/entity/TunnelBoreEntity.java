@@ -836,6 +836,7 @@ public class TunnelBoreEntity extends AbstractMinecartContainer {
         }
 
         // Server-side state machine
+        TrainChainingUtil.tickActiveTrainChunkLoading(this);
         this.setDeltaMovement(Vec3.ZERO);
         if (this.currentRailPos == null) {
             this.currentRailPos = this.blockPosition();
