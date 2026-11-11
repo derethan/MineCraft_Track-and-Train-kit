@@ -124,6 +124,7 @@ public class TrackSwitchBlock extends Block implements EntityBlock {
                         pos,
                         state.getValue(OPEN),
                         switchBe.getDetectRange(),
+                        switchBe.getLockTicks(),
                         List.copyOf(switchBe.getRules())
                 ));
             }
@@ -132,6 +133,9 @@ public class TrackSwitchBlock extends Block implements EntityBlock {
 
         boolean nextOpen = !state.getValue(OPEN);
         setSwitchState(level, pos, state, nextOpen, true);
+        if (level.getBlockEntity(pos) instanceof TrackSwitchBlockEntity switchBe) {
+            switchBe.clearLock();
+        }
         Component msg = Component.literal("Track Switch: " + (nextOpen ? "OPEN (Switched)" : "CLOSED (Normal)"))
                 .withStyle(nextOpen ? ChatFormatting.GREEN : ChatFormatting.RED);
         player.sendOverlayMessage(msg);

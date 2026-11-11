@@ -64,6 +64,7 @@ public record TrackSwitchUpdatePayload(
                 if (state.is(MiningTools.TRACK_SWITCH.get())) {
                     if (state.getValue(TrackSwitchBlock.OPEN) != payload.currentOpen()) {
                         TrackSwitchBlock.setSwitchState(level, pos, state, payload.currentOpen(), true);
+                        switchBe.clearLock();
                     } else {
                         TrackSwitchBlock.applySwitchToAdjacentRails(level, pos, payload.currentOpen());
                     }

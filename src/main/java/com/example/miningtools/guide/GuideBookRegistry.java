@@ -512,9 +512,10 @@ public class GuideBookRegistry {
                 () -> new ItemStack(MiningTools.TRACK_SWITCH_ITEM.get()),
                 "The Track Switch Stand is an animated mechanical switch mechanism that controls adjacent Turnout and Wye rails.\n\n" +
                 "• Manual & Redstone: Right-click to manually throw the switch points, or toggle via redstone wire.\n" +
-                "• Multi-Criteria Automated Routing: Right-click to configure automated routing rules based on Train Name, Travel Direction (N/S/E/W), Cargo Status (Loaded/Empty), and Fuel/Battery Level (<25%, <50%).\n" +
+                "• Multi-Criteria Automated Routing: Right-click to configure automated routing rules based on Train Name, Lock Delay (seconds), Travel Direction (N/S/E/W), Cargo Status (Loaded/Empty), and Fuel/Battery Level (<25%, <50%).\n" +
+                "• Route Lock Duration: Specify how long (in seconds) the track stays locked to that position when a route activates, preventing conflicting trains from throwing the switch under passing railcars.\n" +
                 "• Wireless Radio: Sneak-right-click with a Signal Tuner to link and throw the switch wirelessly from inside your locomotive cab!",
-                "Configure a rule: 'If Train is Empty -> Divert to Loading Bay'. The switch will automatically route only empty cars!",
+                "Configure a rule: 'If Train is Empty -> Divert to Loading Bay with 10s Lock'. The switch will route empty cars and stay locked until clear!",
                 null,
                 null,
                 List.of(

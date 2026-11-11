@@ -21,6 +21,7 @@ public record TrackSwitchSyncPayload(
         BlockPos pos,
         boolean currentOpen,
         int detectRange,
+        int lockTicksRemaining,
         List<SwitchRule> rules
 ) implements CustomPacketPayload {
 
@@ -34,6 +35,8 @@ public record TrackSwitchSyncPayload(
             TrackSwitchSyncPayload::currentOpen,
             ByteBufCodecs.VAR_INT,
             TrackSwitchSyncPayload::detectRange,
+            ByteBufCodecs.VAR_INT,
+            TrackSwitchSyncPayload::lockTicksRemaining,
             SwitchRule.STREAM_CODEC.apply(ByteBufCodecs.collection(ArrayList::new)),
             TrackSwitchSyncPayload::rules,
             TrackSwitchSyncPayload::new

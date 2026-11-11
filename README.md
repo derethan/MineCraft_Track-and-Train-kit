@@ -261,10 +261,11 @@ Placed directly under track to automate livestock, villager, and mob transit:
 ### Track Signal Switch
 A mechanical trackside switch stand with an animated signal lantern and arm.
 * **Automated Multi-Criteria Routing**: Define routing rules conditioned on **Train Name**, **Travel Direction** (North, South, East, West, or All), **Cargo Status** (Loaded, Empty, or Any), and **Locomotive Fuel Level** (Low/Adequate thresholds: `< 25%`, `< 50%`, `> 25%`, `> 50%`).
+* **Route Lock Duration**: Specify in seconds (0 to 300s) how long the track switch stays locked to that position when a route activates, preventing trailing wagons or conflicting train routes from throwing the switch under passing consists.
 * **Bidirectional & Wye Loop Conflict Resolution**: Allows returning and reversing trains (such as unloaded ore trains heading back from spur tracks) to automatically set the opposite switch state instead of getting trapped or misrouted.
 * **Refueling Siding Automation**: Trains with low fuel or battery reserves automatically divert into coaling stations, diesel fuelers, or charging sidings while fully fueled trains continue along the mainline.
-* **Interactive Configuration GUI**: Sneak-right-click to open an expanded dashboard featuring one-click condition cycle buttons, visual criteria badges (`[Dir]`, `[Cargo]`, `[Fuel]`), sensitivity range controls, and manual track toggles.
-* **Manual & Redstone Modes**: Can also be toggled manually or via redstone wire.
+* **Interactive Configuration GUI**: Sneak-right-click to open an expanded dashboard featuring numeric lock duration controls (with mouse wheel scrolling and arrow key adjustments), one-click condition cycle buttons, visual criteria badges (`[Dir]`, `[Cargo]`, `[Fuel]`, `[Xs]`), sensitivity range controls, live lock countdowns, and single-click rule editing.
+* **Manual & Redstone Modes**: Can also be toggled manually or via redstone wire; manual toggles instantly clear active route locks.
 
 ### Industrial Chunk Anchor
 A stationary, heavy-duty chunk loader block for mines, quarries, mob farms, and factories.
@@ -367,6 +368,10 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.44**:
+  - **Track Signal Switch Route Lock Delay (`TrackSwitchBlockEntity` & `TrackSwitchScreen`)**:
+    - Added configurable route lock delays (in seconds) to the Track Signal Switch routing list, locking switch points for the specified duration upon route activation.
+    - Added in-GUI live lock countdowns, single-click rule editing, numeric delay controls with mouse wheel scrolling and keyboard steppers, and cyan lock duration badges.
 * **v1.1.42**:
   - **JourneyMap Option Registration Startup Crash Fix (`JourneyMapTrainPlugin`)**:
     - Fixed a `NullPointerException` (`this.config is null`) during client mod loading caused by reading `BooleanOption.get()` inside the `OPTIONS_REGISTRY_EVENT` callback before JourneyMap binds backing `Config` instances to registered options.
@@ -584,5 +589,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.42.jar` into your `.minecraft/mods` folder.
+2. Drop `track and trains-1.1.44.jar` into your `.minecraft/mods` folder.
 3. *(Optional)* Compatible with **JourneyMap**, **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
