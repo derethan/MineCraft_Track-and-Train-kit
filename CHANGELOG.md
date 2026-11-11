@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.42] - 2026-11-11
+
+### Fixed
+- **JourneyMap Option Registration Startup Crash Fix (`JourneyMapTrainPlugin`)**:
+  - Fixed a `NullPointerException` (`Cannot invoke "journeymap.api.v2.common.option.Config.get()" because "this.config" is null`) during mod loading caused by calling `optShowChunkOverlays.get()` inside the `OPTIONS_REGISTRY_EVENT` callback before JourneyMap finishes binding `Config` instances to registered `BooleanOption` objects.
+  - Added null-safe `getOptionSafe(...)` accessors and exception guards around all JourneyMap option reads and event callbacks.
+
+---
+
+## [1.1.41] - 2026-11-11
+
+### Added
+- **JourneyMap Force-Loaded Chunk Anchor Overlays (`ChunkMapSyncPayload` & `JourneyMapTrainPlugin`)**:
+  - Added live color-coded chunk polygon overlays on JourneyMap for both stationary **Industrial Chunk Anchors** (`miningtools:chunk_loader`) and mobile **Rail Chunk Anchors** (`CabooseMinecartEntity` / active train consists).
+  - **Color-Coded Overlays**:
+    - **Stationary Industrial Chunk Anchors**: Rendered with **Industrial Cyan/Teal** borders (`#06B6D4`) and translucent teal fill (`#22D3EE`), complete with a center block icon marker, chunk count badge (`⚓ Anchor (9c)`), and hover tooltip detailing the anchor's area (`1×1`, `3×3`, or `5×5`), total forced chunks, and block coordinates.
+    - **Mobile Rail Chunk Anchors (Anchor Caboose & Active Consists)**: Rendered with **Railway Gold/Amber** borders (`#F59E0B`) and warm gold fill (`#FBBF24`), dynamically tracking the moving train's forced chunk perimeter with a chunk count badge (`⚓ Rail (Nc)`) and hover tooltip displaying the custom Caboose or Train name and forced chunk count.
+  - **Fullscreen Toolbar Toggle & JourneyMap Options**:
+    - Added a dedicated **"Chunk Anchors: ON / OFF"** toggle button on the JourneyMap Fullscreen Map addon toolbar to quickly show or hide chunk anchor overlays at any time.
+    - Registered JourneyMap addon options (`Show Force-Loaded Chunk Anchors` and `Show Chunk Anchors on Minimap`) under the **Track and Train Pack** category in JourneyMap's options menu.
+
+---
+
 ## [1.1.40] - 2026-11-09
 
 ### Changed

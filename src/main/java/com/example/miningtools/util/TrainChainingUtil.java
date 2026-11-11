@@ -2966,6 +2966,25 @@ public final class TrainChainingUtil {
         ACTIVE_VEHICLE_GRACE_TICKS.clear();
     }
 
+    /**
+     * Returns a thread-safe snapshot of all currently registered chunk owners and their forced chunks
+     * in the specified dimension. Keys are formatted as {@code "block:<longPos>"} or {@code "entity:<uuid>"}.
+     */
+    public static Map<String, Set<ChunkPos>> getDimensionForcedChunkOwners(ResourceKey<Level> dimension) {
+        Map<String, Set<ChunkPos>> dimOwners = DIMENSION_CHUNK_OWNERS.get(dimension);
+        if (dimOwners == null || dimOwners.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Set<ChunkPos>> snapshot = new HashMap<>();
+        for (Map.Entry<String, Set<ChunkPos>> entry : dimOwners.entrySet()) {
+            Set<ChunkPos> val = entry.getValue();
+            if (val != null && !val.isEmpty()) {
+                snapshot.put(entry.getKey(), new HashSet<>(val));
+            }
+        }
+        return snapshot;
+    }
+
     private static void addChunkRadius(Set<ChunkPos> out, int centerChunkX, int centerChunkZ, int radius) {
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {

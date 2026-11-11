@@ -21,7 +21,7 @@ Whether you need to haul massive freight trains across long distances, automate 
 * 🔗 **Universal Consist Coupling & MU Consists**: Link dozens of carts together using the Railroad Crowbar—even without a locomotive! Distribute lead, mid-train, and pusher locomotives to multiply pulling capacity, or shunt strings of cars by hand.
 * 📦 **Dynamic Freight & Tankers**: Adaptive Cargo Carts that visually transform (Logs, Shipping Containers in random Red/Green/Blue colorways, Ores, Ingots), 16-bucket Large Liquid Tankers with automatic diesel fuel tender siphoning, and Loose Aggregate Hopper Cars with dynamic 3D bulk material mounds and smooth metallic finishes.
 * 🏹 **Tactical Arrow Turret Cart**: Defense cart with 2× engagement range (32 blocks), dual bow mounts, in-GUI Player Whitelist / Blacklist protection, crisp tactical woodland camo livery, and Caboose-matching flanged steel wheels.
-* 🗺️ **Live JourneyMap Tracking**: Displays custom locomotive and railcar names directly above train map markers, keys markers by persistent entity `UUID` with authoritative server snapshot pruning to prevent ghost or duplicate markers, and features continuous far-distance synchronization even when no player is in range.
+* 🗺️ **Live JourneyMap Tracking & Force-Loaded Chunk Overlays**: Displays custom locomotive and railcar names directly above train map markers, keys markers by persistent entity `UUID` with authoritative server snapshot pruning to prevent ghost or duplicate markers, features continuous far-distance synchronization even when no player is in range, and renders live color-coded polygon overlays for force-loaded chunks (**Cyan/Teal** for stationary Industrial Chunk Anchors, **Gold/Amber** for mobile Anchor Cabooses & active rail consists) with a Fullscreen Map toolbar toggle button!
 * 💥 **Geological Prospecting & Boreholes**: Detonate Surveyor's Charges wirelessly via the Remote Detonator to drill a clean 1×1 borehole to bedrock and receive a full-depth cylindrical column survey tallying ores, minerals, and subterranean oil deposits.
 * 🚜 **Heavy Machinery**: Automated 3×3 Tunnel Bore for subterranean excavation, the **Under Track Paver** (AP1055F) that paves a 1×3 wide roadbed beneath tracks at 1 m/s, and the **Tunnel Paver** (`tunnel_paver`) that lines the 9-block tunnel arch (3 left wall blocks, 3 ceiling blocks, and 3 right wall blocks) with custom 9-slot masonry patterns.
 * 🛤️ **Specialty Switch & Power Rails**: Station Delay Rails (Timed Station Dwell & Automatic Consist Launch), Braking / Holding Rails, Coupler Rails (Automated Consist Coupling & Decoupling), Speed Control Rails, 4-way Junction Rails, 3-way Wye Junctions, Turnout Switches, Control Rails, Horn Rails, and Electric Third Rails.
@@ -147,6 +147,7 @@ An armored rolling-stock defense wagon styled with a crisp, ultra-high-resolutio
 The ultimate train-protection device attached to your consist.
 * **Universal Placement**: Can now be placed at the front, middle, or rear of the train consist!
 * **Mobile Chunk Loading**: Forces a 3×3 chunk perimeter around itself **plus** keeps all chunks occupied by the entire train loaded in memory as it travels.
+* **JourneyMap Rail Chunk Overlay**: Highlights its actively force-loaded chunk footprint in **Gold/Amber** on the JourneyMap Fullscreen Map and Minimap with a hover tooltip showing the caboose/train name and loaded chunk count.
 * **Prevents Runaway Decoupling**: Eliminates trains freezing or separating across chunk boundaries.
 * **Atmospheric Visuals**: Features an authentic stove pipe chimney puffing smoke particles.
 
@@ -247,6 +248,7 @@ Placed underneath tracks to pump fluids into or drain fluids from Liquid Minecar
 ### In-GUI Custom Cart & Train Naming & JourneyMap Integration
 All locomotives and rolling stock carts feature editable name fields inside their cockpits and GUIs:
 * **Live JourneyMap Integration**: Locomotive and railcar names appear rendered cleanly above their train map markers on JourneyMap!
+* **Force-Loaded Chunk Polygon Overlays**: Displays real-time, merged polygon chunk boundaries (`PolygonOverlay`) on JourneyMap for all active chunk loaders—**Cyan/Teal** for stationary **Industrial Chunk Anchors** (with a center anchor block icon and area tooltip) and **Gold/Amber** for mobile **Anchor Cabooses & Active Train Consists**. Includes a **Chunk Anchors: ON / OFF** toggle button directly on the JourneyMap Fullscreen Map toolbar and in JourneyMap Addon Options.
 * **Far-Distance Server Synchronization & Zero-Ghost Tracking**: Train coordinates and heading are broadcast by the server every 10 ticks using persistent entity `UUID` keys, immediate removal packets when carts are picked up or broken, and unloaded-chunk caching for parked consists—ensuring active trains update smoothly across the map even when no player is nearby and never leave duplicate or ghost markers behind.
 * **Depot Automation**: Name trains (e.g. `"Ore Express"`, `"Coal Tender #1"`, `"Shuttle-South"`) to integrate directly with the **Track Signal Switch** for automatic turnout switching and route dispatching.
 * **Station Filtering**: Filters cargo and fluid loaders to only service designated train names.
@@ -268,6 +270,7 @@ A mechanical trackside switch stand with an animated signal lantern and arm.
 A stationary, heavy-duty chunk loader block for mines, quarries, mob farms, and factories.
 * **Configurable Area**: Cycle between **1×1 Chunk (Single)**, **3×3 Chunks (9 Total)**, or **5×5 Chunks (25 Total)**.
 * **Redstone Modes**: Toggle between **Always Active** and **Redstone Required**.
+* **JourneyMap Chunk Overlay**: Renders a **Cyan/Teal** polygon overlay on JourneyMap covering the exact 1×1, 3×3, or 5×5 force-loaded chunk boundary along with a center anchor icon and coordinate tooltip.
 * **Visual Status**: Glowing cyan energy core, green status LED, light level 12, and portal particles.
 
 ### Railway Buffer Stop (Stop Block)
@@ -364,6 +367,17 @@ When seated inside a locomotive or coupled cart:
 ## 📋 Changelog & Releases
 
 For detailed release notes across versions, check out **[CHANGELOG.md](CHANGELOG.md)**.
+* **v1.1.42**:
+  - **JourneyMap Option Registration Startup Crash Fix (`JourneyMapTrainPlugin`)**:
+    - Fixed a `NullPointerException` (`this.config is null`) during client mod loading caused by reading `BooleanOption.get()` inside the `OPTIONS_REGISTRY_EVENT` callback before JourneyMap binds backing `Config` instances to registered options.
+    - Added safe `getOptionSafe` guards around all JourneyMap option reads.
+* **v1.1.41**:
+  - **JourneyMap Force-Loaded Chunk Overlay Integration (`JourneyMapTrainPlugin` & `ChunkMapSyncPayload`)**:
+    - Added live JourneyMap polygon overlays displaying actively force-loaded chunks for both **Industrial Chunk Anchors** (stationary placeable blocks) and **Rail Chunk Anchors** (Anchor Cabooses & active train consists).
+    - **Color-Coded Merged Polygon Overlays**:
+      - **Industrial Chunk Anchors (`miningtools:chunk_loader`)**: Rendered with a **Cyan/Teal** border (`#06B6D4`) and translucent fill (`#22D3EE`), a center block icon marker, and hover tooltip displaying the anchor area (`1x1`, `3x3`, `5x5`), forced chunk count, and block coordinates.
+      - **Rail Chunk Anchors (Anchor Caboose & Active Consists)**: Rendered with a **Gold/Amber** border (`#F59E0B`) and translucent fill (`#FBBF24`), with hover tooltips displaying the Caboose/Train name and total forced chunk count.
+    - **JourneyMap Fullscreen Toolbar Toggle & Options**: Added a **"Chunk Anchors: ON / OFF"** button to the JourneyMap Fullscreen Map addon toolbar and registered configurable JourneyMap options (`Show Force-Loaded Chunk Overlays` and `Show Chunk Overlays on Minimap`).
 * **v1.1.40**:
   - **CN Diesel Locomotive Fuel Consumption Calibration (3× Travel Distance)**:
     - Tripled the fuel efficiency of the CN Diesel Locomotive (`DieselLocomotiveEntity`), extending its travel distance to 3× further per 1,000 mB of diesel fuel.
@@ -571,5 +585,5 @@ Track and Train Pack features extensive configuration via `config/miningtools-co
 ## 📦 Installation & Dependencies
 
 1. Ensure **Minecraft 26.3** and **NeoForge** are installed.
-2. Drop `track and trains-1.1.40.jar` into your `.minecraft/mods` folder.
-3. *(Optional)* Compatible with **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.
+2. Drop `track and trains-1.1.42.jar` into your `.minecraft/mods` folder.
+3. *(Optional)* Compatible with **JourneyMap**, **Jade**, **JEI**, **Industrial Refinery**, and **Ultimate Car Mod**.

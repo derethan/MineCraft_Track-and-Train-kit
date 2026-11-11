@@ -1088,6 +1088,11 @@ public class MiningTools {
                 com.example.miningtools.network.TrainMapSyncPayload::handle
         );
         registrar.playToClient(
+                com.example.miningtools.network.ChunkMapSyncPayload.TYPE,
+                com.example.miningtools.network.ChunkMapSyncPayload.STREAM_CODEC,
+                com.example.miningtools.network.ChunkMapSyncPayload::handle
+        );
+        registrar.playToClient(
                 SpeedControlRailSyncPayload.TYPE,
                 SpeedControlRailSyncPayload.STREAM_CODEC,
                 SpeedControlRailSyncPayload::handle
@@ -1198,6 +1203,7 @@ public class MiningTools {
     private final java.util.Map<UUID, com.example.miningtools.network.TrainMapSyncPayload.TrainMapEntry> parkedUnloadedTrains =
             new java.util.concurrent.ConcurrentHashMap<>();
     private boolean hadTrainMapEntriesLastSync = false;
+    private boolean hadChunkMapEntriesLastSync = false;
 
     @SubscribeEvent
     public void onEntityLeave(net.neoforged.neoforge.event.entity.EntityLeaveLevelEvent event) {
@@ -1307,6 +1313,88 @@ public class MiningTools {
             this.hadTrainMapEntriesLastSync = !entries.isEmpty();
             PacketDistributor.sendToAllPlayers(new com.example.miningtools.network.TrainMapSyncPayload(entries, true));
         }
+
+        // Synchronize active force-loaded chunk anchors (stationary Industrial Chunk Anchors & mobile Rail Chunk Anchors)
+        List<com.example.miningtools.network.ChunkMapSyncPayload.ChunkAnchorEntry> chunkAnchorEntries = new ArrayList<>();
+        for (ServerLevel level : server.getAllLevels()) {
+            String dimId = level.dimension().identifier().toString();
+            java.util.Map<String, java.util.Set<net.minecraft.world.level.ChunkPos>> dimOwners =
+                    TrainChainingUtil.getDimensionForcedChunkOwners(level.dimension());
+            for (var ownerEntry : dimOwners.entrySet()) {
+                String ownerKey = ownerEntry.getKey();
+                java.util.Set<net.minecraft.world.level.ChunkPos> chunks = ownerEntry.getValue();
+                if (chunks == null || chunks.isEmpty()) continue;
+
+                List<Long> packedChunks = new ArrayList<>(chunks.size());
+                for (net.minecraft.world.level.ChunkPos cp : chunks) {
+                    long packed = ((long) cp.x() & 0xFFFFFFFFL) | (((long) cp.z() & 0xFFFFFFFFL) << 32);
+                    packedChunks.add(packed);
+                }
+
+                if (ownerKey.startsWith("block:")) {
+                    try {
+                        long posLong = Long.parseLong(ownerKey.substring("block:".length()));
+                        net.minecraft.core.BlockPos bPos = net.minecraft.core.BlockPos.of(posLong);
+                        String radiusDesc = switch (chunks.size()) {
+                            case 1 -> "1x1";
+                            case 25 -> "5x5";
+                            default -> "3x3";
+                        };
+                        String title = String.format(
+                                "Industrial Chunk Anchor (%s - %d Chunks) [%d, %d, %d]",
+                                radiusDesc,
+                                chunks.size(),
+                                bPos.getX(),
+                                bPos.getY(),
+                                bPos.getZ()
+                        );
+                        chunkAnchorEntries.add(new com.example.miningtools.network.ChunkMapSyncPayload.ChunkAnchorEntry(
+                                ownerKey,
+                                dimId,
+                                com.example.miningtools.network.ChunkMapSyncPayload.TYPE_STATIC_ANCHOR,
+                                bPos,
+                                title,
+                                packedChunks
+                        ));
+                    } catch (Throwable ignored) {
+                    }
+                } else if (ownerKey.startsWith("entity:")) {
+                    try {
+                        UUID entUuid = UUID.fromString(ownerKey.substring("entity:".length()));
+                        Entity ent = level.getEntity(entUuid);
+                        net.minecraft.core.BlockPos centerPos;
+                        String vehicleName = "Rail Chunk Anchor";
+                        if (ent instanceof AbstractMinecart cart) {
+                            centerPos = cart.blockPosition();
+                            String bestName = com.example.miningtools.compat.journeymap.JourneyMapTrainPlugin.getBestTrainName(cart);
+                            if (cart instanceof CabooseMinecartEntity) {
+                                vehicleName = bestName.isBlank() ? "Anchor Caboose" : "Anchor Caboose: " + bestName;
+                            } else {
+                                vehicleName = bestName.isBlank() ? "Active Train Consist" : "Active Train: " + bestName;
+                            }
+                        } else {
+                            net.minecraft.world.level.ChunkPos firstChunk = chunks.iterator().next();
+                            centerPos = new net.minecraft.core.BlockPos(firstChunk.getMiddleBlockX(), 64, firstChunk.getMiddleBlockZ());
+                        }
+                        String title = String.format("%s (%d Chunks Forced)", vehicleName, chunks.size());
+                        chunkAnchorEntries.add(new com.example.miningtools.network.ChunkMapSyncPayload.ChunkAnchorEntry(
+                                ownerKey,
+                                dimId,
+                                com.example.miningtools.network.ChunkMapSyncPayload.TYPE_RAIL_ANCHOR,
+                                centerPos,
+                                title,
+                                packedChunks
+                        ));
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
+        }
+
+        if (!chunkAnchorEntries.isEmpty() || this.hadChunkMapEntriesLastSync) {
+            this.hadChunkMapEntriesLastSync = !chunkAnchorEntries.isEmpty();
+            PacketDistributor.sendToAllPlayers(new com.example.miningtools.network.ChunkMapSyncPayload(chunkAnchorEntries));
+        }
     }
 
     private static @org.jspecify.annotations.Nullable String getTrainMapIconType(AbstractMinecart cart) {
@@ -1336,6 +1424,7 @@ public class MiningTools {
     public void onServerStarting(ServerStartingEvent event) {
         this.parkedUnloadedTrains.clear();
         this.hadTrainMapEntriesLastSync = false;
+        this.hadChunkMapEntriesLastSync = false;
         TrainChainingUtil.clearAllForcedChunkTracking();
         LOGGER.info("Mining Tools server starting");
     }
